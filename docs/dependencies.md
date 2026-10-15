@@ -37,6 +37,7 @@ always gets the same bytes:
 | Check and test tools (ruff, pytest, coverage, yamllint) | [`requirements-dev.in`](../requirements-dev.in) → [`requirements-dev.txt`](../requirements-dev.txt) | exact version and SHA-256 hashes | `pip install --require-hashes --no-deps` |
 | Linters and scanners used only by CI (actionlint, hadolint, gitleaks, pip-audit, Trivy) | [`.github/workflows/`](../.github/workflows/) | version, and digest for container images | CI |
 | GitHub Actions | [`.github/workflows/`](../.github/workflows/) | full commit SHA (version in a comment) | GitHub Actions |
+| Images of the GitLab copy's pipeline (Python, Docker CLI, git, gitleaks, actionlint, hadolint, Prometheus) | [`.gitlab-ci.yml`](../.gitlab-ci.yml) | version tag and digest | GitLab Runner (Docker executor) |
 
 Released images carry an SBOM listing every package in them ([verifying-releases.md](verifying-releases.md)).
 How to regenerate the pins is in [CONTRIBUTING.md](../CONTRIBUTING.md#updating-pinned-dependencies).
@@ -53,6 +54,7 @@ it from MaxMind with its own license key, under MaxMind's GeoLite2 license.
 - **Dependency review** ([`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml))
   blocks a pull request that adds or changes a dependency with a known vulnerability of moderate severity or
   higher, or with a license outside the allowlist.
+- The images in `.gitlab-ci.yml` aren't seen by Dependabot; they're bumped by hand at least every quarter.
 - A merged update reaches users only in the next release.
 
 ## Policy for vulnerabilities in dependencies

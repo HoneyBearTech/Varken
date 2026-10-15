@@ -34,6 +34,11 @@ Update these files as the project evolves: tick roadmap checkboxes, add a Pass-M
   schedule. Dev tools in `requirements-dev.in` → `requirements-dev.txt`.
 - Image: `Dockerfile` (`python:3.14.x-slim` pinned by version and digest; Dependabot bumps it, uid 1000, read-only-rootfs friendly), published to `ghcr.io/honeybeartech/varken` by `.github/workflows/release.yml` on a signed `vX.Y.Z` tag (SBOM, provenance, cosign, signed SHA256SUMS). Release = a `## [x.y.z]` section in CHANGELOG.md, then `git tag -s`.
 - Default branch is `master`.
+- GitLab copy: the owner's self-hosted GitLab (CE, LAN only; host facts in Chronos) holds a mirror. GitHub stays
+  the home (OpenSSF badges, Scorecard, Dependabot, releases); every change goes to GitHub as a PR, never to
+  GitLab. `.gitlab-ci.yml` mirrors GitHub's `master` on a schedule (fast-forward only, `MIRROR_TOKEN` CI/CD
+  variable) and re-runs the daemon-free checks; the image build and pip-audit stay GitHub-only. Its images are
+  pinned by tag and digest and bumped by hand (Dependabot doesn't read it).
 
 ## Conventions
 - No secrets, keys, hostnames or IPs in anything committed; `.env` and `config/` are gitignored, so extend `.gitignore` rather than working around it. Examples use `*.example.com` placeholders.
