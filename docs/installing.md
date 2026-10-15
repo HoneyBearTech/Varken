@@ -9,11 +9,12 @@ first look, the [quick start](quick-start.md) is shorter; this page covers the c
 - **Prometheus**, able to reach Varken on port 9180 ([below](#scraping-it-with-prometheus)).
 - **Grafana**, or anything else that can query Prometheus, to look at the data. Varken includes neither; in
   the maintainer's setup, [Argus](https://github.com/HoneyBearTech/Argus) provides both.
-- For Tautulli: your public IPv4 address for `fallback_ip` and, optionally, a **MaxMind license key**
-  ([free GeoLite2 account](https://www.maxmind.com/en/geolite2/signup)) to place viewers on a map. Without
+- For Tautulli: your public IPv4 address for `fallback_ip` and, optionally, a **MaxMind license key and
+  account ID** ([free GeoLite2 account](https://www.maxmind.com/en/geolite2/signup)) to place viewers on a map. Without
   a key, GeoIP is off and streams have no location.
 - An API key for each service you want to read, or a read-only login for UniFi.
-- With GeoIP on, outbound HTTPS to `download.maxmind.com` and, rarely, `api.ipify.org` (see
+- With GeoIP on, outbound HTTPS to `download.maxmind.com` (which redirects to MaxMind's storage on
+  `*.r2.cloudflarestorage.com`) and, rarely, `api.ipify.org` (see
   [interfaces.md](interfaces.md#interfaces-varken-uses)). With GeoIP off, neither.
 - For the image: a Linux host (amd64 or arm64) with Docker. For a bare install: Python 3.14 on any OS
   Python supports.

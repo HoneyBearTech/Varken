@@ -85,6 +85,7 @@ secrets:
 | `sickchill_server_ids` | `VRKN_GLOBAL_SICKCHILL_SERVER_IDS` | `false` | SickChill servers to read, or `false`. |
 | `unifi_server_ids` | `VRKN_GLOBAL_UNIFI_SERVER_IDS` | `false` | UniFi controllers to read, or `false`. |
 | `maxmind_license_key` | `VRKN_GLOBAL_MAXMIND_LICENSE_KEY` | placeholder | Optional. Your MaxMind license key, used to download the GeoLite2-City database that places Tautulli viewers on a map. Free with a [MaxMind account](https://www.maxmind.com/en/geolite2/signup). Empty, or still the example's `xxxx…` placeholder, turns GeoIP off ([below](#tautulli-n)). **Secret.** |
+| `maxmind_account_id` | `VRKN_GLOBAL_MAXMIND_ACCOUNT_ID` | empty | Your MaxMind account ID (on the account portal, next to the license keys). With it, Varken downloads with MaxMind's documented Basic authentication; without it, it falls back to the older URL with the license key in the query string and logs a warning. Not a secret on its own. |
 
 Varken stops if every service is disabled.
 
@@ -129,8 +130,10 @@ Each server is a section named `[<service>-<id>]`, for example `[tautulli-1]` or
 | `get_stats_run_seconds` | `VRKN_TAUTULLI_<ID>_GET_STATS_RUN_SECONDS` | `3600` | How often. |
 
 **GeoIP is optional.** With Tautulli enabled and a `maxmind_license_key` set, Varken uses the GeoLite2
-database to place viewers: it downloads it at start-up if it is missing (and stops if it can't), and checks
-every 12 to 24 hours whether it is more than 30 days old. Without a key (empty, or the example's placeholder)
+database to place viewers: it downloads it at start-up if it is missing, and checks every 12 to 24 hours
+whether it is more than 30 days old (or still missing). If a download fails (a wrong account ID or key, or
+MaxMind unreachable), Varken logs the error and keeps running, with no locations until a later check
+succeeds. Without a key (empty, or the example's placeholder)
 it logs `No MaxMind license key: GeoIP is off and Tautulli streams have no location.` and every stream gets the
 unknown location ([interfaces.md](interfaces.md#output-prometheus-metrics)); Varken then never contacts MaxMind
 or `api.ipify.org`.
@@ -236,6 +239,7 @@ ombi_server_ids = false
 sickchill_server_ids = false
 unifi_server_ids = false
 maxmind_license_key = <your MaxMind license key, or empty for no GeoIP>
+maxmind_account_id = <your MaxMind account ID>
 
 [prometheus]
 bind = 0.0.0.0

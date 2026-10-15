@@ -8,6 +8,20 @@ All notable changes to this project are documented in this file. The format is b
 ## [Unreleased]
 
 ### Added
+- `maxmind_account_id` (`VRKN_GLOBAL_MAXMIND_ACCOUNT_ID`): with it, the GeoLite2 database is downloaded the way
+  MaxMind documents, with HTTP Basic auth (account ID and license key) instead of the license key in the URL.
+  Without it, Varken uses the old URL and logs a warning. Existing `varken.ini` files get the key, empty, on
+  their next start.
+
+### Changed
+- A GeoLite2 download that fails no longer stops Varken: it logs the error and runs without locations, and the
+  next check (every 12 to 24 hours, and not within an hour of a failure, which MaxMind rate-limits) tries
+  again. The download has a 60-second timeout, is retried up to three times, and never logs its URL. A new database is swapped in with a rename, so lookups keep working during an
+  update.
+- The Argus copy of the dashboard leaves out the Ombi and SickChill panels (`dashboard/make_dashboard.py
+  --argus`); `dashboard/varken.json` is unchanged.
+
+### Added
 - `.gitlab-ci.yml` for the copy of the repository on the maintainer's self-hosted GitLab. GitHub stays the
   project's home and its Actions the required checks; on GitLab a scheduled job mirrors `master` and the tags
   from GitHub (fast-forward only, with a project access token in a masked, protected CI/CD variable), and every

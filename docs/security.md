@@ -131,7 +131,7 @@ These are inherited from upstream Varken and are already public. Each has a plan
 | No request timeouts | A service that accepts a connection but never answers ties up a thread per run, which can pile up | Keep services reachable; restart Varken if it stops writing | Add timeouts to every request |
 | Debug logging is on by default | Logs hold every request URL (secrets masked) and more detail than needed | `DEBUG=false` or `-ND` | Default INFO |
 | Masked secrets keep their last five characters | A masked value is logged as `********` plus its last five characters, which narrows a guess for short secrets | Use long, random API keys and passwords; keep logs private | Mask completely |
-| The MaxMind license key is sent as a URL query parameter | The key can end up in proxy or server logs along the way (the connection itself is HTTPS) | Use a license key dedicated to Varken | Use MaxMind's account ID + license key Basic-auth download |
+| Without `maxmind_account_id`, the MaxMind license key is sent as a URL query parameter | The key can end up in proxy or server logs along the way (the connection itself is HTTPS) | Set `maxmind_account_id` (2.2.0 and later): the download then uses Basic auth | Drop the legacy URL in 3.0.0 |
 | Config rewrite | When keys are missing, Varken rewrites `varken.ini` with values from the example, dropping comments | Keep `varken.ini` complete | |
 
 ### Fixed in 2.0.0

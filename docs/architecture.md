@@ -16,7 +16,7 @@ Ombi ─────┤                │ scheduled jobs   │ │
 SickChill ┤                └──────────────────┘ │
 UniFi ────┘                  │            ▲     └─▶ logs (stdout; data/logs/varken.log unless LOG_TO_FILE=false)
                              │ lookup     │ download every ~30 days
-                             ▼            │ (license key; only with GeoIP on)
+                             ▼            │ (account ID + license key; only with GeoIP on)
                     data/GeoLite2-City.mmdb ◀── MaxMind
 ```
 
@@ -56,8 +56,9 @@ UniFi ────┘                  │            ▲     └─▶ logs (st
 3. **Metrics server.** It starts the metrics HTTP server on `bind`:`port`, and stops if it can't open the
    port (for example because something else has it).
 4. **GeoIP** (only with Tautulli enabled and a MaxMind license key). It opens `GeoLite2-City.mmdb`,
-   downloading it from MaxMind first if it's missing; it stops if that download fails. A job checks every 12
-   to 24 hours whether the file is more than 30 days old and replaces it if so. Only the `.mmdb` file is
+   downloading it from MaxMind first if it's missing; if that fails, it logs the error and carries on without
+   locations. A job checks every 12 to 24 hours whether the file is missing or more than 30 days old and
+   downloads it if so, swapping the new file in with a rename. Only the `.mmdb` file is
    extracted from the archive, with Python's `data` extraction filter, so the archive can't write anywhere
    else. Without a key, GeoIP is off: every stream gets an unknown location, and Varken contacts neither
    MaxMind nor `api.ipify.org`.

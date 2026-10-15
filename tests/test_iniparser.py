@@ -154,3 +154,22 @@ def test_a_first_start_is_not_an_error(data_folder, caplog):
     created = [r for r in caplog.records if 'creating it from varken.example.ini' in r.getMessage()]
     assert created and created[0].levelname == 'INFO'
     assert not [r for r in caplog.records if r.levelname == 'ERROR']
+
+
+def test_maxmind_account_id_from_the_environment(data_folder, monkeypatch):
+    assert INIParser(str(data_folder)).tautulli_servers[0].maxmind_account_id is None  # empty in the example
+
+    monkeypatch.setenv('VRKN_GLOBAL_MAXMIND_ACCOUNT_ID', '123456')
+
+    assert INIParser(str(data_folder)).tautulli_servers[0].maxmind_account_id == '123456'
+
+
+def test_a_2_1_ini_gets_the_maxmind_account_id(data_folder):
+    # varken.ini files written before 2.2.0 have no maxmind_account_id; it's added, empty, on the next start.
+    example = (data_folder / 'varken.example.ini').read_text()
+    (data_folder / 'varken.ini').write_text(example.replace('maxmind_account_id =\n', ''))
+
+    parser = INIParser(str(data_folder))
+
+    assert 'maxmind_account_id' in (data_folder / 'varken.ini').read_text()
+    assert parser.tautulli_servers[0].maxmind_account_id is None
