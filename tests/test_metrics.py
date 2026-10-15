@@ -150,8 +150,11 @@ def test_tautulli_stream_details_when_enabled(monkeypatch):
     run_tautulli(metrics, monkeypatch, ACTIVITY, 'get_activity')
 
     assert value(metrics, 'varken_tautulli_session_info', server='1', session_id='abc', user='viewer',
-                 title='Some Show - Pilot', product='Plex Web', platform='Windows', quality='1080p',
-                 transcode_decision='direct_stream', location='Springfield', region_code='IL') == 1
+                 friendly_name='Viewer', title='Some Show - Pilot', product='Plex Web', product_version='4.1',
+                 platform='Windows', quality='1080p', quality_profile='Original',
+                 transcode_decision='direct_stream', video_decision='transcode', state='paused',
+                 location='Springfield', full_location='Illinois - Springfield', region_code='IL',
+                 latitude='39.8', longitude='-89.6') == 1
     assert value(metrics, 'varken_tautulli_session_progress_ratio', server='1', session_id='abc') == 0.42
     assert '203.0.113.5' not in generate_latest(metrics.registry).decode()
 
@@ -232,3 +235,15 @@ def test_a_port_in_use_exits_cleanly():
         port = taken.getsockname()[1]
         with pytest.raises(SystemExit):
             Metrics(PrometheusServer(bind='127.0.0.1', port=port)).start()
+
+
+def test_an_unlocated_viewer_has_no_place_on_the_map(monkeypatch):
+    # The Tautulli module records an alien and Area 51 for viewers it can't place; the metrics leave them empty.
+    from varken.helpers import NoGeoIP
+    metrics = Metrics(PrometheusServer(stream_details=True))
+    monkeypatch.setattr(tautulli, 'connection_handler', lambda session, request, verify: ACTIVITY)
+    metrics.run(TautulliAPI(SERVER, metrics, NoGeoIP()).get_activity)
+
+    (labels,) = [dict(labels) for name, labels in samples(metrics) if name == 'varken_tautulli_session_info']
+    assert (labels['location'], labels['latitude'], labels['longitude'], labels['full_location']) == ('', '', '', '')
+
