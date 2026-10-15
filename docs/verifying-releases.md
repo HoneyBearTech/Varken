@@ -17,19 +17,19 @@ workflow when a version tag is pushed. You can check that what you run came from
 This applies to releases from **2.0.0 onward**, the first release from this repository. Upstream Boerderij/Varken releases and the `boerderij/varken` images were not signed this
 way and can't be verified with these commands. You need
 [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) 3.0 or later (with cosign 2.6, add
-`--new-bundle-format` to `cosign verify`). The examples use version 2.1.0; substitute the one you run.
+`--new-bundle-format` to `cosign verify`). The examples use version 2.2.0; substitute the one you run.
 
 ## The image
 
 ```sh
-cosign verify ghcr.io/honeybeartech/varken:2.1.0 \
-  --certificate-identity https://github.com/HoneyBearTech/Varken/.github/workflows/release.yml@refs/tags/v2.1.0 \
+cosign verify ghcr.io/honeybeartech/varken:2.2.0 \
+  --certificate-identity https://github.com/HoneyBearTech/Varken/.github/workflows/release.yml@refs/tags/v2.2.0 \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
 The certificate identity names the workflow file and the tag it ran on (`refs/tags/vX.Y.Z`), so a signature
 made for another version, another workflow or another repository fails. cosign prints the verified
-signatures, including the commit they were built from. A tag such as `2.1.0` can be moved, a digest can't:
+signatures, including the commit they were built from. A tag such as `2.2.0` can be moved, a digest can't:
 for the strongest guarantee, pin the digest from the release's `image.txt` (after verifying it, below), for
 example `image: ghcr.io/honeybeartech/varken@sha256:…` in your compose file.
 
@@ -37,8 +37,8 @@ The image's SBOM and SLSA provenance are attached to it in the registry by the b
 attestations described below cover the release files, not the image). To see them:
 
 ```sh
-docker buildx imagetools inspect ghcr.io/honeybeartech/varken:2.1.0 --format '{{ json .SBOM }}'
-docker buildx imagetools inspect ghcr.io/honeybeartech/varken:2.1.0 --format '{{ json .Provenance }}'
+docker buildx imagetools inspect ghcr.io/honeybeartech/varken:2.2.0 --format '{{ json .SBOM }}'
+docker buildx imagetools inspect ghcr.io/honeybeartech/varken:2.2.0 --format '{{ json .Provenance }}'
 ```
 
 ## The release files
@@ -48,7 +48,7 @@ Download `SHA256SUMS`, `SHA256SUMS.sigstore.json`, `image.txt` and the source ar
 
 ```sh
 cosign verify-blob SHA256SUMS --bundle SHA256SUMS.sigstore.json \
-  --certificate-identity https://github.com/HoneyBearTech/Varken/.github/workflows/release.yml@refs/tags/v2.1.0 \
+  --certificate-identity https://github.com/HoneyBearTech/Varken/.github/workflows/release.yml@refs/tags/v2.2.0 \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 sha256sum -c SHA256SUMS
 ```
@@ -61,11 +61,11 @@ archive and `image.txt` match it.
 Check that a downloaded release file was built by this repository's release workflow:
 
 ```sh
-gh attestation verify varken-2.1.0.tar.gz --repo HoneyBearTech/Varken \
+gh attestation verify varken-2.2.0.tar.gz --repo HoneyBearTech/Varken \
   --signer-workflow HoneyBearTech/Varken/.github/workflows/release.yml
 ```
 
-To verify offline, add `--bundle varken-2.1.0.provenance.sigstore.json`. Every file listed in `SHA256SUMS`
+To verify offline, add `--bundle varken-2.2.0.provenance.sigstore.json`. Every file listed in `SHA256SUMS`
 is covered.
 
 ## The git tag
@@ -75,7 +75,7 @@ The maintainer signs version tags with an SSH key whose public half is in
 
 ```sh
 git clone https://github.com/HoneyBearTech/Varken.git && cd Varken
-git -c gpg.ssh.allowedSignersFile=.github/allowed_signers verify-tag v2.1.0
+git -c gpg.ssh.allowedSignersFile=.github/allowed_signers verify-tag v2.2.0
 ```
 
 It should print `Good "git" signature for 31805425+HoneyBearTech@users.noreply.github.com`. Check

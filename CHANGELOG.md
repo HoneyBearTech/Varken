@@ -7,6 +7,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-15
+
 ### Added
 - `maxmind_account_id` (`VRKN_GLOBAL_MAXMIND_ACCOUNT_ID`): with it, the GeoLite2 database is downloaded the way
   MaxMind documents, with HTTP Basic auth (account ID and license key) instead of the license key in the URL.

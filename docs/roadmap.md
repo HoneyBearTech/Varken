@@ -35,6 +35,9 @@ The second pass built most of Phase 2, which also ships in 2.0.0:
 their `/api/v3` (Sonarr 4 and Radarr 4 or later), fixes the Lidarr module, and ships a Grafana dashboard: the
 original Varken dashboard ported to these metrics ([dashboard/](../dashboard/README.md)).
 
+**2.2.0** (2026-10-15) downloads the GeoLite2 database with MaxMind's account ID and Basic auth instead of the
+license key in the URL, and keeps running when that download fails.
+
 ## Over the following year
 
 **Next, Phase 3: Argus integration** (**Planned**, in the [Argus](https://github.com/HoneyBearTech/Argus) repository)
