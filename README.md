@@ -11,10 +11,10 @@
 </p>
 
 Varken collects data from the Plex ecosystem (Tautulli, Sonarr, Radarr, Lidarr, Ombi, SickChill) and UniFi and
-writes it to InfluxDB 1.x for Grafana dashboards, serves it as Prometheus metrics at `/metrics` for
-Prometheus-based stacks, or both.
+serves it as Prometheus metrics at `/metrics`, for Prometheus to scrape and Grafana to chart.
 
-Varken is Dutch for PIG; PIG stands for Plex/InfluxDB/Grafana. This is a standalone continuation of
+Varken is Dutch for PIG; PIG stood for Plex/InfluxDB/Grafana, the stack it was first written for (it no longer
+writes to InfluxDB). This is a standalone continuation of
 [Boerderij/Varken](https://github.com/Boerderij/Varken) by DirtyCajunRice, samwiseg0 and contributors, whose
 last release was 1.7.7 in 2020. It's maintained by [HoneyBearTech](https://github.com/HoneyBearTech) and isn't
 affiliated with the original authors: please don't take questions about this version to their channels.
@@ -28,12 +28,12 @@ affiliated with the original authors: please don't take questions about this ver
 - [Quick start](docs/quick-start.md), [installing](docs/installing.md) (Docker, Docker Compose or Python),
   [upgrading from upstream 1.7.x and backups](docs/upgrading.md) and [verifying releases](docs/verifying-releases.md).
 - [Configuration](docs/configuration.md): every `varken.ini` setting and the `VRKN_*` variable that overrides it.
-- [Architecture](docs/architecture.md): the components, and how data flows from each service to InfluxDB and
-  Prometheus.
+- [Architecture](docs/architecture.md): the components, and how data flows from each service to the Prometheus
+  metrics.
 - [Security requirements](docs/security.md): what Varken does and doesn't protect, the known weaknesses, and the
   [assurance case](docs/assurance-case.md) behind them.
-- [External interfaces](docs/interfaces.md): the APIs Varken calls, the InfluxDB measurements it writes, the
-  Prometheus metrics it serves, and the command line. [Dependencies and vulnerability management](docs/dependencies.md).
+- [External interfaces](docs/interfaces.md): the APIs Varken calls, the Prometheus metrics it serves, and the
+  command line. [Dependencies and vulnerability management](docs/dependencies.md).
 - [Roadmap](docs/roadmap.md): where the project is going, and what it won't do.
 - [Support](SUPPORT.md): which versions get fixes, and for how long.
 - [Contributing](CONTRIBUTING.md), [Code of Conduct](CODE_OF_CONDUCT.md), [Governance](GOVERNANCE.md) and
@@ -57,8 +57,9 @@ license key; without one, Varken runs with GeoIP off and streams have no locatio
 
 ## Getting started
 
-You need Docker with Compose. The [example compose file](docker-compose.yml) runs Varken with InfluxDB 1.12 and
-Grafana:
+You need Docker with Compose, a Prometheus to scrape Varken and a Grafana to look at the data. Varken ships
+neither; in the maintainer's setup, [Argus](https://github.com/HoneyBearTech/Argus) provides both. The
+[example compose file](docker-compose.yml) runs Varken alone and publishes `/metrics` on `127.0.0.1:9180`:
 
 ```sh
 git clone https://github.com/HoneyBearTech/Varken.git
@@ -69,15 +70,15 @@ docker compose up -d
 docker compose logs -f varken
 ```
 
-Grafana listens on <http://127.0.0.1:3000>. Add InfluxDB (`http://influxdb:8086`, database `varken`) as a data
-source and build dashboards on the [measurements Varken writes](docs/interfaces.md). For Prometheus, set
-`VRKN_PROMETHEUS_ENABLED=true` and scrape `varken:9180`
-([quick start](docs/quick-start.md#prometheus-instead-of-or-as-well-as-influxdb)). The
-[quick start](docs/quick-start.md) walks through the first run, and [installing](docs/installing.md) covers
-running the image on its own (`ghcr.io/honeybeartech/varken`), Unraid, and Python with systemd.
+Then add a scrape job to your Prometheus: `varken:9180` when Prometheus shares Varken's Docker network, or
+`<host>:9180` through the published port ([quick start](docs/quick-start.md#3-scrape-it-with-prometheus)). In
+Grafana, use that Prometheus as the data source and build dashboards on the
+[metrics Varken serves](docs/interfaces.md#output-prometheus-metrics). The [quick start](docs/quick-start.md)
+walks through the first run, and [installing](docs/installing.md) covers running the image on its own
+(`ghcr.io/honeybeartech/varken`), Unraid, and Python with systemd.
 
-Upgrading from `boerderij/varken`? The image name changed and the container no longer runs as root: read
-[upgrading](docs/upgrading.md) first.
+Upgrading from `boerderij/varken`? Varken no longer writes to InfluxDB, the image name changed and the
+container no longer runs as root: read [upgrading](docs/upgrading.md) first.
 
 ## Configuration
 
@@ -89,10 +90,9 @@ lists every setting and its default.
 
 - `[global]`: which server ids each module collects from (`false` turns a module off), and the MaxMind license
   key.
-- `[influxdb]`: whether (`enabled`, on by default) and where to write. Varken creates the `varken` database
-  with a 30-day retention policy unless it already exists.
-- `[prometheus]`: the `/metrics` endpoint: `enabled` (off by default), `bind` (`0.0.0.0`), `port` (`9180`) and
-  `stream_details` (per-viewer metrics, off by default). At least one of the two outputs must be on.
+- `[prometheus]`: the `/metrics` endpoint, which is always on: `bind` (`0.0.0.0`), `port` (`9180`) and
+  `stream_details` (per-viewer metrics, off by default). An `[influxdb]` section left over from upstream is
+  ignored.
 - `[<module>-<id>]`, such as `[tautulli-1]` or `[sonarr-2]`: the server's address, API key, TLS settings, which
   data to collect and how often.
 
@@ -109,16 +109,17 @@ Any `VRKN_*` value can also be read from a file, for Docker and compose secrets:
   redacts known secrets from its logs, but check the logs before sharing them.
 - Use HTTPS with `verify_ssl = true` wherever a service supports it. Verification is off by default, for
   compatibility with upstream configs.
-- Keep InfluxDB and Grafana off the internet. The example binds Grafana to localhost only.
-- The Prometheus endpoint has no authentication or TLS: keep it on a private network or bind it to
-  `127.0.0.1`, and leave `stream_details` off unless everyone who can read it may see who watches what.
+- The `/metrics` endpoint has no authentication or TLS: keep it on a private network. The example compose file
+  publishes it on `127.0.0.1` only (`VARKEN_METRICS_BIND`). Leave `stream_details` off unless everyone who can
+  read the metrics may see who watches what.
+- Keep Prometheus and Grafana off the internet too: they hold the same data.
 
 [docs/security.md](docs/security.md) has the details and the known weaknesses still being worked on.
 
 ## Related projects
 
 [Argus](https://github.com/HoneyBearTech/Argus), the maintainer's Prometheus and Grafana homelab monitoring stack,
-will scrape Varken's Prometheus output for its Tautulli dashboards (planned, in the Argus repository).
+will scrape Varken's metrics for its Tautulli dashboards (planned, in the Argus repository).
 
 ## License
 

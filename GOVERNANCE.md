@@ -80,7 +80,7 @@ review:
 ## The project's own secrets
 
 The credentials the Varken project holds (not those of a Varken installation, such as its API keys and
-InfluxDB password, which stay in that installation's `varken.ini` or environment), and how they're handled:
+UniFi password, which stay in that installation's `varken.ini` or environment), and how they're handled:
 
 - **What exists**: the maintainer's GitHub account and its recovery codes, and the SSH key that signs
   commits and tags. Images and release files are signed keylessly (Sigstore), so there is no long-lived

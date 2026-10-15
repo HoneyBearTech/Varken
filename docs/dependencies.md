@@ -3,13 +3,15 @@
 How Varken chooses, obtains, tracks and updates what it's built from, and what happens when one of those
 dependencies has a vulnerability.
 
-At runtime Varken needs Python and a handful of packages: [requests](https://requests.readthedocs.io/)
-(and urllib3) for HTTP, [geoip2](https://github.com/maxmind/GeoIP2-python) to read the GeoLite2 database,
-the [influxdb](https://github.com/influxdata/influxdb-python) client,
+At runtime Varken needs Python and five packages, declared in [`requirements.in`](../requirements.in):
+[requests](https://requests.readthedocs.io/) (and urllib3) for HTTP,
+[geoip2](https://github.com/maxmind/GeoIP2-python) to read the GeoLite2 database,
 [prometheus_client](https://github.com/prometheus/client_python) for the `/metrics` endpoint,
 [schedule](https://github.com/dbader/schedule) for the job timer and
 [distro](https://github.com/python-distro/distro) to log the host's distribution.
-The exact list, with every transitive package, is [`requirements.txt`](../requirements.txt). The rest are
+The exact list, with every transitive package, is [`requirements.txt`](../requirements.txt). The
+`influxdb` client, archived upstream, was removed with the InfluxDB output in 2.0.0, and with it msgpack,
+pytz, six and python-dateutil. The rest are
 the tools its checks and tests use and the GitHub Actions in its workflows.
 
 ## Choosing a dependency
@@ -33,7 +35,6 @@ always gets the same bytes:
 | Base image (`python:3.14-slim`, which brings Python and Debian) | [`Dockerfile`](../Dockerfile) | version tag and multi-arch digest | Docker / BuildKit |
 | Runtime Python packages | [`requirements.in`](../requirements.in) → [`requirements.txt`](../requirements.txt) | exact version and SHA-256 hashes (`uv pip compile --generate-hashes`) | `pip install --require-hashes --no-deps` |
 | Check and test tools (ruff, pytest, coverage, yamllint) | [`requirements-dev.in`](../requirements-dev.in) → [`requirements-dev.txt`](../requirements-dev.txt) | exact version and SHA-256 hashes | `pip install --require-hashes --no-deps` |
-| InfluxDB and Grafana images in the example compose file | [`docker-compose.yml`](../docker-compose.yml) | version tag and digest | Docker Compose, on the user's host |
 | Linters and scanners used only by CI (actionlint, hadolint, gitleaks, pip-audit, Trivy) | [`.github/workflows/`](../.github/workflows/) | version, and digest for container images | CI |
 | GitHub Actions | [`.github/workflows/`](../.github/workflows/) | full commit SHA (version in a comment) | GitHub Actions |
 
@@ -46,9 +47,9 @@ it from MaxMind with its own license key, under MaxMind's GeoLite2 license.
 ## Tracking dependencies
 
 - **Dependabot** ([`.github/dependabot.yml`](../.github/dependabot.yml)) checks weekly for new versions of
-  the base image, the InfluxDB and Grafana images in the example compose file, the Python packages and the
-  GitHub Actions, and opens a pull request for each. The
-  maintainer reviews and merges them by hand; nothing merges without "Checks + tests" passing.
+  the base image, the Python packages and the GitHub Actions, and opens a pull request for each. The example
+  compose file only runs Varken's own image, so it has no entry. The maintainer reviews and merges them by
+  hand; nothing merges without "Checks + tests" passing.
 - **Dependency review** ([`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml))
   blocks a pull request that adds or changes a dependency with a known vulnerability of moderate severity or
   higher, or with a license outside the allowlist.
@@ -72,20 +73,11 @@ Each finding is triaged within 14 days:
    fix for an exploitable critical or high-severity vulnerability goes out in a patch release within 30
    days; others go out with the next release, and within 90 days.
 2. **If upstream hasn't released a fix**, assess whether the vulnerable code is reachable in Varken (it
-   opens no ports unless the optional Prometheus endpoint is on; its inputs are its own config, API
-   responses from the operator's services, the GeoLite2 archive, InfluxDB's replies and, with that endpoint
-   on, HTTP requests to `/metrics`). If it is exploitable, mitigate it where possible and say so in
+   opens one port, for `/metrics`; its inputs are its own config, API responses from the operator's
+   services, the GeoLite2 archive and HTTP requests to `/metrics`). If it is exploitable, mitigate it where possible and say so in
    the release notes; otherwise record the reason when dismissing the alert or in the pip-audit ignore
    list. Either way, it's fixed by a bump when upstream ships one.
 3. **If a dependency is abandoned**, replace it before it accumulates vulnerabilities.
-
-### The archived `influxdb` client
-
-The `influxdb` package (influxdb-python), which Varken uses to talk to InfluxDB 1.x, is archived upstream
-and will receive no more fixes. It still works and has no open vulnerability that affects Varken, but under
-rule 3 it is being replaced: Varken will write InfluxDB line protocol directly over HTTP with requests,
-which it already depends on, removing the package and its own dependencies. This is a Phase 1 item on the
-[roadmap](roadmap.md).
 
 ### Current findings
 

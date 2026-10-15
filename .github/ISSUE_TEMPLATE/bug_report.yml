@@ -14,7 +14,7 @@ body:
       label: Version
       description: >-
         The Varken release (for example 2.0.0) or commit you run, how you run it (Docker image or Python), and
-        the version of the app involved (Tautulli, Sonarr, InfluxDB, ...).
+        the version of the app involved (Tautulli, Sonarr, Prometheus, ...).
     validations:
       required: true
   - type: textarea

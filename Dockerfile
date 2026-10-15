@@ -7,7 +7,7 @@ ARG BRANCH=local
 ARG BUILD_DATE=1970-01-01T00:00:00Z
 
 LABEL org.opencontainers.image.title="varken" \
-      org.opencontainers.image.description="Collects Plex-ecosystem data for InfluxDB and Prometheus" \
+      org.opencontainers.image.description="Collects Plex-ecosystem data and serves it as Prometheus metrics" \
       org.opencontainers.image.url="https://github.com/HoneyBearTech/Varken" \
       org.opencontainers.image.source="https://github.com/HoneyBearTech/Varken" \
       org.opencontainers.image.vendor="HoneyBearTech" \
@@ -39,7 +39,6 @@ RUN pip install --no-cache-dir --require-hashes --no-deps -r requirements.txt \
 COPY Varken.py LICENSE ./
 COPY varken ./varken
 COPY data ./data
-COPY utilities ./data/utilities
 RUN sed -i "s/^VERSION = .*/VERSION = \"${VERSION}\"/;s/^BRANCH = .*/BRANCH = '${BRANCH}'/;s/^BUILD_DATE = .*/BUILD_DATE = '${BUILD_DATE}'/" \
         varken/__init__.py
 
@@ -47,7 +46,7 @@ RUN sed -i "s/^VERSION = .*/VERSION = \"${VERSION}\"/;s/^BRANCH = .*/BRANCH = '$
 # be read-only.
 ENV DATA_FOLDER=/config PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 DEBUG=True
 VOLUME ["/config"]
-# The Prometheus /metrics endpoint, when [prometheus] enabled = true.
+# The Prometheus /metrics endpoint.
 EXPOSE 9180
 USER 1000:1000
 # Copies the current example config next to the user's varken.ini, then runs Varken.

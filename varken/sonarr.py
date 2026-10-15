@@ -7,8 +7,8 @@ from varken.helpers import hashit, connection_handler
 
 
 class SonarrAPI(object):
-    def __init__(self, server, dbmanager):
-        self.dbmanager = dbmanager
+    def __init__(self, server, output):
+        self.output = output
         self.server = server
         # Create session to reduce server web thread load, and globally define pageSize for all requests
         self.session = Session()
@@ -29,7 +29,7 @@ class SonarrAPI(object):
             params = {'start': last_days, 'end': today}
         else:
             params = {'start': today, 'end': future}
-        influx_payload = []
+        points = []
         air_days = []
         missing = []
 
@@ -61,7 +61,7 @@ class SonarrAPI(object):
 
         for series_title, dl_status, sxe, episode_title, air_date_utc, sonarr_id in (air_days or missing):
             hash_id = hashit(f'{self.server.id}{series_title}{sxe}')
-            influx_payload.append(
+            points.append(
                 {
                     "measurement": "Sonarr",
                     "tags": {
@@ -81,10 +81,10 @@ class SonarrAPI(object):
                 }
             )
 
-        self.dbmanager.write_points(influx_payload)
+        self.output.write_points(points)
 
     def get_queue(self):
-        influx_payload = []
+        points = []
         endpoint = '/api/queue'
         now = datetime.now(timezone.utc).astimezone().isoformat()
         queue = []
@@ -123,7 +123,7 @@ class SonarrAPI(object):
 
         for series_title, episode_title, protocol, protocol_id, sxe, sonarr_id, quality in queue:
             hash_id = hashit(f'{self.server.id}{series_title}{sxe}')
-            influx_payload.append(
+            points.append(
                 {
                     "measurement": "Sonarr",
                     "tags": {
@@ -143,7 +143,7 @@ class SonarrAPI(object):
                     }
                 }
             )
-        if influx_payload:
-            self.dbmanager.write_points(influx_payload)
+        if points:
+            self.output.write_points(points)
         else:
-            self.logger.debug("No data to send to influx for sonarr instance, discarding.")
+            self.logger.debug("No queue items for sonarr instance.")

@@ -1,7 +1,7 @@
-"""The Prometheus output: a /metrics endpoint built from the points each scheduled job writes.
+"""Varken's output: a Prometheus /metrics endpoint built from the points each scheduled job writes.
 
 Every job (Tautulli activity, Sonarr's queue, ...) runs through Metrics.run, which collects the points the job hands
-to the outputs, and whether all of its requests succeeded and it logged no error (the modules log at ERROR when a
+to write_points, and whether all of its requests succeeded and it logged no error (the modules log at ERROR when a
 reply can't be used). When the job ends, its points replace that job's previous
 snapshot; a failed run drops it, so nothing stale is exported. Scrapes only read the snapshots: they never call a
 service.
@@ -37,18 +37,14 @@ def label(value):
 
 
 class JobErrors(Handler):
-    """Marks the running job as failed when it logs an error about its service.
-
-    Errors from the InfluxDB writer don't count: an InfluxDB outage isn't the service's fault, and the job's data is
-    still good for Prometheus.
-    """
+    """Marks the running job as failed when it logs an error."""
 
     def __init__(self, current):
         super().__init__(level=ERROR)
         self.current = current
 
     def emit(self, record):
-        if record.module != 'dbmanager' and getattr(self.current, 'points', None) is not None:
+        if getattr(self.current, 'points', None) is not None:
             self.current.errored = True
 
 
@@ -96,8 +92,8 @@ class Metrics(object):
             points, self.current.points = self.current.points, None
             self.record(key, succeeded, points)
 
-    def observe(self, points):
-        """Called by the outputs with every batch of points; only points written inside a job count."""
+    def write_points(self, points):
+        """Called by the service modules with each batch of points; only points written inside a job count."""
         collected = getattr(self.current, 'points', None)
         if collected is not None:
             collected.extend(points)

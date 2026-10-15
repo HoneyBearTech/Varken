@@ -36,7 +36,7 @@ def place(city='Springfield'):
                            subdivisions=SimpleNamespace(most_specific=SimpleNamespace(iso_code='IL', name='Illinois')))
 
 
-class FakeDB:
+class FakeOutput:
     def __init__(self):
         self.points = []
 

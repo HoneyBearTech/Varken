@@ -10,7 +10,7 @@ from configparser import ConfigParser, NoOptionError, NoSectionError
 from varken.varkenlogger import BlacklistFilter
 from varken.structures import SickChillServer, UniFiServer, PrometheusServer
 from varken.helpers import clean_sid_check, rfc1918_ip_check, boolcheck
-from varken.structures import SonarrServer, RadarrServer, OmbiServer, TautulliServer, InfluxServer
+from varken.structures import SonarrServer, RadarrServer, OmbiServer, TautulliServer
 
 
 class INIParser(object):
@@ -21,7 +21,6 @@ class INIParser(object):
         self.services = ['sonarr', 'radarr', 'lidarr', 'ombi', 'tautulli', 'sickchill', 'unifi']
 
         self.logger = getLogger()
-        self.influx_server = InfluxServer()
         self.prometheus_server = PrometheusServer()
 
         self.read_secret_files()
@@ -167,29 +166,8 @@ class INIParser(object):
         if read_file:
             self.config = self.read_file('varken.ini')
             self.config_blacklist()
-        # Parse InfluxDB options
-        try:
-            influx_enabled = boolcheck(env.get('VRKN_INFLUXDB_ENABLED', self.config.get('influxdb', 'enabled')))
-            url = self.url_check(env.get('VRKN_INFLUXDB_URL', self.config.get('influxdb', 'url')),
-                                 include_port=False, section='influxdb')
-            port = int(env.get('VRKN_INFLUXDB_PORT', self.config.getint('influxdb', 'port')))
-            ssl = boolcheck(env.get('VRKN_INFLUXDB_SSL', self.config.get('influxdb', 'ssl')))
-            verify_ssl = boolcheck(env.get('VRKN_INFLUXDB_VERIFY_SSL', self.config.get('influxdb', 'verify_ssl')))
-
-            username = env.get('VRKN_INFLUXDB_USERNAME', self.config.get('influxdb', 'username'))
-            password = env.get('VRKN_INFLUXDB_PASSWORD', self.config.get('influxdb', 'password'))
-        except NoOptionError as e:
-            self.logger.error('Missing key in %s. Error: %s', "influxdb", e)
-            self.rectify_ini()
-            return
-
-        self.influx_server = InfluxServer(enabled=influx_enabled, url=url, port=port, username=username,
-                                          password=password, ssl=ssl, verify_ssl=verify_ssl)
-
         # Parse Prometheus options
         try:
-            prometheus_enabled = boolcheck(env.get('VRKN_PROMETHEUS_ENABLED',
-                                                   self.config.get('prometheus', 'enabled')))
             bind = env.get('VRKN_PROMETHEUS_BIND', self.config.get('prometheus', 'bind'))
             prometheus_port = int(env.get('VRKN_PROMETHEUS_PORT', self.config.get('prometheus', 'port')))
             stream_details = boolcheck(env.get('VRKN_PROMETHEUS_STREAM_DETAILS',
@@ -210,8 +188,7 @@ class INIParser(object):
             self.logger.error('[prometheus] port must be between 1 and 65535, not %s', prometheus_port)
             exit(1)
 
-        self.prometheus_server = PrometheusServer(enabled=prometheus_enabled, bind=bind, port=prometheus_port,
-                                                  stream_details=stream_details)
+        self.prometheus_server = PrometheusServer(bind=bind, port=prometheus_port, stream_details=stream_details)
 
         # Check for all enabled services
         for service in self.services:

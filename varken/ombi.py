@@ -7,8 +7,8 @@ from varken.structures import OmbiRequestCounts, OmbiIssuesCounts, OmbiMovieRequ
 
 
 class OmbiAPI(object):
-    def __init__(self, server, dbmanager):
-        self.dbmanager = dbmanager
+    def __init__(self, server, output):
+        self.output = output
         self.server = server
         # Create session to reduce server web thread load, and globally define pageSize for all requests
         self.session = Session()
@@ -58,7 +58,7 @@ class OmbiAPI(object):
                 self.logger.error('TypeError has occurred : %s while creating OmbiMovieRequest structure for movie. '
                                   'data attempted is: %s', e, movie)
 
-        influx_payload = [
+        points = [
             {
                 "measurement": "Ombi",
                 "tags": {
@@ -90,7 +90,7 @@ class OmbiAPI(object):
             else:
                 status = 3
 
-            influx_payload.append(
+            points.append(
                 {
                     "measurement": "Ombi",
                     "tags": {
@@ -125,7 +125,7 @@ class OmbiAPI(object):
             else:
                 status = 3
 
-            influx_payload.append(
+            points.append(
                 {
                     "measurement": "Ombi",
                     "tags": {
@@ -144,8 +144,8 @@ class OmbiAPI(object):
                 }
             )
 
-        if influx_payload:
-            self.dbmanager.write_points(influx_payload)
+        if points:
+            self.output.write_points(points)
         else:
             self.logger.debug("Empty dataset for ombi module. Discarding...")
 
@@ -160,7 +160,7 @@ class OmbiAPI(object):
             return
 
         requests = OmbiRequestCounts(**get)
-        influx_payload = [
+        points = [
             {
                 "measurement": "Ombi",
                 "tags": {
@@ -175,7 +175,7 @@ class OmbiAPI(object):
             }
         ]
 
-        self.dbmanager.write_points(influx_payload)
+        self.output.write_points(points)
 
     def get_issue_counts(self):
         now = datetime.now(timezone.utc).astimezone().isoformat()
@@ -188,7 +188,7 @@ class OmbiAPI(object):
             return
 
         requests = OmbiIssuesCounts(**get)
-        influx_payload = [
+        points = [
             {
                 "measurement": "Ombi",
                 "tags": {
@@ -203,4 +203,4 @@ class OmbiAPI(object):
             }
         ]
 
-        self.dbmanager.write_points(influx_payload)
+        self.output.write_points(points)

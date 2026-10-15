@@ -7,8 +7,8 @@ from varken.helpers import hashit, connection_handler
 
 
 class SickChillAPI(object):
-    def __init__(self, server, dbmanager):
-        self.dbmanager = dbmanager
+    def __init__(self, server, output):
+        self.output = output
         self.server = server
         # Create session to reduce server web thread load, and globally define pageSize for all requests
         self.session = Session()
@@ -21,7 +21,7 @@ class SickChillAPI(object):
 
     def get_missing(self):
         now = datetime.now(timezone.utc).astimezone().isoformat()
-        influx_payload = []
+        points = []
         params = {'cmd': 'future', 'paused': 1, 'type': 'missed|today|soon|later|snatched'}
 
         req = self.session.prepare_request(Request('GET', self.server.url + self.endpoint, params=params))
@@ -43,7 +43,7 @@ class SickChillAPI(object):
                 hash_id = hashit(f'{self.server.id}{show.show_name}{sxe}')
                 missing_types = [(0, 'future'), (1, 'later'), (2, 'soon'), (3, 'today'), (4, 'missed')]
                 try:
-                    influx_payload.append(
+                    points.append(
                         {
                             "measurement": "SickChill",
                             "tags": {
@@ -64,5 +64,5 @@ class SickChillAPI(object):
                 except IndexError as e:
                     self.logger.error('Error building payload for sickchill. Discarding. Error: %s', e)
 
-        if influx_payload:
-            self.dbmanager.write_points(influx_payload)
+        if points:
+            self.output.write_points(points)

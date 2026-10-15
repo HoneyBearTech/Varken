@@ -7,14 +7,13 @@ from prometheus_client import generate_latest
 from tests.tautulli_data import ACTIVITY, LIBRARIES, SERVER, FakeGeoIP, place
 from varken import tautulli
 from varken.metrics import Metrics
-from varken.outputs import Outputs
 from varken.structures import PrometheusServer
 from varken.tautulli import TautulliAPI
 
 
 def sample():
-    metrics = Metrics(PrometheusServer(enabled=True, stream_details=True))
-    api = TautulliAPI(SERVER, Outputs(metrics=metrics), FakeGeoIP({'203.0.113.5': place()}))
+    metrics = Metrics(PrometheusServer(stream_details=True))
+    api = TautulliAPI(SERVER, metrics, FakeGeoIP({'203.0.113.5': place()}))
     for reply, job in ((ACTIVITY, api.get_activity), (LIBRARIES, api.get_stats)):
         tautulli.connection_handler = lambda session, request, verify, reply=reply: reply
         metrics.run(job)

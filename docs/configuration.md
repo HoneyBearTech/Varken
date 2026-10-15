@@ -88,30 +88,13 @@ secrets:
 
 Varken stops if every service is disabled.
 
-## `[influxdb]`
-
-Varken writes to the database `varken` on this InfluxDB 1.x server, and creates it (with a default
-retention policy `varken 30d-1h`: 30 days, 1-hour shards) if it doesn't exist. The database name isn't
-configurable.
-
-| Key | Environment variable | Example | Meaning |
-| --- | --- | --- | --- |
-| `enabled` | `VRKN_INFLUXDB_ENABLED` | `true` | Write to InfluxDB. Set `false` for a Prometheus-only setup: Varken then doesn't connect to InfluxDB. The other keys must still be present, and `url` must still be a valid host name, but they aren't used. |
-| `url` | `VRKN_INFLUXDB_URL` | `influxdb.domain.tld` | Host name or IP of InfluxDB, without scheme or port. With `enabled = true`, Varken refuses to start while it is still the example value. |
-| `port` | `VRKN_INFLUXDB_PORT` | `8086` | InfluxDB HTTP port. |
-| `ssl` | `VRKN_INFLUXDB_SSL` | `false` | Use HTTPS. |
-| `verify_ssl` | `VRKN_INFLUXDB_VERIFY_SSL` | `false` | Check InfluxDB's TLS certificate. |
-| `username` | `VRKN_INFLUXDB_USERNAME` | `root` | InfluxDB user. |
-| `password` | `VRKN_INFLUXDB_PASSWORD` | `root` | That user's password. **Secret.** Change it from the example. |
-
 ## `[prometheus]`
 
-The Prometheus output: an HTTP endpoint at `/metrics` that Prometheus scrapes. The metrics are listed in
+Varken's output, always on: an HTTP endpoint at `/metrics` that Prometheus scrapes. The metrics are listed in
 [interfaces.md](interfaces.md#output-prometheus-metrics).
 
 | Key | Environment variable | Example | Meaning |
 | --- | --- | --- | --- |
-| `enabled` | `VRKN_PROMETHEUS_ENABLED` | `false` | Serve `/metrics`. |
 | `bind` | `VRKN_PROMETHEUS_BIND` | `0.0.0.0` | The address to listen on. Must be an IP address (IPv4 or IPv6), not a host name, or Varken stops. `0.0.0.0` is every IPv4 interface (in a container, the container's own); `127.0.0.1` keeps it to the same host. |
 | `port` | `VRKN_PROMETHEUS_PORT` | `9180` | The port to listen on, from 1 to 65535, or Varken stops. ScyllaDB also uses 9180 by default; pick another port if something on the host already has it. |
 | `stream_details` | `VRKN_PROMETHEUS_STREAM_DETAILS` | `false` | Add the per-viewer Tautulli metrics: who is watching what, on which player, and from which city. Personal data, so off by default; viewer IP addresses are never exported either way. |
@@ -119,11 +102,10 @@ The Prometheus output: an HTTP endpoint at `/metrics` that Prometheus scrapes. T
 The endpoint has no authentication and no TLS. Keep it on a private network (a Docker network shared with
 Prometheus, for example) or bind it to `127.0.0.1`; see [security.md](security.md#the-metrics-endpoint).
 
-**Outputs.** `[influxdb]` `enabled` and `[prometheus]` `enabled` choose where data goes: InfluxDB only (the
-default), Prometheus only, or both. At least one must be `true`, or Varken stops with `Both outputs are
-disabled`. A `varken.ini` from before these settings existed gets `[influxdb]` `enabled = true` and a
-`[prometheus]` section with the defaults above on its first start, as for any [missing key](#how-values-are-read)
-(which needs write access to the file), so an upgrade keeps writing to InfluxDB with Prometheus off.
+**From upstream Varken.** A `varken.ini` from upstream 1.7.x has no `[prometheus]` section: on its first
+start Varken adds it with the defaults above, as for any [missing key](#how-values-are-read) (which needs
+write access to the file). Its `[influxdb]` section, and any `VRKN_INFLUXDB_*` variable, is ignored: Varken no
+longer writes to InfluxDB. Delete the section or leave it ([upgrading.md](upgrading.md)).
 
 ## Keys every server section has
 
@@ -150,7 +132,7 @@ Each server is a section named `[<service>-<id>]`, for example `[tautulli-1]` or
 database to place viewers: it downloads it at start-up if it is missing (and stops if it can't), and checks
 every 12 to 24 hours whether it is more than 30 days old. Without a key (empty, or the example's placeholder)
 it logs `No MaxMind license key: GeoIP is off and Tautulli streams have no location.` and every stream gets the
-unknown-location values ([interfaces.md](interfaces.md#output-influxdb)); Varken then never contacts MaxMind
+unknown location ([interfaces.md](interfaces.md#output-prometheus-metrics)); Varken then never contacts MaxMind
 or `api.ipify.org`.
 
 ## `[sonarr-N]`
@@ -223,10 +205,9 @@ Varken logs to stdout and to `logs/varken.log` in the data folder (rotated at 5 
   journald). It is `true` by default.
 
 - **Debug logging is on by default.** Set `DEBUG=false` in the environment, or pass `-ND` / `--no_debug`
-  (which only applies when `DEBUG` isn't set), to log at INFO. The debug log includes every point written to
-  InfluxDB (usernames, titles, locations) and request URLs; see
-  [security.md](security.md#known-weaknesses). Turning it off by default is on the
-  [roadmap](roadmap.md).
+  (which only applies when `DEBUG` isn't set), to log at INFO. The debug log includes the URL of every request
+  Varken makes (secrets masked as below); see [security.md](security.md#known-weaknesses). Turning it off by
+  default is on the [roadmap](roadmap.md).
 - Secrets are masked in log lines as `********` followed by their last five characters: the values of the
   `apikey`, `username`, `password`, `url` and `maxmind_license_key` keys in `varken.ini`, and of every
   `VRKN_*` variable whose name ends in `_APIKEY`, `_USERNAME`, `_PASSWORD`, `_URL` or
@@ -235,10 +216,9 @@ Varken logs to stdout and to `logs/varken.log` in the data folder (rotated at 5 
 
 ## Example
 
-A minimal `varken.ini` that reads one Tautulli server over HTTPS and writes to InfluxDB. Sections of
-disabled services aren't read, so they can be left out (or left as they are in the example file); `[global]`,
-`[influxdb]` and `[prometheus]` are always read. For Prometheus instead, set `[influxdb]` `enabled = false`
-and `[prometheus]` `enabled = true`.
+A minimal `varken.ini` that reads one Tautulli server over HTTPS and serves its metrics on port 9180.
+Sections of disabled services aren't read, so they can be left out (or left as they are in the example file);
+`[global]` and `[prometheus]` are always read.
 
 ```ini
 [global]
@@ -251,17 +231,7 @@ sickchill_server_ids = false
 unifi_server_ids = false
 maxmind_license_key = <your MaxMind license key, or empty for no GeoIP>
 
-[influxdb]
-enabled = true
-url = influxdb
-port = 8086
-ssl = false
-verify_ssl = false
-username = varken
-password = <a strong password>
-
 [prometheus]
-enabled = false
 bind = 0.0.0.0
 port = 9180
 stream_details = false

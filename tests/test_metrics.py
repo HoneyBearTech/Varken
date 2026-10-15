@@ -7,19 +7,18 @@ import pytest
 from prometheus_client import generate_latest
 from prometheus_client.parser import text_string_to_metric_families
 
-from tests.tautulli_data import ACTIVITY, LIBRARIES, SERVER, FakeDB, FakeGeoIP, place
+from tests.tautulli_data import ACTIVITY, LIBRARIES, SERVER, FakeGeoIP, place
 from varken import helpers, tautulli
 from varken.helpers import GeoIPHandler
 from varken.metrics import Metrics, job_key
-from varken.outputs import Outputs
 from varken.structures import PrometheusServer
 from varken.tautulli import TautulliAPI
 
 
 class SonarrAPI:
-    def __init__(self, outputs, points=(), fail=False):
+    def __init__(self, output, points=(), fail=False):
         self.server = SimpleNamespace(id=2)
-        self.outputs = outputs
+        self.output = output
         self.points = list(points)
         self.fail = fail
 
@@ -27,7 +26,7 @@ class SonarrAPI:
         if self.fail:
             helpers.request_state.failed = True
             return
-        self.outputs.write_points(self.points)
+        self.output.write_points(self.points)
 
     def get_queue(self):
         raise RuntimeError('the job broke')
@@ -50,7 +49,7 @@ def names(metrics):
 
 @pytest.fixture
 def metrics():
-    return Metrics(PrometheusServer(enabled=True))
+    return Metrics(PrometheusServer())
 
 
 def test_job_key_names_the_service_server_and_job(metrics):
@@ -61,7 +60,7 @@ def test_job_key_names_the_service_server_and_job(metrics):
 
 
 def test_a_successful_job_is_up_and_counts_its_points(metrics):
-    api = SonarrAPI(Outputs(metrics=metrics), points=[{'measurement': 'Sonarr'}] * 3)
+    api = SonarrAPI(metrics, points=[{'measurement': 'Sonarr'}] * 3)
 
     metrics.run(api.get_calendar, query='Missing')
 
@@ -72,18 +71,17 @@ def test_a_successful_job_is_up_and_counts_its_points(metrics):
 
 
 def test_a_job_that_finds_nothing_reports_zero_items(metrics):
-    metrics.run(SonarrAPI(Outputs(metrics=metrics)).get_calendar, query='Future')
+    metrics.run(SonarrAPI(metrics).get_calendar, query='Future')
 
     assert value(metrics, 'varken_job_points', service='sonarr', server='2', job='future') == 0
 
 
 def test_a_failed_request_marks_the_job_down_and_drops_its_data(metrics):
-    outputs = Outputs(metrics=metrics)
-    metrics.run(SonarrAPI(outputs, points=[{}]).get_calendar, query='Missing')
+    metrics.run(SonarrAPI(metrics, points=[{}]).get_calendar, query='Missing')
     last_success = value(metrics, 'varken_job_last_success_timestamp_seconds', service='sonarr', server='2',
                          job='missing')
 
-    metrics.run(SonarrAPI(outputs, fail=True).get_calendar, query='Missing')
+    metrics.run(SonarrAPI(metrics, fail=True).get_calendar, query='Missing')
 
     job = {'service': 'sonarr', 'server': '2', 'job': 'missing'}
     assert value(metrics, 'varken_job_up', **job) == 0
@@ -93,13 +91,13 @@ def test_a_failed_request_marks_the_job_down_and_drops_its_data(metrics):
 
 def test_a_job_that_raises_is_marked_down(metrics):
     with pytest.raises(RuntimeError):
-        metrics.run(SonarrAPI(Outputs(metrics=metrics)).get_queue)
+        metrics.run(SonarrAPI(metrics).get_queue)
 
     assert value(metrics, 'varken_job_up', service='sonarr', server='2', job='queue') == 0
 
 
 def test_points_written_outside_a_job_are_ignored(metrics):
-    Outputs(metrics=metrics).write_points([{'measurement': 'Tautulli'}])
+    metrics.write_points([{'measurement': 'Tautulli'}])
 
     assert value(metrics, 'varken_job_up', service='tautulli', server='1', job='activity') is None
 
@@ -118,7 +116,7 @@ def test_build_info(metrics):
 
 def run_tautulli(metrics, monkeypatch, reply, job):
     monkeypatch.setattr(tautulli, 'connection_handler', lambda session, request, verify: reply)
-    api = TautulliAPI(SERVER, Outputs(metrics=metrics), FakeGeoIP({'203.0.113.5': place()}))
+    api = TautulliAPI(SERVER, metrics, FakeGeoIP({'203.0.113.5': place()}))
     metrics.run(getattr(api, job))
 
 
@@ -147,7 +145,7 @@ def test_tautulli_activity_keeps_viewers_out_by_default(metrics, monkeypatch):
 
 
 def test_tautulli_stream_details_when_enabled(monkeypatch):
-    metrics = Metrics(PrometheusServer(enabled=True, stream_details=True))
+    metrics = Metrics(PrometheusServer(stream_details=True))
 
     run_tautulli(metrics, monkeypatch, ACTIVITY, 'get_activity')
 
@@ -165,7 +163,7 @@ def test_tautulli_streams_disappear_when_tautulli_is_unreachable(metrics, monkey
         helpers.request_state.failed = True
         return False
     monkeypatch.setattr(tautulli, 'connection_handler', unreachable)
-    api = TautulliAPI(SERVER, Outputs(metrics=metrics), FakeGeoIP({}))
+    api = TautulliAPI(SERVER, metrics, FakeGeoIP({}))
     metrics.run(api.get_activity)
 
     assert 'varken_tautulli_streams' not in names(metrics)
@@ -191,24 +189,12 @@ def free_port():
 
 def test_serves_metrics_over_http():
     port = free_port()
-    metrics = Metrics(PrometheusServer(enabled=True, bind='127.0.0.1', port=port))
+    metrics = Metrics(PrometheusServer(bind='127.0.0.1', port=port))
 
     metrics.start()
 
     with urlopen(f'http://127.0.0.1:{port}/metrics', timeout=5) as response:  # noqa: S310 -- the test's own server
         assert b'varken_build_info' in response.read()
-
-
-def test_outputs_write_to_influxdb_and_metrics(metrics):
-    db = FakeDB()
-    observed = []
-    metrics.observe = observed.extend
-
-    Outputs(influx=db, metrics=metrics).write_points([{'measurement': 'X'}])
-    Outputs(influx=db).write_points([{'measurement': 'Y'}])
-
-    assert db.points == [{'measurement': 'X'}, {'measurement': 'Y'}]
-    assert observed == [{'measurement': 'X'}]
 
 
 def test_a_job_that_logs_an_error_is_marked_down(metrics):
@@ -239,24 +225,10 @@ def test_the_ci_sample_has_every_tautulli_metric():
         assert f'\n{name}{{' in text
 
 
-def test_an_influxdb_write_error_does_not_mark_the_job_down(metrics):
-    # The job's data is fine; only the other output failed.
-    class OmbiAPI:
-        server = SimpleNamespace(id=1)
-
-        def get_issue_counts(self):
-            getLogger('dbmanager').handle(getLogger().makeRecord(
-                'root', 40, 'dbmanager.py', 1, 'Error writing data to influxdb', (), None))
-
-    metrics.run(OmbiAPI().get_issue_counts)
-
-    assert value(metrics, 'varken_job_up', service='ombi', server='1', job='issue_counts') == 1
-
-
 def test_a_port_in_use_exits_cleanly():
     with socket.socket() as taken:
         taken.bind(('127.0.0.1', 0))
         taken.listen()
         port = taken.getsockname()[1]
         with pytest.raises(SystemExit):
-            Metrics(PrometheusServer(enabled=True, bind='127.0.0.1', port=port)).start()
+            Metrics(PrometheusServer(bind='127.0.0.1', port=port)).start()

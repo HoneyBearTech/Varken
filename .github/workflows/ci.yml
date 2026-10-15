@@ -88,7 +88,7 @@ jobs:
         run: |
           docker build -t varken:ci .
           test "$(docker run --rm varken:ci id -u)" != 0
-          docker run --rm --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true \
+          docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges:true \
             varken:ci python -u /app/Varken.py --help
 
       - name: Compose file

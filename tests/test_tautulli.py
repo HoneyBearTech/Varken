@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests.tautulli_data import ACTIVITY, LIBRARIES, SERVER, FakeDB, FakeGeoIP, place
+from tests.tautulli_data import ACTIVITY, LIBRARIES, SERVER, FakeOutput, FakeGeoIP, place
 from varken import tautulli
 from varken.tautulli import PUBLIC_IP_URL, TautulliAPI
 
@@ -10,7 +10,7 @@ from varken.tautulli import PUBLIC_IP_URL, TautulliAPI
 def api_with(monkeypatch):
     def make(reply, known=None):
         monkeypatch.setattr(tautulli, 'connection_handler', lambda session, request, verify: reply)
-        db = FakeDB()
+        db = FakeOutput()
         geoip = FakeGeoIP(known if known is not None else {'203.0.113.5': place()})
         return TautulliAPI(SERVER, db, geoip), db, geoip
     return make
@@ -90,7 +90,7 @@ def test_activity_without_geoip_has_no_location(monkeypatch):
     from varken.helpers import NoGeoIP
     monkeypatch.setattr(tautulli, 'connection_handler', lambda session, request, verify: ACTIVITY)
     monkeypatch.setattr(tautulli, 'requests_get', lambda *args, **kwargs: pytest.fail('looked up the public IP'))
-    db = FakeDB()
+    db = FakeOutput()
 
     TautulliAPI(SERVER, db, NoGeoIP()).get_activity()
 

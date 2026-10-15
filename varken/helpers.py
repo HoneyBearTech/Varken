@@ -160,7 +160,7 @@ def geoip_handler(data_folder, license_key):
 
 def hashit(string):
     encoded = string.encode()
-    # A stable id that dashboards count distinct items by. SHA-256 rather than MD5, so scanners needn't ask.
+    # A stable id for a point (the modules' de-duplication key; it isn't exported). SHA-256, so scanners needn't ask.
     hashed = sha256(encoded).hexdigest()
 
     return hashed

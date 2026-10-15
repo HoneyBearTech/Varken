@@ -8,13 +8,6 @@ updates:
       interval: "weekly"
     assignees: ["HoneyBearTech"]
 
-  # The InfluxDB and Grafana images in the example docker-compose.yml.
-  - package-ecosystem: "docker-compose"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    assignees: ["HoneyBearTech"]
-
   # Runtime (requirements.txt) and the check and test tools (requirements-dev.txt), pinned with hashes.
   - package-ecosystem: "pip"
     directory: "/"
