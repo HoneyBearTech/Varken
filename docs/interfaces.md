@@ -95,19 +95,41 @@ type (`movie`, `show`, `artist`).
 
 | Metric | Labels | Value |
 | --- | --- | --- |
-| `varken_tautulli_session_info` | `server`, `session_id`, `user`, `title`, `product`, `platform`, `quality`, `transcode_decision`, `location`, `region_code` | Always `1`, one series per current session. |
+| `varken_tautulli_session_info` | `server`, `session_id`, `user`, `friendly_name`, `title`, `product`, `product_version`, `platform`, `quality`, `quality_profile`, `transcode_decision`, `video_decision`, `state`, `location`, `full_location`, `region_code`, `latitude`, `longitude` | Always `1`, one series per current session. |
 | `varken_tautulli_session_progress_ratio` | `server`, `session_id` | How far into the item the session is, from 0 to 1. |
 
-These say who is watching what, on which player, and from which city (`location`, the GeoLite2 city of the
-viewer's public address, or of `fallback_ip` or the host's own address when that one isn't in the database,
-or `👽` when none can be placed; `region_code`, the region's ISO code, empty when unknown). With GeoIP off (no
-MaxMind license key, [configuration](configuration.md#tautulli-n)) every viewer gets `👽`. That is personal
-data, and every session adds series, which is why they are off by default. Viewer IP addresses are never
-exported, with or without `stream_details`.
+These say who is watching what, on which player, and from which city: `location` is the GeoLite2 city of the
+viewer's public address, or of `fallback_ip` or the host's own address when that one isn't in the database;
+`full_location` adds the region and country, `region_code` is the region's ISO code, and `latitude` and
+`longitude` are the city's coordinates as decimal strings, for a map panel. All of them are empty when the
+viewer can't be placed, and always with GeoIP off (no MaxMind license key,
+[configuration](configuration.md#tautulli-n)). `user` is the Plex username and `friendly_name` the name
+Tautulli shows; `state` is labelled as in `varken_tautulli_sessions`. That is personal data, and every
+session adds series, which is why they are off by default. Viewer IP addresses are never exported, with or
+without `stream_details`.
 
-**Other modules.** Sonarr, Radarr, Lidarr, SickChill, Ombi and UniFi have only the job metrics so far; for the
-\*arr apps and SickChill, `varken_job_points` already counts the items in each queue and calendar. Detailed
-Ombi and UniFi metrics are on the [roadmap](roadmap.md).
+**Sonarr, Radarr and SickChill** (one series per item, value always `1`; count them in PromQL, for example
+`count(varken_radarr_queue_item_info) or vector(0)`). A series exists while the item is in the last
+successful run of its job, so a job that is down shows no items:
+
+| Metric | Labels | Item |
+| --- | --- | --- |
+| `varken_sonarr_queue_item_info` | `server`, `series`, `episode`, `title`, `protocol`, `quality` | An episode in Sonarr's download queue (`queue` job). `episode` is `S01E02`, `title` the episode's title, `protocol` `usenet` or `torrent`. Downloads Sonarr hasn't matched to an episode are left out. |
+| `varken_sonarr_episode_info` | `server`, `kind`, `series`, `episode`, `title`, `airs`, `downloaded` | `kind="missing"` (`missing` job): a monitored episode without a file that aired in the last `missing_days`. `kind="future"` (`future` job): an episode airing from today through `future_days`. `airs` is the air time in UTC (ISO 8601), `downloaded` `true` or `false`. |
+| `varken_radarr_queue_item_info` | `server`, `movie`, `quality`, `protocol` | A movie in Radarr's download queue (`queue` job). `movie` is `Title (Year)`. |
+| `varken_radarr_missing_info` | `server`, `movie`, `available` | A monitored movie without a file (`missing` job). `available` is `true` once Radarr considers it released, else `false`. |
+| `varken_sickchill_episode_info` | `server`, `show`, `episode`, `title`, `airdate`, `status` | An episode on SickChill's coming-episodes list (`missing` job), `status` `missed`, `today`, `soon` or `later`. |
+
+**Ombi**:
+
+| Metric | Labels | Value |
+| --- | --- | --- |
+| `varken_ombi_requests` | `server`, `status` (`pending`, `approved`, `available`) | Requests by status (`request_counts` job). |
+| `varken_ombi_issues` | `server`, `status` (`pending`, `in_progress`, `resolved`) | Issues by status (`issue_counts` job). |
+| `varken_ombi_request_info` | `server`, `type` (`movie`, `tv`), `title`, `status` (`pending`, `approved`, `available`, `denied`), `requested`, `user` | Always `1`, one series per request (`all_requests` job). `requested` is the request date as Ombi gives it. `user`, the requester, is filled in only with `stream_details = true` and empty otherwise. |
+
+**Lidarr and UniFi** have only the job metrics; for Lidarr, `varken_job_points` counts the albums in the queue
+and calendar. Detailed UniFi metrics are on the [roadmap](roadmap.md).
 
 CI checks a sample scrape with every metric in it (`python -m tests.sample_metrics`) using Prometheus'
 `promtool check metrics`. Metric names and labels are kept stable so dashboards and alerts keep working;
@@ -129,18 +151,19 @@ the services it reads.
 | Service | Requests (relative to the configured `url`) | Credential |
 | --- | --- | --- |
 | Tautulli | `GET /api/v2?cmd=get_activity`, `GET /api/v2?cmd=get_libraries` | `apikey` as a query parameter (Tautulli's API requires it) |
-| Sonarr | `GET /api/calendar/?start=&end=`, `GET /api/queue` | `X-Api-Key` header |
-| Radarr | `GET /api/movie`, `GET /api/queue` | `X-Api-Key` header |
-| Lidarr | `GET /api/v1/calendar?start=&end=`, `GET /api/v1/queue` | `X-Api-Key` header |
+| Sonarr | `GET /api/v3/calendar?start=&end=&includeSeries=true`, `GET /api/v3/queue?includeSeries=true&includeEpisode=true` | `X-Api-Key` header |
+| Radarr | `GET /api/v3/movie`, `GET /api/v3/queue?includeMovie=true` | `X-Api-Key` header |
+| Lidarr | `GET /api/v1/calendar?start=&end=&includeArtist=true`, `GET /api/v1/queue` | `X-Api-Key` header |
 | Ombi | `GET /api/v1/Request/count`, `GET /api/v1/Request/movie`, `GET /api/v1/Request/tv`, `GET /api/v1/Issues/count` | `Apikey` header |
 | SickChill | `GET /api/<apikey>/?cmd=future&type=missed\|today\|soon\|later\|snatched` | the key is part of the path (SickChill's API requires it) |
 | UniFi controller | `POST /api/login` (username and password as JSON; keeps the `unifises` cookie), `GET /api/self/sites`, `GET /api/s/<site>/stat/device` | session cookie |
 | MaxMind | `GET https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&suffix=tar.gz&license_key=…` when the database is missing or over 30 days old; only with a license key set (GeoIP on) | license key as a query parameter ([a known weakness](security.md#known-weaknesses)) |
 | ipify | `GET https://api.ipify.org` (10 s timeout) to learn the host's own public address, only with GeoIP on and when neither a viewer's address nor `fallback_ip` is in the GeoLite2 database; the answer is then reused until Varken restarts | none (a separate request; before 2.0.0 this went to `http://ip.42.pl` with the Tautulli API key attached, [now fixed](security.md#fixed-in-200)) |
 
-The Sonarr and Radarr modules use the API paths without a version (`/api/...`) that upstream Varken was
-written against. Recent Sonarr and Radarr releases serve their API under `/api/v3`; check that these
-modules work with your version before relying on them.
+Supported versions: Sonarr 4 and Radarr 4 or later (their `/api/v3`), and Lidarr 1 or later (`/api/v1`).
+Before 2.1.0 the Sonarr and Radarr modules used the unversioned `/api/...` paths, which current releases no
+longer serve. A reply in an unexpected shape (an older API, say) logs an error and marks the job down.
+Sonarr 5's new API is [planned](roadmap.md); Sonarr 5 is in beta as of 2.1.0.
 
 Requests to the services and MaxMind have no timeouts today ([security.md](security.md#known-weaknesses));
 only the ipify lookup has one.

@@ -10,7 +10,7 @@ def episode_code(season, episode):
 
 
 class SonarrAPI(object):
-    """Sonarr through its v3 API (Sonarr 3 and 4)."""
+    """Sonarr through its v3 API (Sonarr 4; Sonarr 3 serves the same API)."""
 
     def __init__(self, server, output):
         self.output = output

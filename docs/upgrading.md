@@ -107,6 +107,16 @@ docker compose logs -f varken
 For a bare install: `git fetch --tags && git checkout vX.Y.Z`, reinstall `requirements.txt` with
 `--require-hashes --no-deps` (it may have changed), and restart the service.
 
+### 2.0.x to 2.1.0
+
+- **Sonarr and Radarr 4 or later.** The Sonarr and Radarr modules now read `/api/v3`. Older Sonarr and Radarr
+  releases aren't supported; with one, those jobs log an error and `varken_job_up` is `0`.
+- New metrics only: nothing is renamed or removed. With `stream_details = true`, `varken_tautulli_session_info`
+  gains labels (including the viewer's coordinates), and `varken_ombi_request_info` names each requester;
+  check that's acceptable for everyone who can query your Prometheus ([security](security.md)).
+- `varken_tautulli_session_info`'s `location` is now empty, not `👽`, for a viewer who can't be placed. Update
+  any query that matched `👽`.
+
 ## Rolling back
 
 Set the previous version (or check out the previous tag), restore `varken.ini` and `.env` from the backup,

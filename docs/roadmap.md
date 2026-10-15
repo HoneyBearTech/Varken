@@ -45,12 +45,14 @@ The second pass built most of Phase 2, which also ships in 2.0.0:
 - Download the GeoLite2 database with MaxMind's account ID + license key Basic authentication, instead of
   the license key in the URL.
 - Timeouts on every request to the services and MaxMind.
-- Check the Sonarr and Radarr modules against current releases, which serve their API under `/api/v3`.
+- Sonarr 5's new API (Sonarr 5 is in beta as of October 2026), once Sonarr 5 is stable, alongside `/api/v3`
+  for Sonarr 4.
 - Raise test coverage to 80 %, and adopt `ruff format` and a wider ruff rule set.
 
 **Phase 2: Prometheus output** (built, see above; [how it works](architecture.md#the-prometheus-output))
 
-- Still to do: detailed metrics for Ombi and UniFi, which today have only the job metrics.
+- Item metrics for Sonarr, Radarr, SickChill and Ombi, and coordinates for a viewer map: 2.1.0.
+- Still to do: detailed metrics for UniFi, which today has only the job metrics.
 
 **Security and project health**
 

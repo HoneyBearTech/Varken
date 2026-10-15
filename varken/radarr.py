@@ -10,7 +10,7 @@ def movie_name(movie):
 
 
 class RadarrAPI(object):
-    """Radarr through its v3 API (Radarr 3 and later)."""
+    """Radarr through its v3 API (Radarr 4 and later; Radarr 3 serves the same API)."""
 
     def __init__(self, server, output):
         self.output = output
