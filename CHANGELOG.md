@@ -10,7 +10,30 @@ All notable changes to this project are documented in this file. The format is b
 The first HoneyBearTech release, planned as 2.0.0: Varken is now a standalone project maintained at
 [HoneyBearTech/Varken](https://github.com/HoneyBearTech/Varken). See [upgrading](docs/upgrading.md).
 
+### Added
+- A Prometheus output: an optional `/metrics` endpoint (`[prometheus]` `enabled`, off by default; `bind`,
+  default `0.0.0.0`; `port`, default 9180; `VRKN_PROMETHEUS_*`). It serves `varken_build_info`, and
+  `varken_job_up`, `varken_job_last_success_timestamp_seconds` and `varken_job_points` for every job, and for
+  Tautulli streams, streams by decision, bandwidth, sessions and library items. Per-viewer metrics (user,
+  title, city, progress) need `stream_details = true`; viewer IP addresses are never exported. Scrapes read
+  the last run of each job and never call a service. The endpoint has no authentication or TLS: keep it on a
+  private network. The image exposes port 9180, and CI checks a sample scrape with `promtool check metrics`.
+  See [interfaces](docs/interfaces.md#output-prometheus-metrics).
+- `[influxdb]` `enabled` (`VRKN_INFLUXDB_ENABLED`, default `true`), so InfluxDB can be turned off for a
+  Prometheus-only setup. At least one output must be on. An existing `varken.ini` gets the new keys, with
+  their defaults, on its first start.
+- Secrets from files: `VRKN_<SECTION>_<KEY>_FILE` names a file whose contents become the value of
+  `VRKN_<SECTION>_<KEY>`, for Docker and compose secrets. Setting both, or a file that can't be read, stops
+  Varken. Values read this way are masked in the logs like any other.
+- `LOG_TO_FILE=false` logs to stdout only, without a `logs/` folder in the data folder.
+
 ### Changed
+- GeoIP is optional. Without a MaxMind license key (empty, or the example's placeholder), Varken logs that
+  GeoIP is off, records Tautulli streams with the unknown-location values, and never contacts MaxMind or
+  `api.ipify.org`. Before, Tautulli without a downloadable GeoLite2 database stopped Varken at start-up.
+  `.env.example` now leaves the key empty.
+- The image creates `/config` owned by 1000:1000, so a new Docker named volume mounted there is writable
+  from the start. Bind-mounted folders still need `chown 1000:1000`.
 - **Breaking:** the image is now `ghcr.io/honeybeartech/varken`, built for linux/amd64 and linux/arm64
   (linux/arm/v7 is no longer built).
 - **Breaking:** the container runs as an unprivileged user (uid/gid 1000), so the config folder must belong to
@@ -42,6 +65,8 @@ The first HoneyBearTech release, planned as 2.0.0: Varken is now a standalone pr
 - A wrong MaxMind license key (HTTP 401) is now reported as such; it used to be reported as a generic download
   problem.
 - The startup log works on current `distro` releases, which removed `linux_distribution()`.
+- The Tautulli `full_location` tag joins only the parts that are known; it read `None - <city>` when the
+  region was missing.
 
 ### Removed
 - Links to the original project's Discord, wiki, Docker Hub image and donation page.

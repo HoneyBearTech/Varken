@@ -7,8 +7,8 @@ Start with the [README](../README.md) for what Varken is and how to run it.
 | [Quick start](quick-start.md) | Varken, InfluxDB and Grafana with Docker Compose, reading one Tautulli server |
 | [Installing](installing.md) | Compose, `docker run`, Unraid or bare Python with systemd; running it securely; uninstalling |
 | [Configuration](configuration.md) | Every `varken.ini` key and its `VRKN_*` environment variable |
-| [How it works](architecture.md) | Actors, components, what a run does, failure behaviour, and the planned Prometheus output |
-| [Interfaces](interfaces.md) | The command line, the InfluxDB measurements it writes, every outbound request, files, and the planned `/metrics` endpoint |
+| [How it works](architecture.md) | Actors, components, what a run does, failure behaviour, and the Prometheus output |
+| [Interfaces](interfaces.md) | The command line, the InfluxDB measurements it writes, the Prometheus metrics it serves at `/metrics`, every outbound request, and files |
 | [Upgrading](upgrading.md) | Moving from upstream Varken 1.7.x to 2.0.0, between releases, backups and rolling back |
 | [Verifying releases](verifying-releases.md) | Checking that images and release files came from this repository, unchanged |
 | [Security requirements](security.md) | What Varken guarantees, how to run it securely, and its known weaknesses |

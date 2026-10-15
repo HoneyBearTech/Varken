@@ -21,7 +21,9 @@ from varken.radarr import RadarrAPI
 from varken.lidarr import LidarrAPI
 from varken.iniparser import INIParser
 from varken.dbmanager import DBManager
-from varken.helpers import GeoIPHandler
+from varken.metrics import Metrics
+from varken.outputs import Outputs
+from varken.helpers import geoip_handler
 from varken.tautulli import TautulliAPI
 from varken.sickchill import SickChillAPI
 from varken.varkenlogger import VarkenLogger
@@ -29,15 +31,22 @@ from varken.varkenlogger import VarkenLogger
 
 PLATFORM_LINUX_DISTRO = distro_name(pretty=True)
 
+# The Prometheus output, when it's enabled; it records every job's outcome.
+METRICS = None
+
 
 def thread(job, **kwargs):
-    worker = Thread(target=job, kwargs=dict(**kwargs))
+    if METRICS:
+        worker = Thread(target=METRICS.run, args=(job,), kwargs=dict(**kwargs))
+    else:
+        worker = Thread(target=job, kwargs=dict(**kwargs))
     worker.start()
 
 
 if __name__ == "__main__":
     parser = ArgumentParser(prog='varken',
-                            description='Command-line utility to aggregate data from the plex ecosystem into InfluxDB',
+                            description='Command-line utility to aggregate data from the plex ecosystem into InfluxDB '
+                                        'and Prometheus',
                             formatter_class=RawTextHelpFormatter)
 
     parser.add_argument("-d", "--data-folder", help='Define an alternate data folder location')
@@ -77,7 +86,9 @@ if __name__ == "__main__":
         opts.debug = False
 
     # Initiate the logger
-    vl = VarkenLogger(data_folder=DATA_FOLDER, debug=opts.debug)
+    # LOG_TO_FILE=false logs to stdout only, for containers whose logs are collected anyway.
+    log_to_file = getenv('LOG_TO_FILE', 'true').lower() not in ['false', 'no']
+    vl = VarkenLogger(data_folder=DATA_FOLDER, debug=opts.debug, log_to_file=log_to_file)
     vl.logger.info('Starting Varken...')
 
     vl.logger.info('Data folder is "%s"', DATA_FOLDER)
@@ -90,12 +101,20 @@ if __name__ == "__main__":
     vl.logger.info("Varken v%s-%s %s", VERSION, BRANCH, BUILD_DATE)
 
     CONFIG = INIParser(DATA_FOLDER)
-    DBMANAGER = DBManager(CONFIG.influx_server)
+    if not CONFIG.influx_server.enabled and not CONFIG.prometheus_server.enabled:
+        vl.logger.error("Both outputs are disabled: enable [influxdb] or [prometheus]. Exiting")
+        exit(1)
+
+    INFLUX = DBManager(CONFIG.influx_server) if CONFIG.influx_server.enabled else None
+    if CONFIG.prometheus_server.enabled:
+        METRICS = Metrics(CONFIG.prometheus_server)
+        METRICS.start()
+    OUTPUTS = Outputs(influx=INFLUX, metrics=METRICS)
     QUEUE = Queue()
 
     if CONFIG.sonarr_enabled:
         for server in CONFIG.sonarr_servers:
-            SONARR = SonarrAPI(server, DBMANAGER)
+            SONARR = SonarrAPI(server, OUTPUTS)
             if server.queue:
                 at_time = schedule.every(server.queue_run_seconds).seconds
                 at_time.do(thread, SONARR.get_queue).tag("sonarr-{}-get_queue".format(server.id))
@@ -107,10 +126,10 @@ if __name__ == "__main__":
                 at_time.do(thread, SONARR.get_calendar, query="Future").tag("sonarr-{}-get_future".format(server.id))
 
     if CONFIG.tautulli_enabled:
-        GEOIPHANDLER = GeoIPHandler(DATA_FOLDER, CONFIG.tautulli_servers[0].maxmind_license_key)
+        GEOIPHANDLER = geoip_handler(DATA_FOLDER, CONFIG.tautulli_servers[0].maxmind_license_key)
         schedule.every(12).to(24).hours.do(thread, GEOIPHANDLER.update)
         for server in CONFIG.tautulli_servers:
-            TAUTULLI = TautulliAPI(server, DBMANAGER, GEOIPHANDLER)
+            TAUTULLI = TautulliAPI(server, OUTPUTS, GEOIPHANDLER)
             if server.get_activity:
                 at_time = schedule.every(server.get_activity_run_seconds).seconds
                 at_time.do(thread, TAUTULLI.get_activity).tag("tautulli-{}-get_activity".format(server.id))
@@ -120,7 +139,7 @@ if __name__ == "__main__":
 
     if CONFIG.radarr_enabled:
         for server in CONFIG.radarr_servers:
-            RADARR = RadarrAPI(server, DBMANAGER)
+            RADARR = RadarrAPI(server, OUTPUTS)
             if server.get_missing:
                 at_time = schedule.every(server.get_missing_run_seconds).seconds
                 at_time.do(thread, RADARR.get_missing).tag("radarr-{}-get_missing".format(server.id))
@@ -130,7 +149,7 @@ if __name__ == "__main__":
 
     if CONFIG.lidarr_enabled:
         for server in CONFIG.lidarr_servers:
-            LIDARR = LidarrAPI(server, DBMANAGER)
+            LIDARR = LidarrAPI(server, OUTPUTS)
             if server.queue:
                 at_time = schedule.every(server.queue_run_seconds).seconds
                 at_time.do(thread, LIDARR.get_queue).tag("lidarr-{}-get_queue".format(server.id))
@@ -145,7 +164,7 @@ if __name__ == "__main__":
 
     if CONFIG.ombi_enabled:
         for server in CONFIG.ombi_servers:
-            OMBI = OmbiAPI(server, DBMANAGER)
+            OMBI = OmbiAPI(server, OUTPUTS)
             if server.request_type_counts:
                 at_time = schedule.every(server.request_type_run_seconds).seconds
                 at_time.do(thread, OMBI.get_request_counts).tag("ombi-{}-get_request_counts".format(server.id))
@@ -158,14 +177,14 @@ if __name__ == "__main__":
 
     if CONFIG.sickchill_enabled:
         for server in CONFIG.sickchill_servers:
-            SICKCHILL = SickChillAPI(server, DBMANAGER)
+            SICKCHILL = SickChillAPI(server, OUTPUTS)
             if server.get_missing:
                 at_time = schedule.every(server.get_missing_run_seconds).seconds
                 at_time.do(thread, SICKCHILL.get_missing).tag("sickchill-{}-get_missing".format(server.id))
 
     if CONFIG.unifi_enabled:
         for server in CONFIG.unifi_servers:
-            UNIFI = UniFiAPI(server, DBMANAGER)
+            UNIFI = UniFiAPI(server, OUTPUTS)
             at_time = schedule.every(server.get_usg_stats_run_seconds).seconds
             at_time.do(thread, UNIFI.get_usg_stats).tag("unifi-{}-get_usg_stats".format(server.id))
 

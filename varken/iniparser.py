@@ -1,3 +1,4 @@
+from ipaddress import ip_address
 from os import W_OK, access
 from shutil import copyfile
 from os import environ as env
@@ -7,7 +8,7 @@ from re import match, compile, IGNORECASE
 from configparser import ConfigParser, NoOptionError, NoSectionError
 
 from varken.varkenlogger import BlacklistFilter
-from varken.structures import SickChillServer, UniFiServer
+from varken.structures import SickChillServer, UniFiServer, PrometheusServer
 from varken.helpers import clean_sid_check, rfc1918_ip_check, boolcheck
 from varken.structures import SonarrServer, RadarrServer, OmbiServer, TautulliServer, InfluxServer
 
@@ -21,12 +22,30 @@ class INIParser(object):
 
         self.logger = getLogger()
         self.influx_server = InfluxServer()
+        self.prometheus_server = PrometheusServer()
 
+        self.read_secret_files()
         try:
             self.parse_opts(read_file=True)
         except NoSectionError as e:
             self.logger.error('Missing section in (varken.ini): %s', e)
             self.rectify_ini()
+
+    def read_secret_files(self):
+        """VRKN_<SECTION>_<KEY>_FILE names a file that holds the value (Docker and compose secrets)."""
+        for name, path in list(env.items()):
+            if not (name.startswith('VRKN_') and name.endswith('_FILE')):
+                continue
+            target = name.removesuffix('_FILE')
+            if target in env:
+                self.logger.error('Both %s and %s are set; use one. Exiting.', target, name)
+                exit(1)
+            try:
+                with open(path) as secret:
+                    env[target] = secret.read().strip()
+            except OSError as e:
+                self.logger.error('Could not read %s (%s): %s. Exiting.', name, path, e)
+                exit(1)
 
     def config_blacklist(self):
         filtered_strings = [section.get(k) for key, section in self.config.items()
@@ -150,6 +169,7 @@ class INIParser(object):
             self.config_blacklist()
         # Parse InfluxDB options
         try:
+            influx_enabled = boolcheck(env.get('VRKN_INFLUXDB_ENABLED', self.config.get('influxdb', 'enabled')))
             url = self.url_check(env.get('VRKN_INFLUXDB_URL', self.config.get('influxdb', 'url')),
                                  include_port=False, section='influxdb')
             port = int(env.get('VRKN_INFLUXDB_PORT', self.config.getint('influxdb', 'port')))
@@ -163,8 +183,35 @@ class INIParser(object):
             self.rectify_ini()
             return
 
-        self.influx_server = InfluxServer(url=url, port=port, username=username, password=password, ssl=ssl,
-                                          verify_ssl=verify_ssl)
+        self.influx_server = InfluxServer(enabled=influx_enabled, url=url, port=port, username=username,
+                                          password=password, ssl=ssl, verify_ssl=verify_ssl)
+
+        # Parse Prometheus options
+        try:
+            prometheus_enabled = boolcheck(env.get('VRKN_PROMETHEUS_ENABLED',
+                                                   self.config.get('prometheus', 'enabled')))
+            bind = env.get('VRKN_PROMETHEUS_BIND', self.config.get('prometheus', 'bind'))
+            prometheus_port = int(env.get('VRKN_PROMETHEUS_PORT', self.config.get('prometheus', 'port')))
+            stream_details = boolcheck(env.get('VRKN_PROMETHEUS_STREAM_DETAILS',
+                                               self.config.get('prometheus', 'stream_details')))
+        except NoOptionError as e:
+            self.logger.error('Missing key in %s. Error: %s', "prometheus", e)
+            self.rectify_ini()
+            return
+        except ValueError as e:
+            self.logger.error('Invalid configuration value in prometheus. Error: %s', e)
+            exit(1)
+        try:
+            ip_address(bind)
+        except ValueError:
+            self.logger.error('[prometheus] bind must be an IP address such as 0.0.0.0 or 127.0.0.1, not %s', bind)
+            exit(1)
+        if not 0 < prometheus_port < 65536:
+            self.logger.error('[prometheus] port must be between 1 and 65535, not %s', prometheus_port)
+            exit(1)
+
+        self.prometheus_server = PrometheusServer(enabled=prometheus_enabled, bind=bind, port=prometheus_port,
+                                                  stream_details=stream_details)
 
         # Check for all enabled services
         for service in self.services:

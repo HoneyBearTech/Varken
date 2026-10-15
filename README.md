@@ -11,8 +11,8 @@
 </p>
 
 Varken collects data from the Plex ecosystem (Tautulli, Sonarr, Radarr, Lidarr, Ombi, SickChill) and UniFi and
-writes it to InfluxDB 1.x for Grafana dashboards. A Prometheus `/metrics` output is
-[planned](docs/roadmap.md), so it can also feed Prometheus-based stacks.
+writes it to InfluxDB 1.x for Grafana dashboards, serves it as Prometheus metrics at `/metrics` for
+Prometheus-based stacks, or both.
 
 Varken is Dutch for PIG; PIG stands for Plex/InfluxDB/Grafana. This is a standalone continuation of
 [Boerderij/Varken](https://github.com/Boerderij/Varken) by DirtyCajunRice, samwiseg0 and contributors, whose
@@ -28,11 +28,12 @@ affiliated with the original authors: please don't take questions about this ver
 - [Quick start](docs/quick-start.md), [installing](docs/installing.md) (Docker, Docker Compose or Python),
   [upgrading from upstream 1.7.x and backups](docs/upgrading.md) and [verifying releases](docs/verifying-releases.md).
 - [Configuration](docs/configuration.md): every `varken.ini` setting and the `VRKN_*` variable that overrides it.
-- [Architecture](docs/architecture.md): the components, and how data flows from each service to InfluxDB.
+- [Architecture](docs/architecture.md): the components, and how data flows from each service to InfluxDB and
+  Prometheus.
 - [Security requirements](docs/security.md): what Varken does and doesn't protect, the known weaknesses, and the
   [assurance case](docs/assurance-case.md) behind them.
-- [External interfaces](docs/interfaces.md): the APIs Varken calls, the InfluxDB measurements it writes, and the
-  command line. [Dependencies and vulnerability management](docs/dependencies.md).
+- [External interfaces](docs/interfaces.md): the APIs Varken calls, the InfluxDB measurements it writes, the
+  Prometheus metrics it serves, and the command line. [Dependencies and vulnerability management](docs/dependencies.md).
 - [Roadmap](docs/roadmap.md): where the project is going, and what it won't do.
 - [Support](SUPPORT.md): which versions get fixes, and for how long.
 - [Contributing](CONTRIBUTING.md), [Code of Conduct](CODE_OF_CONDUCT.md), [Governance](GOVERNANCE.md) and
@@ -52,7 +53,7 @@ affiliated with the original authors: please don't take questions about this ver
 
 Every module supports several servers. Tautulli locations come from MaxMind's
 [GeoLite2](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) database, which needs a free MaxMind
-license key.
+license key; without one, Varken runs with GeoIP off and streams have no location.
 
 ## Getting started
 
@@ -69,7 +70,9 @@ docker compose logs -f varken
 ```
 
 Grafana listens on <http://127.0.0.1:3000>. Add InfluxDB (`http://influxdb:8086`, database `varken`) as a data
-source and build dashboards on the [measurements Varken writes](docs/interfaces.md). The
+source and build dashboards on the [measurements Varken writes](docs/interfaces.md). For Prometheus, set
+`VRKN_PROMETHEUS_ENABLED=true` and scrape `varken:9180`
+([quick start](docs/quick-start.md#prometheus-instead-of-or-as-well-as-influxdb)). The
 [quick start](docs/quick-start.md) walks through the first run, and [installing](docs/installing.md) covers
 running the image on its own (`ghcr.io/honeybeartech/varken`), Unraid, and Python with systemd.
 
@@ -86,13 +89,17 @@ lists every setting and its default.
 
 - `[global]`: which server ids each module collects from (`false` turns a module off), and the MaxMind license
   key.
-- `[influxdb]`: where to write. Varken creates the `varken` database with a 30-day retention policy unless it
-  already exists.
+- `[influxdb]`: whether (`enabled`, on by default) and where to write. Varken creates the `varken` database
+  with a 30-day retention policy unless it already exists.
+- `[prometheus]`: the `/metrics` endpoint: `enabled` (off by default), `bind` (`0.0.0.0`), `port` (`9180`) and
+  `stream_details` (per-viewer metrics, off by default). At least one of the two outputs must be on.
 - `[<module>-<id>]`, such as `[tautulli-1]` or `[sonarr-2]`: the server's address, API key, TLS settings, which
   data to collect and how often.
 
-Environment settings for the container: `DATA_FOLDER` (default `/config`), `DEBUG` (`True` by default; set
-`False` for info-level logs) and `TZ`.
+Any `VRKN_*` value can also be read from a file, for Docker and compose secrets: set
+`VRKN_<SECTION>_<KEY>_FILE` to its path. Environment settings for the container: `DATA_FOLDER` (default
+`/config`), `DEBUG` (`True` by default; set `False` for info-level logs), `LOG_TO_FILE` (`true` by default;
+`false` logs to stdout only) and `TZ`.
 
 ## Running it securely
 
@@ -103,13 +110,15 @@ Environment settings for the container: `DATA_FOLDER` (default `/config`), `DEBU
 - Use HTTPS with `verify_ssl = true` wherever a service supports it. Verification is off by default, for
   compatibility with upstream configs.
 - Keep InfluxDB and Grafana off the internet. The example binds Grafana to localhost only.
+- The Prometheus endpoint has no authentication or TLS: keep it on a private network or bind it to
+  `127.0.0.1`, and leave `stream_details` off unless everyone who can read it may see who watches what.
 
 [docs/security.md](docs/security.md) has the details and the known weaknesses still being worked on.
 
 ## Related projects
 
 [Argus](https://github.com/HoneyBearTech/Argus), the maintainer's Prometheus and Grafana homelab monitoring stack,
-will scrape Varken's planned Prometheus output for its Tautulli dashboards.
+will scrape Varken's Prometheus output for its Tautulli dashboards (planned, in the Argus repository).
 
 ## License
 

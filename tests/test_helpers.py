@@ -187,3 +187,52 @@ def test_download_stops_when_maxmind_is_unreachable(tmp_path, monkeypatch):
     monkeypatch.setattr(helpers, 'urlretrieve', raise_error(URLError('no route')))
 
     assert geoip_handler(tmp_path).download() == 1
+
+
+def run_in_thread(function):
+    """Run function in a new thread, as the scheduler runs jobs, and return the thread's request state."""
+    from threading import Thread
+    result = {}
+
+    def target():
+        function()
+        result['failed'] = getattr(helpers.request_state, 'failed', False)
+    worker = Thread(target=target)
+    worker.start()
+    worker.join()
+    return result['failed']
+
+
+def test_a_successful_request_is_not_a_failure():
+    assert run_in_thread(lambda: connection_handler(FakeSession(FakeResponse(200, [])), FakeRequest(), False)) is False
+
+
+@pytest.mark.parametrize('result', [FakeResponse(500), FakeResponse(404), FakeResponse(200, None, b'<html>'),
+                                    ConnectionError()])
+def test_a_failed_request_is_recorded_for_the_thread(result):
+    assert run_in_thread(lambda: connection_handler(FakeSession(result), FakeRequest(), False)) is True
+
+
+def test_a_failed_as_is_request_is_recorded_for_the_thread():
+    assert run_in_thread(lambda: connection_handler(FakeSession(FakeResponse(401)), FakeRequest(), False,
+                                                    as_is_reply=True)) is True
+
+
+@pytest.mark.parametrize('key', ['', None, 'xxxxxxxxxxxxxxxx'])
+def test_geoip_is_off_without_a_license_key(tmp_path, key):
+    assert isinstance(helpers.geoip_handler(str(tmp_path), key), helpers.NoGeoIP)
+
+
+def test_geoip_is_on_with_a_license_key(tmp_path, monkeypatch):
+    monkeypatch.setattr(helpers, 'GeoIPHandler', lambda folder, key: ('handler', folder, key))
+
+    assert helpers.geoip_handler(str(tmp_path), 'real-key') == ('handler', str(tmp_path), 'real-key')
+
+
+def test_no_geoip_knows_no_location():
+    no_geoip = helpers.NoGeoIP()
+    no_geoip.update()
+
+    place = no_geoip.lookup('203.0.113.5')
+    assert place.city.name is None
+    assert place.location.latitude is None

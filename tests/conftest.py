@@ -9,14 +9,18 @@ REPO = Path(__file__).resolve().parent.parent
 
 
 @pytest.fixture(autouse=True)
-def clean_environment(monkeypatch):
-    """No VRKN_* variables from the machine running the tests, and no filters left on the root logger's handlers."""
+def clean_environment():
+    """No VRKN_* variables from the machine running the tests, and none left behind by a test (the parser sets
+    VRKN_* itself from *_FILE variables); no handlers or filters left on the root logger."""
+    saved = dict(os.environ)
     for name in list(os.environ):
         if name.startswith('VRKN_'):
-            monkeypatch.delenv(name)
+            del os.environ[name]
     root = logging.getLogger()
     handlers = list(root.handlers)
     yield
+    os.environ.clear()
+    os.environ.update(saved)
     for handler in root.handlers:
         handler.filters.clear()
     for handler in root.handlers[:]:

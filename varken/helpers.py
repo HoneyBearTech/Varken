@@ -2,7 +2,9 @@ from hashlib import sha256
 from datetime import date, timedelta
 from time import sleep
 from logging import getLogger
+from threading import local
 from ipaddress import IPv4Address
+from types import SimpleNamespace
 from urllib.error import HTTPError, URLError
 from geoip2.database import Reader
 from tarfile import open as taropen
@@ -15,6 +17,10 @@ from urllib3.exceptions import InsecureRequestWarning
 from requests.exceptions import InvalidSchema, SSLError, ConnectionError, ChunkedEncodingError
 
 logger = getLogger()
+
+# Per thread (every scheduled job runs in its own): set when a request in connection_handler fails, so the Prometheus
+# output can tell a job that found nothing from one that couldn't reach its service.
+request_state = local()
 
 
 class GeoIPHandler(object):
@@ -132,6 +138,26 @@ class GeoIPHandler(object):
             self.logger.warning("Cannot remove MaxMind DB TAR file as it does not exist!")
 
 
+class NoGeoIP(object):
+    """Stands in for GeoIPHandler when there is no MaxMind license key: every address has an unknown location."""
+    unknown = SimpleNamespace(location=SimpleNamespace(latitude=None, longitude=None), city=SimpleNamespace(name=None),
+                              subdivisions=SimpleNamespace(most_specific=SimpleNamespace(iso_code=None, name=None)))
+
+    def lookup(self, ipaddress):
+        return self.unknown
+
+    def update(self):
+        pass
+
+
+def geoip_handler(data_folder, license_key):
+    """GeoIP for Tautulli's streams, or none when no license key is set (empty, or the example's xxxx placeholder)."""
+    if license_key and license_key.strip('x'):
+        return GeoIPHandler(data_folder, license_key)
+    logger.info('No MaxMind license key: GeoIP is off and Tautulli streams have no location.')
+    return NoGeoIP()
+
+
 def hashit(string):
     encoded = string.encode()
     # A stable id that dashboards count distinct items by. SHA-256 rather than MD5, so scanners needn't ask.
@@ -172,6 +198,8 @@ def connection_handler(session, request, verify, as_is_reply=False):
             except JSONDecodeError:
                 logger.error('No JSON response. Response is: %s', get.text)
         if air:
+            if get.status_code != 200:
+                request_state.failed = True
             return get
     except InvalidSchema:
         logger.error("You added http(s):// in the config file. Don't do that.")
@@ -182,6 +210,8 @@ def connection_handler(session, request, verify, as_is_reply=False):
     except ChunkedEncodingError as e:
         logger.error('Broken connection during request... oops? Error: %s', e)
 
+    if return_json is False:
+        request_state.failed = True
     return return_json
 
 

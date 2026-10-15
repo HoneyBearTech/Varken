@@ -27,6 +27,9 @@ services:
     volumes:
       # varken.ini, the GeoLite2 database and logs/.
       - ${VARKEN_CONFIG_DIR:-./config}:/config
+    # Uncomment to scrape the Prometheus output (VRKN_PROMETHEUS_ENABLED=true) from outside this compose project.
+    # ports:
+    #   - "127.0.0.1:9180:9180"
     read_only: true
     tmpfs:
       - /tmp

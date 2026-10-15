@@ -27,7 +27,9 @@ cp .env .env.backup                               # compose only
 
 2.0.0 is the first release of this fork. Your `varken.ini`, your `VRKN_*` variables and the data in
 InfluxDB carry over unchanged: the settings, measurement names, tags and fields Varken writes are the same as
-in 1.7.7, so existing dashboards keep working. What changes:
+in 1.7.7, so existing dashboards keep working. On the first start Varken adds the new settings to
+`varken.ini` with their defaults (`[influxdb]` `enabled = true` and a `[prometheus]` section that is off),
+which rewrites the file and drops its comments; it needs write access to it. What changes:
 
 1. **The image name.** `boerderij/varken` (Docker Hub, and its GHCR and Quay copies) is replaced by
    `ghcr.io/honeybeartech/varken`. Change `image:` in your compose file or template, and pin a version:
@@ -39,7 +41,16 @@ in 1.7.7, so existing dashboards keep working. What changes:
    sudo chown -R 1000:1000 /path/to/varken/config
    ```
 
-   Use another uid:gid if you run the container with `user:` (Unraid's template uses `99:100`).
+   Use another uid:gid if you run the container with `user:` (Unraid's template uses `99:100`). A named
+   volume the old container wrote to needs the same fix, run as root inside a throwaway container:
+
+   ```sh
+   docker run --rm --user 0 --entrypoint chown -v <volume>:/config \
+     ghcr.io/honeybeartech/varken:2.0.0 -R 1000:1000 /config
+   ```
+
+   A new named volume needs nothing: the image's `/config` belongs to 1000:1000, and Docker gives a new,
+   empty volume that ownership. Bind-mounted folders always need the `chown`.
 3. **32-bit ARM (linux/arm/v7) images are no longer built.** Images exist for linux/amd64 and linux/arm64.
    On a 32-bit ARM device, move to a 64-bit OS or use a bare-Python install.
 4. **Bare-Python installs need Python 3.14** and a fresh virtual environment with the hash-pinned

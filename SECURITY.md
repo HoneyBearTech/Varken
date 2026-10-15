@@ -58,8 +58,9 @@ Varken is built from (the Python base image and the Python packages) are handled
 ## Scope
 
 Varken is a collector: on a schedule it reads data from the Tautulli, Sonarr, Radarr, Lidarr, Ombi,
-SickChill and UniFi servers its operator configures, looks up viewer locations in a local MaxMind GeoLite2
-database, and writes the results to InfluxDB. It opens no ports today. What it does and doesn't protect
+SickChill and UniFi servers its operator configures, optionally looks up viewer locations in a local MaxMind
+GeoLite2 database, and writes the results to InfluxDB, serves them as Prometheus metrics, or both. It opens
+no ports unless its optional Prometheus `/metrics` endpoint is turned on. What it does and doesn't protect
 against is described in [docs/security.md](docs/security.md) (its security requirements), and the
 reasoning in [docs/assurance-case.md](docs/assurance-case.md) (threat model, trust boundaries and the
 defences against common weaknesses).

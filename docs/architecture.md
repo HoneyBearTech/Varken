@@ -1,72 +1,79 @@
 # How it works
 
 Varken is a long-running Python process with no user interface. On a schedule it asks the services you
-configure for their current state, turns the answers into InfluxDB points, and writes them to InfluxDB,
-where Grafana dashboards read them. It only reads from those services. Its security properties are in
+configure for their current state, turns the answers into points, and hands them to its outputs: InfluxDB,
+where Grafana dashboards read them, a Prometheus `/metrics` endpoint, or both. It only reads from those
+services. Its security properties are in
 [security.md](security.md) and the [assurance case](assurance-case.md); every input and output is listed in
 [interfaces.md](interfaces.md).
 
 ```
 Tautulli ─┐                                     ┌─▶ InfluxDB 1.x (database "varken") ◀── Grafana
-Sonarr ───┤                                     │
+Sonarr ───┤                                     │   ([influxdb] enabled, on by default)
 Radarr ───┤  HTTP(S) GET,  ┌──────────────────┐ │
-Lidarr ───┼─ API key ─────▶│      Varken      │─┤
-Ombi ─────┤                │ scheduled jobs   │ │
-SickChill ┤                └──────────────────┘ └─▶ logs (stdout, data/logs/varken.log)
-UniFi ────┘                  │            ▲
+Lidarr ───┼─ API key ─────▶│      Varken      │─┼─▶ GET /metrics (:9180) ◀── Prometheus scrape
+Ombi ─────┤                │ scheduled jobs   │ │   ([prometheus] enabled, off by default)
+SickChill ┤                └──────────────────┘ │
+UniFi ────┘                  │            ▲     └─▶ logs (stdout; data/logs/varken.log unless LOG_TO_FILE=false)
                              │ lookup     │ download every ~30 days
-                             ▼            │ (license key)
+                             ▼            │ (license key; only with GeoIP on)
                     data/GeoLite2-City.mmdb ◀── MaxMind
-
-Planned: Varken ──▶ /metrics (:9180) ◀── Prometheus scrape
 ```
 
 ## Actors and what they do
 
 | Actor | Does |
 | --- | --- |
-| Operator | Installs Varken, writes `varken.ini` or the environment, supplies API keys and the MaxMind license key, runs InfluxDB and Grafana, and reads the dashboards. |
+| Operator | Installs Varken, writes `varken.ini` or the environment, supplies API keys and, optionally, the MaxMind license key, runs InfluxDB or Prometheus and Grafana, and reads the dashboards. |
 | Media services (Tautulli, Sonarr, Radarr, Lidarr, Ombi, SickChill) | Answer Varken's read-only API requests with their current activity, queues, calendars, requests and library counts. |
 | UniFi controller | Answers a login and device-statistics requests for one gateway. |
-| Viewers | Don't interact with Varken, but their streams (username, title, device, approximate location) are what Tautulli reports and Varken records. |
-| MaxMind | Serves the GeoLite2-City database to the operator's license key. |
-| InfluxDB | Stores what Varken writes, for 30 days by default. |
-| Grafana (and its users) | Reads InfluxDB; Varken never talks to it, except through the optional `grafana_build.py` utility. |
-| Prometheus (**Planned**) | Will scrape Varken's `/metrics` endpoint. |
+| Viewers | Don't interact with Varken, but their streams (username, title, device and, with GeoIP on, approximate location) are what Tautulli reports and Varken records. |
+| MaxMind | Serves the GeoLite2-City database to the operator's license key. Not contacted when no key is set (GeoIP off). |
+| InfluxDB (optional, on by default) | Stores what Varken writes, for 30 days by default. |
+| Grafana (and its users) | Reads InfluxDB or Prometheus; Varken never talks to it, except through the optional `grafana_build.py` utility. |
+| Prometheus (optional) | Scrapes Varken's `/metrics` endpoint and stores the metrics. It sends no credentials and gets none. [Argus](https://github.com/HoneyBearTech/Argus) is one such stack (that integration is planned, in the Argus repository). |
 
 ## Components
 
 | Component | File | Role |
 | --- | --- | --- |
-| Entry point | [`Varken.py`](../Varken.py) | Parses the command line, finds the data folder, sets up logging, loads the config, connects to InfluxDB, registers one job per enabled server and feature, then runs the scheduler loop. |
-| Config | [`varken/iniparser.py`](../varken/iniparser.py) | Reads `varken.ini`, applies `VRKN_*` overrides, validates URLs and `fallback_ip`, fills missing keys from the example, and builds one server record per section ([configuration.md](configuration.md)). |
-| Data shapes | [`varken/structures.py`](../varken/structures.py) | Named tuples for each server's settings and for the API responses Varken understands. |
-| Modules | [`varken/tautulli.py`](../varken/tautulli.py), [`sonarr.py`](../varken/sonarr.py), [`radarr.py`](../varken/radarr.py), [`lidarr.py`](../varken/lidarr.py), [`ombi.py`](../varken/ombi.py), [`sickchill.py`](../varken/sickchill.py), [`unifi.py`](../varken/unifi.py) | One class per service. Each job makes its requests, maps the answer onto the data shapes, builds InfluxDB points and hands them to the writer. |
-| InfluxDB writer | [`varken/dbmanager.py`](../varken/dbmanager.py) | Connects at start-up, creates the `varken` database and retention policy if needed, and writes points. |
-| Helpers | [`varken/helpers.py`](../varken/helpers.py) | `connection_handler()` sends every service request and handles its errors; `GeoIPHandler` downloads, extracts and reads the GeoLite2 database; config value checks. |
-| Logging | [`varken/varkenlogger.py`](../varken/varkenlogger.py) | Console and rotating file logs, with a filter that masks configured secrets. |
+| Entry point | [`Varken.py`](../Varken.py) | Parses the command line, finds the data folder, sets up logging, loads the config, starts the enabled outputs (connects to InfluxDB, starts the metrics server), registers one job per enabled server and feature, then runs the scheduler loop. `thread()` starts each job in its own thread, through the metrics collector when Prometheus is on. |
+| Config | [`varken/iniparser.py`](../varken/iniparser.py) | Reads `VRKN_*_FILE` secrets, reads `varken.ini`, applies `VRKN_*` overrides, validates URLs, `fallback_ip` and the `[prometheus]` address and port, fills missing keys from the example, and builds the output settings and one server record per section ([configuration.md](configuration.md)). |
+| Data shapes | [`varken/structures.py`](../varken/structures.py) | Named tuples for the outputs' settings (`InfluxServer`, `PrometheusServer`), each server's settings and the API responses Varken understands. |
+| Modules | [`varken/tautulli.py`](../varken/tautulli.py), [`sonarr.py`](../varken/sonarr.py), [`radarr.py`](../varken/radarr.py), [`lidarr.py`](../varken/lidarr.py), [`ombi.py`](../varken/ombi.py), [`sickchill.py`](../varken/sickchill.py), [`unifi.py`](../varken/unifi.py) | One class per service. Each job makes its requests, maps the answer onto the data shapes, builds points and hands them to the outputs. |
+| Outputs | [`varken/outputs.py`](../varken/outputs.py) | The one place the modules write to: passes each batch of points to the metrics collector and to InfluxDB, whichever are on. |
+| InfluxDB writer | [`varken/dbmanager.py`](../varken/dbmanager.py) | Connects at start-up, creates the `varken` database and retention policy if needed, and writes points. Only with `[influxdb]` `enabled`. |
+| Metrics collector | [`varken/metrics.py`](../varken/metrics.py) | Only with `[prometheus]` `enabled`. Runs each job, records whether it succeeded and the points it wrote, and builds the metrics from those snapshots on every scrape; serves them with prometheus_client's HTTP server. |
+| Helpers | [`varken/helpers.py`](../varken/helpers.py) | `connection_handler()` sends every service request, handles its errors and flags a failed request for the metrics (`request_state`); `geoip_handler()` returns a `GeoIPHandler`, which downloads, extracts and reads the GeoLite2 database, or `NoGeoIP` when there's no license key; config value checks. |
+| Logging | [`varken/varkenlogger.py`](../varken/varkenlogger.py) | Console and (unless `LOG_TO_FILE=false`) rotating file logs, with a filter that masks configured secrets. |
 | Utilities | [`utilities/`](../utilities/) | Hand-run scripts: Grafana dashboard import and Tautulli history import ([interfaces.md](interfaces.md#utilities)). |
 
 ## A run, from start to finish
 
 1. **Start-up.** Varken finds the data folder (`DATA_FOLDER`, `-d`, or `data/`) and stops if it doesn't
-   exist. It logs to the console and `logs/varken.log`.
-2. **Config.** It reads `varken.ini` (creating it from `varken.example.ini` if missing), applies the
-   environment overrides, and builds the list of servers per enabled service. An invalid URL or private
-   `fallback_ip` stops it here.
-3. **InfluxDB.** It pings InfluxDB and stops if it can't reach it. If the `varken` database doesn't exist,
-   it creates it with the retention policy `varken 30d-1h`.
-4. **GeoIP** (only with Tautulli enabled). It opens `GeoLite2-City.mmdb`, downloading it from MaxMind
-   first if it's missing; it stops if that download fails. A job checks every 12 to 24 hours whether the file
-   is more than 30 days old and replaces it if so. Only the `.mmdb` file is extracted from the archive, with
-   Python's `data` extraction filter, so the archive can't write anywhere else.
+   exist. It logs to the console and, unless `LOG_TO_FILE=false`, to `logs/varken.log`.
+2. **Config.** It reads the `VRKN_*_FILE` secrets into their variables, reads `varken.ini` (creating it from
+   `varken.example.ini` if missing, and filling in missing keys), applies the environment overrides, and
+   builds the output settings and the list of servers per enabled service. An unreadable or doubly-set
+   secret, an invalid URL, a private `fallback_ip` or an invalid `[prometheus]` `bind` or `port` stops it
+   here, as does having both outputs disabled.
+3. **Outputs.** With `[influxdb]` `enabled`, it pings InfluxDB and stops if it can't reach it; if the `varken`
+   database doesn't exist, it creates it with the retention policy `varken 30d-1h`. With `[prometheus]`
+   `enabled`, it starts the metrics HTTP server on `bind`:`port`.
+4. **GeoIP** (only with Tautulli enabled and a MaxMind license key). It opens `GeoLite2-City.mmdb`,
+   downloading it from MaxMind first if it's missing; it stops if that download fails. A job checks every 12
+   to 24 hours whether the file is more than 30 days old and replaces it if so. Only the `.mmdb` file is
+   extracted from the archive, with Python's `data` extraction filter, so the archive can't write anywhere
+   else. Without a key, GeoIP is off: every stream gets an unknown location, and Varken contacts neither
+   MaxMind nor `api.ipify.org`.
 5. **Jobs.** For every enabled server and feature (for example `tautulli-1` activity, `sonarr-2` queue) it
    registers a job with the [schedule](https://schedule.readthedocs.io/) library at that feature's
    `*_run_seconds` interval. It stops if no service is enabled.
 6. **Loop.** It runs every job once immediately, then checks every second for jobs that are due. Each job
    runs in its own thread, so a slow service doesn't delay the others.
 7. **Each job** sends its requests through `connection_handler()`, turns the JSON into points (described in
-   [interfaces.md](interfaces.md#output-influxdb)) and writes them in one batch.
+   [interfaces.md](interfaces.md#output-influxdb)) and writes them in one batch to the outputs, which pass
+   them to InfluxDB and to the metrics collector.
 
 ### When something fails
 
@@ -80,44 +87,61 @@ Planned: Varken ──▶ /metrics (:9180) ◀── Prometheus scrape
 - **UniFi rejects the session**: the job logs in again once, then gives up until its next run.
 - **InfluxDB is unreachable after start-up, or rejects a write**: that batch is dropped, with an error or a
   traceback in the log. Varken doesn't queue data for later.
-- **A viewer can't be located**: Varken tries `fallback_ip`, then the host's own public address from
-  `https://api.ipify.org`, and records placeholder location values if all fail.
+- **With Prometheus on, a failed request or any error the job logs about its service** (including a single
+  item skipped for an unexpected shape) marks the job down (`varken_job_up` 0) and drops its snapshot, so its
+  data metrics disappear until a run succeeds. A failed InfluxDB write doesn't: that's the other output, and the
+  job's data is still exported.
+- **A viewer can't be located** (GeoIP on): Varken tries `fallback_ip`, then the host's own public address
+  from `https://api.ipify.org`, and records placeholder location values if all fail.
 
 ## State
 
 Varken keeps almost nothing itself. Its data folder holds `varken.ini`, the GeoLite2 database (which can
 be downloaded again) and logs. Everything it collects is in InfluxDB, which keeps it for the retention
-policy's 30 days unless you change the policy. Restarting Varken loses nothing but jobs in flight.
+policy's 30 days unless you change the policy, or in Prometheus, which keeps what it scrapes for its own
+retention time. With Prometheus on, Varken holds the last successful run of each job in memory. Restarting
+Varken loses nothing but jobs in flight and those snapshots, which the first runs after start-up rebuild.
 
-## Planned: Prometheus output
+## The Prometheus output
 
-**Planned, not built** ([roadmap](roadmap.md), Phase 2). Varken will optionally expose a Prometheus
-`/metrics` endpoint, so it can feed Prometheus-based stacks such as the maintainer's
-[Argus](https://github.com/HoneyBearTech/Argus), which retired InfluxDB:
+Off by default ([configuration](configuration.md#prometheus)). Varken serves its metrics at `/metrics` so
+Prometheus-based stacks can use them, with or without InfluxDB:
 
 ```
-Tautulli (first), other modules later ─▶ Varken jobs ─┬─▶ InfluxDB (optional, on by default)
-                                                      └─▶ in-memory gauges ─▶ GET /metrics (:9180) ◀── Prometheus
+module job ──▶ Outputs.write_points ─┬─▶ InfluxDB (if enabled)
+   │                                 └─▶ Metrics.observe ─▶ this run's points
+   └─ run by Metrics.run: on success, the run's points replace the job's snapshot; on failure, it's dropped
+
+Prometheus ──GET /metrics──▶ prometheus_client HTTP server ──▶ Metrics.collect: builds gauges from the snapshots
 ```
 
-- The same scheduled jobs update both outputs; a scrape only reads the latest values and never calls a
-  service.
-- InfluxDB becomes optional (`[influxdb] enabled`), so a Prometheus-only setup needs no InfluxDB. Existing
-  InfluxDB users are unaffected.
-- Tautulli comes first, because its per-stream detail (transcode decision, quality, player, bandwidth,
-  location) and library counts are what other exporters don't provide. Sonarr, Radarr, Lidarr and UniFi
-  already have good Prometheus exporters, so their Varken metrics come later.
-- Per-viewer labels are left out by default; viewer addresses are never labels.
-- It must run in a hardened container: read-only root filesystem, no capabilities, non-root, with secrets
-  read from files (`VRKN_<SECTION>_<KEY>_FILE`).
+- **Jobs.** With Prometheus on, `thread()` in [`Varken.py`](../Varken.py) runs each module job through
+  `Metrics.run`, keyed by service, server id and job name (the GeoLite2 update isn't a module job and runs
+  as before). `Metrics.run` clears the run's state, runs the job, and collects every batch of points the
+  job writes to the outputs. These are the same points InfluxDB gets; a module doesn't know which outputs
+  are on.
+- **Success.** A run succeeded when no request failed (`connection_handler()` sets
+  `helpers.request_state.failed`, per thread), no `ERROR` was logged from the job's thread (a logging
+  handler watches for it), and the job didn't raise. Then its points replace the job's snapshot and its
+  last-success time is set. Otherwise the job is marked down and its snapshot is emptied, so no stale data
+  is exported.
+- **Scrapes.** A scrape takes a copy of the snapshots under a lock and builds the gauges from it: the job
+  metrics for every job, and the Tautulli metrics from the `activity` and `stats` points. It never calls a
+  service and has no effect on the jobs. Per-viewer metrics are built only with `stream_details = true`;
+  the viewer IP address isn't in the points, so it can't be exported.
+- **Server.** prometheus_client's HTTP server, started once on `bind`:`port`, in its own thread. Plain
+  HTTP without authentication ([security.md](security.md#the-metrics-endpoint)).
 
-The proposed settings and metric names are in [configuration.md](configuration.md#planned-settings) and
-[interfaces.md](interfaces.md#prometheus-metrics-planned).
+Tautulli has detailed metrics, because its per-stream detail (transcode decision, quality, player,
+bandwidth) and library counts are what other exporters don't provide. The other modules have the job
+metrics, whose `varken_job_points` counts the items in each queue and calendar. Detailed Ombi and UniFi
+metrics are next on the [roadmap](roadmap.md); the \*arr apps already have good Prometheus exporters. The
+metric names are in [interfaces.md](interfaces.md#output-prometheus-metrics).
 
 ## Technology
 
 Python 3.14 with [requests](https://requests.readthedocs.io/), [geoip2](https://github.com/maxmind/GeoIP2-python),
 the [influxdb](https://github.com/influxdata/influxdb-python) client (archived upstream; to be replaced,
-see [dependencies.md](dependencies.md)), [schedule](https://github.com/dbader/schedule) and
-[distro](https://github.com/python-distro/distro). Distributed as a container image for linux/amd64 and
-linux/arm64, or run from a checkout.
+see [dependencies.md](dependencies.md)), [prometheus_client](https://github.com/prometheus/client_python),
+[schedule](https://github.com/dbader/schedule) and [distro](https://github.com/python-distro/distro).
+Distributed as a container image for linux/amd64 and linux/arm64, or run from a checkout.

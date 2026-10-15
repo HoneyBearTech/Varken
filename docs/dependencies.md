@@ -5,8 +5,10 @@ dependencies has a vulnerability.
 
 At runtime Varken needs Python and a handful of packages: [requests](https://requests.readthedocs.io/)
 (and urllib3) for HTTP, [geoip2](https://github.com/maxmind/GeoIP2-python) to read the GeoLite2 database,
-the [influxdb](https://github.com/influxdata/influxdb-python) client, [schedule](https://github.com/dbader/schedule)
-for the job timer and [distro](https://github.com/python-distro/distro) to log the host's distribution.
+the [influxdb](https://github.com/influxdata/influxdb-python) client,
+[prometheus_client](https://github.com/prometheus/client_python) for the `/metrics` endpoint,
+[schedule](https://github.com/dbader/schedule) for the job timer and
+[distro](https://github.com/python-distro/distro) to log the host's distribution.
 The exact list, with every transitive package, is [`requirements.txt`](../requirements.txt). The rest are
 the tools its checks and tests use and the GitHub Actions in its workflows.
 
@@ -70,8 +72,9 @@ Each finding is triaged within 14 days:
    fix for an exploitable critical or high-severity vulnerability goes out in a patch release within 30
    days; others go out with the next release, and within 90 days.
 2. **If upstream hasn't released a fix**, assess whether the vulnerable code is reachable in Varken (it
-   opens no ports; its inputs are its own config, API responses from the operator's services, the
-   GeoLite2 archive and InfluxDB's replies). If it is exploitable, mitigate it where possible and say so in
+   opens no ports unless the optional Prometheus endpoint is on; its inputs are its own config, API
+   responses from the operator's services, the GeoLite2 archive, InfluxDB's replies and, with that endpoint
+   on, HTTP requests to `/metrics`). If it is exploitable, mitigate it where possible and say so in
    the release notes; otherwise record the reason when dismissing the alert or in the pip-audit ignore
    list. Either way, it's fixed by a bump when upstream ships one.
 3. **If a dependency is abandoned**, replace it before it accumulates vulnerabilities.
