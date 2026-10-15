@@ -1,68 +1,16 @@
 from types import SimpleNamespace
 
 import pytest
-from geoip2.errors import AddressNotFoundError
 
+from tests.tautulli_data import ACTIVITY, LIBRARIES, SERVER, FakeOutput, FakeGeoIP, place
 from varken import tautulli
-from varken.structures import TautulliServer
 from varken.tautulli import PUBLIC_IP_URL, TautulliAPI
-
-SERVER = TautulliServer(api_key='tautulli-secret-key', fallback_ip='1.1.1.1', get_activity=True, get_stats=True,
-                        id=1, url='http://tautulli.example.com:8181', verify_ssl=False)
-
-SESSION = {
-    'session_id': 'abc', 'session_key': '12', 'username': 'viewer', 'friendly_name': 'Viewer',
-    'full_title': 'Some Show - Pilot', 'ip_address_public': '203.0.113.5', 'transcode_decision': 'copy',
-    'stream_video_decision': 'transcode', 'stream_video_resolution': '1080', 'stream_video_full_resolution': '',
-    'container': 'mkv', 'state': 'paused', 'product': 'Plex Web', 'product_version': '4.1-abc',
-    'platform': 'windows', 'transcode_hw_decoding': 0, 'transcode_hw_encoding': 1, 'media_type': 'episode',
-    'audio_codec': 'aac', 'audio_profile': 'lc', 'stream_audio_codec': 'aac', 'quality_profile': 'Original',
-    'progress_percent': '42', 'relayed': 0, 'secure': 1,
-}
-
-ACTIVITY = {'response': {'data': {
-    'sessions': [SESSION], 'stream_count': '1', 'total_bandwidth': '8000', 'wan_bandwidth': '0',
-    'lan_bandwidth': '8000', 'stream_count_transcode': '0', 'stream_count_direct_play': '0',
-    'stream_count_direct_stream': '1',
-}}}
-
-LIBRARIES = {'response': {'data': [
-    {'section_name': 'Movies', 'section_type': 'movie', 'count': '10'},
-    {'section_name': 'TV', 'section_type': 'show', 'count': '3', 'parent_count': '5', 'child_count': '40'},
-    {'section_name': 'Music', 'section_type': 'artist', 'count': '2', 'parent_count': '4', 'child_count': '30'},
-]}}
-
-
-def place(city='Springfield'):
-    return SimpleNamespace(location=SimpleNamespace(latitude=39.8, longitude=-89.6), city=SimpleNamespace(name=city),
-                           subdivisions=SimpleNamespace(most_specific=SimpleNamespace(iso_code='IL', name='Illinois')))
-
-
-class FakeDB:
-    def __init__(self):
-        self.points = []
-
-    def write_points(self, points):
-        self.points.extend(points)
-
-
-class FakeGeoIP:
-    def __init__(self, known):
-        self.known = known
-        self.lookups = []
-
-    def lookup(self, ip):
-        self.lookups.append(ip)
-        if ip not in self.known:
-            raise AddressNotFoundError(f'{ip} not in the database')
-        return self.known[ip]
-
 
 @pytest.fixture
 def api_with(monkeypatch):
     def make(reply, known=None):
         monkeypatch.setattr(tautulli, 'connection_handler', lambda session, request, verify: reply)
-        db = FakeDB()
+        db = FakeOutput()
         geoip = FakeGeoIP(known if known is not None else {'203.0.113.5': place()})
         return TautulliAPI(SERVER, db, geoip), db, geoip
     return make
@@ -136,3 +84,18 @@ def test_stats_write_one_point_per_library(api_with):
     assert shows['fields'] == {'total': 3, 'seasons': 5, 'episodes': 40}
     assert music['fields'] == {'total': 2, 'artists': 2, 'albums': 4, 'tracks': 30}
     assert music['tags']['section_name'] == 'Music'
+
+
+def test_activity_without_geoip_has_no_location(monkeypatch):
+    from varken.helpers import NoGeoIP
+    monkeypatch.setattr(tautulli, 'connection_handler', lambda session, request, verify: ACTIVITY)
+    monkeypatch.setattr(tautulli, 'requests_get', lambda *args, **kwargs: pytest.fail('looked up the public IP'))
+    db = FakeOutput()
+
+    TautulliAPI(SERVER, db, NoGeoIP()).get_activity()
+
+    tags = db.points[0]['tags']
+    assert tags['location'] == '👽'
+    assert tags['full_location'] == ''
+    assert tags['region_code'] is None
+    assert (tags['latitude'], tags['longitude']) == (37.234332396, -115.80666344)

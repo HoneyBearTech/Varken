@@ -75,12 +75,20 @@ jobs:
           coverage run -m pytest
           coverage report
 
+      # Prometheus' own lint of a scrape with every metric Varken exports (names, units, help text).
+      - name: Prometheus metrics (promtool)
+        run: |
+          python -m tests.sample_metrics > "$RUNNER_TEMP/metrics.txt"
+          docker run --rm -i --entrypoint promtool \
+            prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e \
+            check metrics < "$RUNNER_TEMP/metrics.txt"
+
       # Starts it the way docker-compose.yml does: unprivileged, read-only, no capabilities.
       - name: Image builds, runs as non-root and starts locked down
         run: |
           docker build -t varken:ci .
           test "$(docker run --rm varken:ci id -u)" != 0
-          docker run --rm --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true \
+          docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges:true \
             varken:ci python -u /app/Varken.py --help
 
       - name: Compose file

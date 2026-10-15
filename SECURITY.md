@@ -58,8 +58,9 @@ Varken is built from (the Python base image and the Python packages) are handled
 ## Scope
 
 Varken is a collector: on a schedule it reads data from the Tautulli, Sonarr, Radarr, Lidarr, Ombi,
-SickChill and UniFi servers its operator configures, looks up viewer locations in a local MaxMind GeoLite2
-database, and writes the results to InfluxDB. It opens no ports today. What it does and doesn't protect
+SickChill and UniFi servers its operator configures, optionally looks up viewer locations in a local MaxMind
+GeoLite2 database, and serves the results as Prometheus metrics. Its one listening port is that `/metrics`
+endpoint (9180 by default). What it does and doesn't protect
 against is described in [docs/security.md](docs/security.md) (its security requirements), and the
 reasoning in [docs/assurance-case.md](docs/assurance-case.md) (threat model, trust boundaries and the
 defences against common weaknesses).
@@ -70,6 +71,6 @@ other than the service it belongs to, execute code from a crafted API response o
 release artifact that doesn't match its signature, or a published file that leaks a secret. Not
 vulnerabilities: anything that needs write access to the host, the data folder, `varken.ini` or the
 container's environment (they are trusted inputs); the weaknesses already listed in
-[docs/security.md](docs/security.md#known-weaknesses); and the access control of InfluxDB and Grafana
-themselves. Vulnerabilities in Tautulli, the \*arr apps, Ombi, SickChill, UniFi, InfluxDB, Grafana or
+[docs/security.md](docs/security.md#known-weaknesses); and the access control of Prometheus and Grafana
+themselves. Vulnerabilities in Tautulli, the \*arr apps, Ombi, SickChill, UniFi, Prometheus, Grafana or
 Python belong with those projects, but please tell us too if Varken makes one worse.

@@ -1,21 +1,12 @@
-# Varken with InfluxDB 1.x and Grafana, on one host.
+# Varken on its own, serving Prometheus metrics. Point your Prometheus at it (Argus, for example, runs Varken in
+# its own stack); Grafana then reads the data from Prometheus.
 #
 #   cp .env.example .env     # then fill in the services you use (docs/configuration.md lists every setting)
 #   mkdir -p config && sudo chown 1000:1000 config
 #   docker compose up -d
-#
-# Varken itself only needs InfluxDB; drop the grafana service if you already run Grafana. Images are pinned by
-# version and digest; Dependabot proposes updates.
 name: varken
 
 services:
-  influxdb:
-    # Varken writes with the InfluxDB 1.x API; InfluxDB 2 and 3 are not supported.
-    image: influxdb:1.12.4@sha256:f86abb84b7b78f82f5bef55dd9d034837e10701940e408d3cfb8da256ffd4bb5
-    volumes:
-      - influxdb-data:/var/lib/influxdb
-    restart: unless-stopped
-
   varken:
     image: ghcr.io/honeybeartech/varken:${VARKEN_VERSION:-latest}
     # The image runs as 1000:1000; the config folder must belong to the same uid/gid.
@@ -27,26 +18,12 @@ services:
     volumes:
       # varken.ini, the GeoLite2 database and logs/.
       - ${VARKEN_CONFIG_DIR:-./config}:/config
+    ports:
+      # /metrics, for a Prometheus on this host. The endpoint has no authentication: publish it only on a loopback
+      # or private address, or leave this out when Prometheus shares the container's Docker network.
+      - "${VARKEN_METRICS_BIND:-127.0.0.1:9180}:9180"
     read_only: true
-    tmpfs:
-      - /tmp
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
-    depends_on:
-      - influxdb
     restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
-    ports:
-      - "${GRAFANA_BIND:-127.0.0.1:3000}:3000"
-    volumes:
-      - grafana-data:/var/lib/grafana
-    depends_on:
-      - influxdb
-    restart: unless-stopped
-
-volumes:
-  influxdb-data:
-  grafana-data:

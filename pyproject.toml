@@ -23,11 +23,8 @@ select = ["E", "F", "W", "B", "S"]
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = ["--strict-config", "--strict-markers", "-ra"]
-# Any warning is a failure, except the archived influxdb client's own deprecation warning on import.
-filterwarnings = [
-    "error",
-    "ignore:datetime.datetime.utcfromtimestamp:DeprecationWarning:influxdb",
-]
+# Any warning is a failure.
+filterwarnings = ["error"]
 
 [tool.coverage.run]
 branch = true
@@ -35,6 +32,6 @@ source = ["varken"]
 
 [tool.coverage.report]
 # The floor is the current figure; it rises toward 80 % (the roadmap), never down.
-fail_under = 55
+fail_under = 65
 show_missing = true
 skip_covered = true

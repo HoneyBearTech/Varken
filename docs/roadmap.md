@@ -6,44 +6,51 @@ Suggestions are welcome in [Issues](https://github.com/HoneyBearTech/Varken/issu
 
 ## Where it stands
 
-Varken collects data from Tautulli, Sonarr, Radarr, Lidarr, Ombi, SickChill and UniFi and writes it to
-InfluxDB 1.x for Grafana dashboards. The original Boerderij project stopped at 1.7.7 in December 2020; this
-fork picked it up in October 2026. The first pass modernized the runtime and the project around it: Python
-3.14, hash-pinned dependencies, a non-root image for amd64 and arm64 on GHCR, offline tests, CI with
-linting, secret scanning and dependency auditing, and signed releases with an SBOM and provenance. It also
+Varken collects data from Tautulli, Sonarr, Radarr, Lidarr, Ombi, SickChill and UniFi and serves it as
+Prometheus metrics, for Prometheus to scrape and Grafana to chart. The original Boerderij
+project stopped at 1.7.7 in December 2020; this fork picked it up in October 2026. The first pass
+modernized the runtime and the project around it: Python 3.14, hash-pinned dependencies, a non-root image
+for amd64 and arm64 on GHCR, offline tests, CI with linting, secret scanning and dependency auditing, and
+signed releases with an SBOM and provenance. It also
 fixed two inherited security bugs ([security.md](security.md#fixed-in-200)). **2.0.0**, the first release,
 ships that work.
 
+The second pass built most of Phase 2, which also ships in 2.0.0:
+
+- A Prometheus `/metrics` endpoint (`[prometheus]` `bind`, `port`, default 9180), always on, built from the
+  points the existing jobs collect: `varken_job_up`, last-success timestamps and item counts for every
+  module, and Tautulli's streams by state and transcode decision, bandwidth and library item counts. Per-viewer
+  metrics are behind `stream_details`, off by default ([interfaces.md](interfaces.md#output-prometheus-metrics)).
+  CI checks the metrics with `promtool`.
+- Varken is Prometheus-only (the maintainer's decision, October 2026): the InfluxDB output, the `[influxdb]`
+  settings, the archived `influxdb` client, Tautulli's history import and `utilities/` are gone. Data already
+  in InfluxDB stays there ([upgrading.md](upgrading.md)).
+- Secrets from files (`VRKN_<SECTION>_<KEY>_FILE`), for Docker and compose secrets.
+- Logging to stdout only (`LOG_TO_FILE=false`); the hardened container profile (read-only root filesystem,
+  no capabilities, non-root, only `/config` writable) is documented in [security.md](security.md#the-container).
+- GeoIP is optional: without a MaxMind license key, Varken runs without locations and contacts neither
+  MaxMind nor `api.ipify.org`.
+
 ## Over the following year
+
+**Next, Phase 3: Argus integration** (**Planned**, in the [Argus](https://github.com/HoneyBearTech/Argus) repository)
+
+- A `varken` service and Prometheus job in Argus, a Tautulli dashboard and alerts (for example "Varken
+  silent" and "Tautulli unreachable"). Varken stays a standalone project; Argus is one user of it.
 
 **Phase 1: finish modernizing the runtime**
 
-- Replace the archived `influxdb` client with direct HTTP writes of InfluxDB line protocol to InfluxDB 1.x
-  ([dependencies.md](dependencies.md#the-archived-influxdb-client)).
 - Log at INFO by default instead of DEBUG.
 - `verify_ssl` on by default. This is a breaking change and will be announced in the changelog.
 - Download the GeoLite2 database with MaxMind's account ID + license key Basic authentication, instead of
   the license key in the URL.
-- Timeouts on every request to the services, InfluxDB and MaxMind.
-- Fix `utilities/historical_tautulli_import.py`, which fails at start-up.
+- Timeouts on every request to the services and MaxMind.
 - Check the Sonarr and Radarr modules against current releases, which serve their API under `/api/v3`.
 - Raise test coverage to 80 %, and adopt `ruff format` and a wider ruff rule set.
 
-**Phase 2: Prometheus output** ([design](architecture.md#planned-prometheus-output))
+**Phase 2: Prometheus output** (built, see above; [how it works](architecture.md#the-prometheus-output))
 
-- An optional `/metrics` endpoint (`[prometheus]` `enabled`, `bind`, `port`, default 9180), with gauges
-  updated by the existing jobs. Tautulli first: streams by state and transcode decision, bandwidth, library
-  item counts, plus `varken_up` and last-success timestamps for every module.
-- InfluxDB becomes optional (`[influxdb]` `enabled`, on by default), so either or both outputs can be used.
-- Secrets from files (`VRKN_<SECTION>_<KEY>_FILE`), for Docker and compose secrets.
-- Logging to stdout only, as an option, and a documented hardened profile (read-only root filesystem, no
-  capabilities, non-root, only `/config` writable).
-- Then metrics for the other modules.
-
-**Phase 3: Argus integration** (in the [Argus](https://github.com/HoneyBearTech/Argus) repository)
-
-- A `varken` service and Prometheus job in Argus, a Tautulli dashboard and alerts (for example "Varken
-  silent" and "Tautulli unreachable"). Varken stays a standalone project; Argus is one user of it.
+- Still to do: detailed metrics for Ombi and UniFi, which today have only the job metrics.
 
 **Security and project health**
 
@@ -61,9 +68,7 @@ ships that work.
 
 ## Later, if there's interest (icebox)
 
-- InfluxDB 2 and 3 support.
 - An Overseerr/Jellyseerr module, as Ombi's successor.
-- Refreshed Grafana dashboards for standalone InfluxDB users (current Grafana panels).
 - Fuzzing the INI and environment parser.
 - Jellyfin and Emby support.
 
@@ -73,9 +78,9 @@ ships that work.
   [exportarr](https://github.com/onedr0p/exportarr) for the \*arr apps, [unpoller](https://github.com/unpoller/unpoller)
   for UniFi, and a Plex exporter for Plex. Varken's Prometheus output focuses on what they don't cover,
   starting with Tautulli. The existing modules keep working.
-- **Store data itself.** InfluxDB (or Prometheus) holds the data; Varken keeps only its config, the GeoIP
-  database and logs.
+- **Store data itself.** Prometheus holds the history; Varken keeps only its config, the GeoIP database,
+  logs and, for the metrics endpoint, the last run of each job in memory.
 - **Act on your media servers.** Varken only reads; it will never change, delete or request anything in
   the services it collects from.
-- **Collect data about its users.** It contacts only the services you configure, MaxMind, and a
-  public-address service in one fallback case.
+- **Collect data about its users.** It contacts only the services you configure and, with GeoIP on,
+  MaxMind and a public-address service in one fallback case.

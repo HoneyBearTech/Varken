@@ -43,3 +43,9 @@ def test_logs_to_a_file_in_the_data_folder(tmp_path):
     for handler in varken_logger.logger.handlers:
         handler.flush()
     assert 'hello from the test' in (tmp_path / 'logs' / 'varken.log').read_text()
+
+
+def test_logs_to_stdout_only_without_a_file(tmp_path):
+    VarkenLogger(debug=False, data_folder=str(tmp_path), log_to_file=False)
+
+    assert not (tmp_path / 'logs').exists()

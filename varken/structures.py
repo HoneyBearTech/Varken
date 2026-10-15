@@ -11,13 +11,10 @@ if version_info < (3, 6, 2):
 
 
 # Server Structures
-class InfluxServer(NamedTuple):
-    password: str = 'root'  # noqa: S105 -- InfluxDB 1.x's documented default, overridden by varken.ini
-    port: int = 8086
-    ssl: bool = False
-    url: str = 'localhost'
-    username: str = 'root'
-    verify_ssl: bool = False
+class PrometheusServer(NamedTuple):
+    bind: str = '0.0.0.0'  # noqa: S104 -- listens in a container by default; varken.ini can narrow it
+    port: int = 9180
+    stream_details: bool = False
 
 
 class SonarrServer(NamedTuple):

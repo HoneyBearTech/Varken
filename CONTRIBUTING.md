@@ -34,8 +34,9 @@ cp data/varken.example.ini data/varken.ini && chmod 600 data/varken.ini   # then
 .venv/bin/python Varken.py
 ```
 
-It needs a reachable InfluxDB 1.x; a throwaway one is `docker run --rm -p 8086:8086 influxdb:1.8`. Every
-setting is in [docs/configuration.md](docs/configuration.md).
+It serves its metrics on port 9180: `curl -s 127.0.0.1:9180/metrics` shows them (set `[prometheus]`
+`bind = 127.0.0.1` to keep them to your machine). Every setting is in
+[docs/configuration.md](docs/configuration.md).
 
 ## When and how tests run
 
@@ -47,7 +48,7 @@ down, and validates the compose file. CodeQL, dependency review, a DCO check and
 Scorecard also run on the repository, and Trivy scans the image weekly for known vulnerabilities.
 
 The tests in [`tests/`](tests/) are offline: they run against recorded API responses and mocks, and never
-reach Tautulli, the \*arr apps, MaxMind or a real InfluxDB.
+reach Tautulli, the \*arr apps or MaxMind.
 
 ## Before you open a pull request
 
@@ -65,16 +66,16 @@ actionlint, hadolint, gitleaks and pip-audit run in CI; the exact commands are i
 
 ## Coding standards
 
-- **Python** (`Varken.py`, `varken/`, `utilities/`, `tests/`): [PEP 8](https://peps.python.org/pep-0008/),
+- **Python** (`Varken.py`, `varken/`, `tests/`): [PEP 8](https://peps.python.org/pep-0008/),
   enforced by [ruff](https://docs.astral.sh/ruff/) with a line length of 120 and the rule families in
-  [`pyproject.toml`](pyproject.toml): pycodestyle, Pyflakes, bugbear and the bandit security rules. Most of the code predates this fork, so `ruff format` isn't applied
-  yet (it would rewrite every file; it's on the [roadmap](docs/roadmap.md)): match the style of the
-  surrounding code. New code gets type hints and docstrings.
+  [`pyproject.toml`](pyproject.toml): pycodestyle, Pyflakes, bugbear and the bandit security rules. Most of
+  the code predates this fork, so `ruff format` isn't applied yet (it would rewrite every file; it's on the
+  [roadmap](docs/roadmap.md)): match the style of the surrounding code. New code gets type hints and docstrings.
 - **Network calls** go through `connection_handler()` in [`varken/helpers.py`](varken/helpers.py), so error
   handling stays in one place. Varken only reads from the services it collects from: no request may change
   data there.
 - **Secrets** (API keys, passwords, the MaxMind license key) are never logged in full, never put in a URL
-  where a header would do, and never written anywhere but InfluxDB's own connection.
+  where a header would do, never sent anywhere but the service they belong to, and never in the metrics.
 - **YAML** (workflows, compose file, issue forms): [yamllint](https://yamllint.readthedocs.io/) in strict
   mode, warnings treated as errors.
 - **GitHub Actions workflows**: [actionlint](https://github.com/rhysd/actionlint), which also runs
@@ -91,10 +92,10 @@ actionlint, hadolint, gitleaks and pip-audit run in CI; the exact commands are i
 
 ## Test policy
 
-- **New behaviour comes with automated tests**: a new module, measurement, setting or code path gets a test
+- **New behaviour comes with automated tests**: a new module, metric, setting or code path gets a test
   that exercises it against a recorded response.
 - **Bug fixes come with a regression test** that fails before the fix, wherever the bug can be tested.
-- **Tests are offline.** They use fixtures and mocks, never a real service, InfluxDB or MaxMind, and never
+- **Tests are offline.** They use fixtures and mocks, never a real service or MaxMind, and never
   real API keys, hostnames or viewing data. Fixtures use placeholders such as `tautulli.example.com`.
 - Coverage must stay at or above the floor in [`pyproject.toml`](pyproject.toml); CI fails below it. The
   floor only goes up, towards the 80 % target on the [roadmap](docs/roadmap.md).
@@ -134,7 +135,7 @@ it with `git rebase --signoff master` and force-push your branch.
 - Keep each pull request focused on one change, and describe what it does and why.
 - Add a line to `CHANGELOG.md` under `## [Unreleased]` for anything a user would notice, and update
   `data/varken.example.ini`, `.env.example`, [docs/configuration.md](docs/configuration.md) and the other docs when you
-  change settings, measurements or behaviour. A change that needs action on upgrade says so in the
+  change settings, metrics or behaviour. A change that needs action on upgrade says so in the
   changelog.
 - **This repository is public.** Never commit API keys, passwords, MaxMind license keys, `varken.ini`,
   `.env` files, hostnames, IP addresses, usernames or media titles, including in test fixtures and

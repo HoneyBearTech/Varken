@@ -2,7 +2,6 @@
 # regenerated with:  uv pip compile --generate-hashes --python-version 3.14 requirements.in -o requirements.txt
 distro
 geoip2
-# The InfluxDB 1.x client. Archived upstream; replacing it with direct HTTP writes is on the roadmap.
-influxdb
+prometheus-client
 requests
 schedule

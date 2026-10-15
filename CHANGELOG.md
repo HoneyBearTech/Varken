@@ -8,23 +8,43 @@ All notable changes to this project are documented in this file. The format is b
 ## [Unreleased]
 
 The first HoneyBearTech release, planned as 2.0.0: Varken is now a standalone project maintained at
-[HoneyBearTech/Varken](https://github.com/HoneyBearTech/Varken). See [upgrading](docs/upgrading.md).
+[HoneyBearTech/Varken](https://github.com/HoneyBearTech/Varken), and serves its data as Prometheus metrics
+instead of writing it to InfluxDB. See [upgrading](docs/upgrading.md).
+
+### Added
+- Prometheus metrics, now Varken's output: a `/metrics` endpoint that is always on (`[prometheus]` `bind`,
+  default `0.0.0.0`; `port`, default 9180; `VRKN_PROMETHEUS_*`). It serves `varken_build_info`, and
+  `varken_job_up`, `varken_job_last_success_timestamp_seconds` and `varken_job_points` for every job, and for
+  Tautulli streams, streams by decision, bandwidth, sessions and library items. Per-viewer metrics (user,
+  title, city, progress) need `stream_details = true`; viewer IP addresses are never exported. Scrapes read
+  the last run of each job and never call a service. The endpoint has no authentication or TLS: keep it on a
+  private network. An existing `varken.ini` gets the `[prometheus]` section, with its defaults, on its first
+  start (the file must be writable). The image exposes port 9180, and CI checks a sample scrape with
+  `promtool check metrics`. See [interfaces](docs/interfaces.md#output-prometheus-metrics).
+- Secrets from files: `VRKN_<SECTION>_<KEY>_FILE` names a file whose contents become the value of
+  `VRKN_<SECTION>_<KEY>`, for Docker and compose secrets. Setting both, or a file that can't be read, stops
+  Varken. Values read this way are masked in the logs like any other.
+- `LOG_TO_FILE=false` logs to stdout only, without a `logs/` folder in the data folder.
 
 ### Changed
+- GeoIP is optional. Without a MaxMind license key (empty, or the example's placeholder), Varken logs that
+  GeoIP is off, gives Tautulli streams the unknown-location values, and never contacts MaxMind or
+  `api.ipify.org`. Before, Tautulli without a downloadable GeoLite2 database stopped Varken at start-up.
+  `.env.example` now leaves the key empty.
+- The image creates `/config` owned by 1000:1000, so a new Docker named volume mounted there is writable
+  from the start. Bind-mounted folders still need `chown 1000:1000`.
 - **Breaking:** the image is now `ghcr.io/honeybeartech/varken`, built for linux/amd64 and linux/arm64
   (linux/arm/v7 is no longer built).
 - **Breaking:** the container runs as an unprivileged user (uid/gid 1000), so the config folder must belong to
-  that user (`chown -R 1000:1000`), or run the container with `user:`. The Unraid template uses `--user 99:100`.
+  that user (`chown -R 1000:1000`), or run the container with `user:`. The Unraid template uses `--user 99:100`
+  and publishes port 9180.
 - **Breaking:** Python 3.14 (the image's base is `python:3.14.7-slim`, pinned by digest). Every dependency is
-  updated to its current release (requests 2.34, urllib3 2.8, geoip2 5.3, schedule 1.2, distro 1.9,
-  influxdb 5.3.2) and pinned with hashes.
-- The `hash` field Varken writes is a SHA-256 instead of an MD5 of the same values (it only identifies
-  items; dashboards counting distinct values across the upgrade may count an item twice for one retention
-  window).
-- The example `docker-compose.yml` pins InfluxDB 1.12 and Grafana 13 by digest, reads settings from `.env`
-  (template `.env.example`) and runs Varken with a read-only root filesystem, no capabilities and
-  `no-new-privileges`. Grafana's Angular worldmap and piechart plugins are gone from it, since Grafana 12+ can't
-  load them.
+  updated to its current release (requests 2.34, urllib3 2.8, geoip2 5.3, schedule 1.2, distro 1.9) and
+  pinned with hashes.
+- **Breaking:** the example `docker-compose.yml` runs Varken alone, with no InfluxDB and no Grafana: bring
+  your own Prometheus and Grafana (in the maintainer's setup, Argus provides both). It publishes `/metrics` on
+  `127.0.0.1:9180` (`VARKEN_METRICS_BIND`), reads settings from `.env` (template `.env.example`) and runs
+  Varken with a read-only root filesystem, no capabilities and `no-new-privileges`.
 - Releases are signed: the image with cosign (keyless), with an SBOM and SLSA provenance, and the release files
   with a signed `SHA256SUMS`. See [verifying releases](docs/verifying-releases.md).
 
@@ -44,6 +64,15 @@ The first HoneyBearTech release, planned as 2.0.0: Varken is now a standalone pr
 - The startup log works on current `distro` releases, which removed `linux_distribution()`.
 
 ### Removed
+- **Breaking:** the InfluxDB output. Varken no longer writes to InfluxDB, and no longer reads the `[influxdb]`
+  section or the `VRKN_INFLUXDB_*` variables (a `varken.ini` that still has `[influxdb]` works: the section is
+  ignored). Data already in InfluxDB stays there, but dashboards built on it, such as upstream's, stop
+  updating. Scrape Varken with Prometheus and build Grafana dashboards on the metrics instead
+  ([upgrading](docs/upgrading.md#from-upstream-varken-17x-boerderijvarken-to-200)).
+- **Breaking:** the `influxdb` Python package, which was archived upstream, and with it msgpack, pytz, six and
+  python-dateutil.
+- **Breaking:** the Tautulli history import, and `utilities/` (`grafana_build.py`, which imported upstream's
+  InfluxDB dashboard into Grafana, and `historical_tautulli_import.py`). The image no longer contains them.
 - Links to the original project's Discord, wiki, Docker Hub image and donation page.
 
 ## [v1.7.7](https://github.com/Boerderij/Varken/tree/v1.7.7) (2020-12-21)

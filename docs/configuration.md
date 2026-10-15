@@ -42,8 +42,36 @@ as (`chmod 600`): it holds API keys and passwords.
 - A value that isn't a valid number (or a `fallback_ip` that isn't an IPv4 address) logs
   `Invalid configuration value` and skips that server. An invalid URL stops Varken.
 
-Varken also reads two plain environment variables: `DATA_FOLDER` (above) and `DEBUG` (see
-[Logging](#logging)).
+Varken also reads three plain environment variables: `DATA_FOLDER` (above), and `DEBUG` and `LOG_TO_FILE`
+(see [Logging](#logging)).
+
+## Values from files (`_FILE`)
+
+Any `VRKN_<SECTION>_<KEY>` can instead be read from a file, for Docker and compose secrets: set
+`VRKN_<SECTION>_<KEY>_FILE` to the file's path, and Varken uses the file's contents, with surrounding
+whitespace and the trailing newline stripped, as the value of `VRKN_<SECTION>_<KEY>`. For example, with a
+compose secret named `tautulli_api_key`:
+
+```yaml
+services:
+  varken:
+    environment:
+      VRKN_TAUTULLI_1_APIKEY_FILE: /run/secrets/tautulli_api_key
+    secrets:
+      - tautulli_api_key
+secrets:
+  tautulli_api_key:
+    file: ./secrets/tautulli_api_key.txt
+```
+
+- Set one or the other: if both `VRKN_<SECTION>_<KEY>` and `VRKN_<SECTION>_<KEY>_FILE` are set, Varken stops.
+  Remove the plain variable from `.env` when you move it to a file.
+- If the file can't be read, Varken stops and logs the variable and the path. It must be readable by the
+  user Varken runs as (uid 1000 in the image).
+- The rules above still apply: the key must exist in `varken.ini`, and values read this way are masked in
+  the logs like any other ([Logging](#logging)).
+- The file is read once, at start-up; restart Varken after changing it. Varken copies the value into its
+  own process environment, so it isn't in the container's configuration (`docker inspect`) or in `.env`.
 
 ## `[global]`
 
@@ -56,24 +84,28 @@ Varken also reads two plain environment variables: `DATA_FOLDER` (above) and `DE
 | `ombi_server_ids` | `VRKN_GLOBAL_OMBI_SERVER_IDS` | `1` | Ombi servers to read, or `false`. |
 | `sickchill_server_ids` | `VRKN_GLOBAL_SICKCHILL_SERVER_IDS` | `false` | SickChill servers to read, or `false`. |
 | `unifi_server_ids` | `VRKN_GLOBAL_UNIFI_SERVER_IDS` | `false` | UniFi controllers to read, or `false`. |
-| `maxmind_license_key` | `VRKN_GLOBAL_MAXMIND_LICENSE_KEY` | placeholder | Your MaxMind license key, used to download the GeoLite2-City database when Tautulli is enabled. Free with a [MaxMind account](https://www.maxmind.com/en/geolite2/signup). **Secret.** |
+| `maxmind_license_key` | `VRKN_GLOBAL_MAXMIND_LICENSE_KEY` | placeholder | Optional. Your MaxMind license key, used to download the GeoLite2-City database that places Tautulli viewers on a map. Free with a [MaxMind account](https://www.maxmind.com/en/geolite2/signup). Empty, or still the example's `xxxx…` placeholder, turns GeoIP off ([below](#tautulli-n)). **Secret.** |
 
 Varken stops if every service is disabled.
 
-## `[influxdb]`
+## `[prometheus]`
 
-Varken writes to the database `varken` on this InfluxDB 1.x server, and creates it (with a default
-retention policy `varken 30d-1h`: 30 days, 1-hour shards) if it doesn't exist. The database name isn't
-configurable.
+Varken's output, always on: an HTTP endpoint at `/metrics` that Prometheus scrapes. The metrics are listed in
+[interfaces.md](interfaces.md#output-prometheus-metrics).
 
 | Key | Environment variable | Example | Meaning |
 | --- | --- | --- | --- |
-| `url` | `VRKN_INFLUXDB_URL` | `influxdb.domain.tld` | Host name or IP of InfluxDB, without scheme or port. Varken refuses to start while it is still the example value. |
-| `port` | `VRKN_INFLUXDB_PORT` | `8086` | InfluxDB HTTP port. |
-| `ssl` | `VRKN_INFLUXDB_SSL` | `false` | Use HTTPS. |
-| `verify_ssl` | `VRKN_INFLUXDB_VERIFY_SSL` | `false` | Check InfluxDB's TLS certificate. |
-| `username` | `VRKN_INFLUXDB_USERNAME` | `root` | InfluxDB user. |
-| `password` | `VRKN_INFLUXDB_PASSWORD` | `root` | That user's password. **Secret.** Change it from the example. |
+| `bind` | `VRKN_PROMETHEUS_BIND` | `0.0.0.0` | The address to listen on. Must be an IP address (IPv4 or IPv6), not a host name, or Varken stops. `0.0.0.0` is every IPv4 interface (in a container, the container's own); `127.0.0.1` keeps it to the same host. |
+| `port` | `VRKN_PROMETHEUS_PORT` | `9180` | The port to listen on, from 1 to 65535, or Varken stops. ScyllaDB also uses 9180 by default; pick another port if something on the host already has it. |
+| `stream_details` | `VRKN_PROMETHEUS_STREAM_DETAILS` | `false` | Add the per-viewer Tautulli metrics: who is watching what, on which player, and from which city. Personal data, so off by default; viewer IP addresses are never exported either way. |
+
+The endpoint has no authentication and no TLS. Keep it on a private network (a Docker network shared with
+Prometheus, for example) or bind it to `127.0.0.1`; see [security.md](security.md#the-metrics-endpoint).
+
+**From upstream Varken.** A `varken.ini` from upstream 1.7.x has no `[prometheus]` section: on its first
+start Varken adds it with the defaults above, as for any [missing key](#how-values-are-read) (which needs
+write access to the file). Its `[influxdb]` section, and any `VRKN_INFLUXDB_*` variable, is ignored: Varken no
+longer writes to InfluxDB. Delete the section or leave it ([upgrading.md](upgrading.md)).
 
 ## Keys every server section has
 
@@ -90,14 +122,18 @@ Each server is a section named `[<service>-<id>]`, for example `[tautulli-1]` or
 
 | Key | Environment variable | Example | Meaning |
 | --- | --- | --- | --- |
-| `fallback_ip` | `VRKN_TAUTULLI_<ID>_FALLBACK_IP` | a public IPv4 address | Located instead of a viewer whose address isn't in the GeoLite2 database (typically viewers on your LAN). Must be a public IPv4 address, normally your own; a private address stops Varken. |
+| `fallback_ip` | `VRKN_TAUTULLI_<ID>_FALLBACK_IP` | a public IPv4 address | Located instead of a viewer whose address isn't in the GeoLite2 database (typically viewers on your LAN). Must be a public IPv4 address, normally your own; a private address stops Varken. It is checked even with GeoIP off, though not used then. |
 | `get_activity` | `VRKN_TAUTULLI_<ID>_GET_ACTIVITY` | `true` | Record current streams and stream totals. |
 | `get_activity_run_seconds` | `VRKN_TAUTULLI_<ID>_GET_ACTIVITY_RUN_SECONDS` | `30` | How often. |
 | `get_stats` | `VRKN_TAUTULLI_<ID>_GET_STATS` | `true` | Record library item counts. |
 | `get_stats_run_seconds` | `VRKN_TAUTULLI_<ID>_GET_STATS_RUN_SECONDS` | `3600` | How often. |
 
-With Tautulli enabled, Varken needs the GeoLite2 database: it downloads it at start-up if it is missing
-(and stops if it can't), and checks every 12 to 24 hours whether it is more than 30 days old.
+**GeoIP is optional.** With Tautulli enabled and a `maxmind_license_key` set, Varken uses the GeoLite2
+database to place viewers: it downloads it at start-up if it is missing (and stops if it can't), and checks
+every 12 to 24 hours whether it is more than 30 days old. Without a key (empty, or the example's placeholder)
+it logs `No MaxMind license key: GeoIP is off and Tautulli streams have no location.` and every stream gets the
+unknown location ([interfaces.md](interfaces.md#output-prometheus-metrics)); Varken then never contacts MaxMind
+or `api.ipify.org`.
 
 ## `[sonarr-N]`
 
@@ -164,11 +200,14 @@ UniFi has no `apikey`; it logs in with a username and password instead.
 
 Varken logs to stdout and to `logs/varken.log` in the data folder (rotated at 5 MB, five old files kept).
 
+- **`LOG_TO_FILE=false`** (or `no`, any case) in the environment logs to stdout only, and Varken creates no
+  `logs/` folder in the data folder. Useful in a container whose logs are collected anyway (`docker logs`,
+  journald). It is `true` by default.
+
 - **Debug logging is on by default.** Set `DEBUG=false` in the environment, or pass `-ND` / `--no_debug`
-  (which only applies when `DEBUG` isn't set), to log at INFO. The debug log includes every point written to
-  InfluxDB (usernames, titles, locations) and request URLs; see
-  [security.md](security.md#known-weaknesses). Turning it off by default is on the
-  [roadmap](roadmap.md).
+  (which only applies when `DEBUG` isn't set), to log at INFO. The debug log includes the URL of every request
+  Varken makes (secrets masked as below); see [security.md](security.md#known-weaknesses). Turning it off by
+  default is on the [roadmap](roadmap.md).
 - Secrets are masked in log lines as `********` followed by their last five characters: the values of the
   `apikey`, `username`, `password`, `url` and `maxmind_license_key` keys in `varken.ini`, and of every
   `VRKN_*` variable whose name ends in `_APIKEY`, `_USERNAME`, `_PASSWORD`, `_URL` or
@@ -177,8 +216,9 @@ Varken logs to stdout and to `logs/varken.log` in the data folder (rotated at 5 
 
 ## Example
 
-A minimal `varken.ini` that reads one Tautulli server over HTTPS. Sections of disabled services aren't
-read, so they can be left out (or left as they are in the example file).
+A minimal `varken.ini` that reads one Tautulli server over HTTPS and serves its metrics on port 9180.
+Sections of disabled services aren't read, so they can be left out (or left as they are in the example file);
+`[global]` and `[prometheus]` are always read.
 
 ```ini
 [global]
@@ -189,15 +229,12 @@ tautulli_server_ids = 1
 ombi_server_ids = false
 sickchill_server_ids = false
 unifi_server_ids = false
-maxmind_license_key = <your MaxMind license key>
+maxmind_license_key = <your MaxMind license key, or empty for no GeoIP>
 
-[influxdb]
-url = influxdb
-port = 8086
-ssl = false
-verify_ssl = false
-username = varken
-password = <a strong password>
+[prometheus]
+bind = 0.0.0.0
+port = 9180
+stream_details = false
 
 [tautulli-1]
 url = tautulli.example.com
@@ -210,15 +247,3 @@ get_activity_run_seconds = 30
 get_stats = true
 get_stats_run_seconds = 3600
 ```
-
-## Planned settings
-
-These are designed but **not built yet** ([roadmap](roadmap.md)); today Varken ignores them.
-
-| Key | Environment variable | Default | Meaning |
-| --- | --- | --- | --- |
-| `[prometheus]` `enabled` | `VRKN_PROMETHEUS_ENABLED` | `false` | **Planned.** Serve Prometheus metrics ([interfaces.md](interfaces.md#prometheus-metrics-planned)). |
-| `[prometheus]` `bind` | `VRKN_PROMETHEUS_BIND` | `0.0.0.0` | **Planned.** Address to listen on. |
-| `[prometheus]` `port` | `VRKN_PROMETHEUS_PORT` | `9180` | **Planned.** Port to listen on. |
-| `[influxdb]` `enabled` | `VRKN_INFLUXDB_ENABLED` | `true` | **Planned.** Turn the InfluxDB output off, for Prometheus-only setups. |
-| any key | `VRKN_<SECTION>_<KEY>_FILE` | unset | **Planned.** Read the value from a file, for Docker and compose secrets. |

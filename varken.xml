@@ -11,7 +11,7 @@
   <Support>https://github.com/HoneyBearTech/Varken/issues</Support>
   <Project>https://github.com/HoneyBearTech/Varken</Project>
   <Overview>
-    Varken is a standalone command-line utility to aggregate data from the Plex ecosystem into InfluxDB. Examples use Grafana for a frontend
+    Varken collects data from the Plex ecosystem and serves it as Prometheus metrics on port 9180.
   </Overview>
   <Category/>
   <WebUI/>
@@ -23,11 +23,17 @@
   <DonateText/>
   <DonateLink/>
   <Description>
-    Varken is a standalone command-line utility to aggregate data from the Plex ecosystem into InfluxDB. Examples use Grafana for a frontend
+    Varken collects data from the Plex ecosystem and serves it as Prometheus metrics on port 9180.
   </Description>
   <Networking>
     <Mode>bridge</Mode>
-    <Publish/>
+    <Publish>
+      <Port>
+        <HostPort>9180</HostPort>
+        <ContainerPort>9180</ContainerPort>
+        <Protocol>tcp</Protocol>
+      </Port>
+    </Publish>
   </Networking>
   <Data>
     <Volume>

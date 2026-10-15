@@ -7,8 +7,8 @@ from varken.helpers import hashit, connection_handler
 
 
 class RadarrAPI(object):
-    def __init__(self, server, dbmanager):
-        self.dbmanager = dbmanager
+    def __init__(self, server, output):
+        self.output = output
         self.server = server
         # Create session to reduce server web thread load, and globally define pageSize for all requests
         self.session = Session()
@@ -21,7 +21,7 @@ class RadarrAPI(object):
     def get_missing(self):
         endpoint = '/api/movie'
         now = datetime.now(timezone.utc).astimezone().isoformat()
-        influx_payload = []
+        points = []
         missing = []
 
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint))
@@ -48,7 +48,7 @@ class RadarrAPI(object):
 
         for title, ma, mid, title_slug in missing:
             hash_id = hashit(f'{self.server.id}{title}{mid}')
-            influx_payload.append(
+            points.append(
                 {
                     "measurement": "Radarr",
                     "tags": {
@@ -66,12 +66,12 @@ class RadarrAPI(object):
                 }
             )
 
-        self.dbmanager.write_points(influx_payload)
+        self.output.write_points(points)
 
     def get_queue(self):
         endpoint = '/api/queue'
         now = datetime.now(timezone.utc).astimezone().isoformat()
-        influx_payload = []
+        points = []
         queue = []
 
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint))
@@ -108,7 +108,7 @@ class RadarrAPI(object):
 
         for name, quality, protocol, protocol_id, qid, title_slug in queue:
             hash_id = hashit(f'{self.server.id}{name}{quality}')
-            influx_payload.append(
+            points.append(
                 {
                     "measurement": "Radarr",
                     "tags": {
@@ -128,4 +128,4 @@ class RadarrAPI(object):
                 }
             )
 
-        self.dbmanager.write_points(influx_payload)
+        self.output.write_points(points)

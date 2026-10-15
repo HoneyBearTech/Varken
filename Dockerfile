@@ -7,7 +7,7 @@ ARG BRANCH=local
 ARG BUILD_DATE=1970-01-01T00:00:00Z
 
 LABEL org.opencontainers.image.title="varken" \
-      org.opencontainers.image.description="Aggregates data from the Plex ecosystem into InfluxDB for Grafana" \
+      org.opencontainers.image.description="Collects Plex-ecosystem data and serves it as Prometheus metrics" \
       org.opencontainers.image.url="https://github.com/HoneyBearTech/Varken" \
       org.opencontainers.image.source="https://github.com/HoneyBearTech/Varken" \
       org.opencontainers.image.vendor="HoneyBearTech" \
@@ -24,8 +24,10 @@ RUN apt-get update \
 
 # An unprivileged user. 1000:1000 is the first user on most Linux hosts, so the config folder on the host
 # belongs to them; compose can run the container as another uid/gid with `user:`.
+# /config belongs to it too, so a new named volume starts out writable.
 RUN groupadd --gid 1000 varken \
-    && useradd --uid 1000 --gid 1000 --no-create-home --home-dir /tmp --shell /usr/sbin/nologin varken
+    && useradd --uid 1000 --gid 1000 --no-create-home --home-dir /tmp --shell /usr/sbin/nologin varken \
+    && mkdir /config && chown 1000:1000 /config
 
 WORKDIR /app
 COPY requirements.txt .
@@ -37,7 +39,6 @@ RUN pip install --no-cache-dir --require-hashes --no-deps -r requirements.txt \
 COPY Varken.py LICENSE ./
 COPY varken ./varken
 COPY data ./data
-COPY utilities ./data/utilities
 RUN sed -i "s/^VERSION = .*/VERSION = \"${VERSION}\"/;s/^BRANCH = .*/BRANCH = '${BRANCH}'/;s/^BUILD_DATE = .*/BUILD_DATE = '${BUILD_DATE}'/" \
         varken/__init__.py
 
@@ -45,6 +46,8 @@ RUN sed -i "s/^VERSION = .*/VERSION = \"${VERSION}\"/;s/^BRANCH = .*/BRANCH = '$
 # be read-only.
 ENV DATA_FOLDER=/config PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 DEBUG=True
 VOLUME ["/config"]
+# The Prometheus /metrics endpoint.
+EXPOSE 9180
 USER 1000:1000
 # Copies the current example config next to the user's varken.ini, then runs Varken.
 CMD ["sh", "-c", "cp /app/data/varken.example.ini /config/varken.example.ini && exec python /app/Varken.py"]

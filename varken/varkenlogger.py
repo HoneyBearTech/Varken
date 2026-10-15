@@ -36,7 +36,7 @@ class BlacklistFilter(Filter):
 
 
 class VarkenLogger(object):
-    def __init__(self, debug=None, data_folder=None):
+    def __init__(self, debug=None, data_folder=None, log_to_file=True):
         self.data_folder = data_folder
         self.log_level = debug
 
@@ -47,9 +47,6 @@ class VarkenLogger(object):
         else:
             self.log_level = INFO
 
-        # Make the log directory if it does not exist
-        mkdir_p(f'{self.data_folder}/{BlacklistFilter.log_folder}')
-
         # Create the Logger
         self.logger = getLogger()
         self.logger.setLevel(DEBUG)
@@ -57,21 +54,20 @@ class VarkenLogger(object):
         # Create a Formatter for formatting the log messages
         logger_formatter = Formatter('%(asctime)s : %(levelname)s : %(module)s : %(message)s', '%Y-%m-%d %H:%M:%S')
 
-        # Create the Handler for logging data to a file
-        file_logger = RotatingFileHandler(f'{self.data_folder}/{BlacklistFilter.log_folder}/{BlacklistFilter.filename}',
-                                          mode='a', maxBytes=BlacklistFilter.max_size, encoding=None, delay=0,
-                                          backupCount=BlacklistFilter.max_files)
+        if log_to_file:
+            # Make the log directory if it does not exist
+            mkdir_p(f'{self.data_folder}/{BlacklistFilter.log_folder}')
 
-        file_logger.setLevel(self.log_level)
-
-        # Add the Formatter to the Handler
-        file_logger.setFormatter(logger_formatter)
+            # Create the Handler for logging data to a file
+            file_logger = RotatingFileHandler(
+                f'{self.data_folder}/{BlacklistFilter.log_folder}/{BlacklistFilter.filename}', mode='a',
+                maxBytes=BlacklistFilter.max_size, encoding=None, delay=0, backupCount=BlacklistFilter.max_files)
+            file_logger.setLevel(self.log_level)
+            file_logger.setFormatter(logger_formatter)
+            self.logger.addHandler(file_logger)
 
         # Add the console logger
         console_logger = StreamHandler()
         console_logger.setFormatter(logger_formatter)
         console_logger.setLevel(self.log_level)
-
-        # Add the Handler to the Logger
-        self.logger.addHandler(file_logger)
         self.logger.addHandler(console_logger)

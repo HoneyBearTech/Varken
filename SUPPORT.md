@@ -30,7 +30,7 @@ original project's Discord, wiki or issue tracker, and don't expect help with th
 - **A release stops receiving security updates the moment the next release is published.** Its notes and
   [CHANGELOG.md](CHANGELOG.md) say what changed and whether upgrading needs steps; upgrading is described in
   [docs/upgrading.md](docs/upgrading.md).
-- Releases follow [semantic versioning](https://semver.org/): a change to settings, measurements or the
+- Releases follow [semantic versioning](https://semver.org/): a change to settings, metrics or the
   image that needs action on upgrade comes in a new major version and is listed in the changelog.
 - Varken follows the APIs of the services it reads as they are when a release is made. When one of them
   changes in a way that breaks a module, the fix comes in a new release, if the module is still

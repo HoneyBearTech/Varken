@@ -1,4 +1,4 @@
-# Varken - Command-line utility to aggregate data from the Plex ecosystem into InfluxDB.
+# Varken - Collects data from the Plex ecosystem and serves it as Prometheus metrics.
 #
 # Service Unit file for systemd system manager
 #
@@ -35,7 +35,7 @@
 #       graphical.target  equates to runlevel 5 (multi-user X11 graphical mode)
 
 [Unit]
-Description=Varken - Command-line utility to aggregate data from the Plex ecosystem into InfluxDB.
+Description=Varken - Collects data from the Plex ecosystem and serves it as Prometheus metrics.
 After=network-online.target
 StartLimitInterval=200
 StartLimitBurst=3

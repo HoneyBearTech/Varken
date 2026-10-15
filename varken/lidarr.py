@@ -7,8 +7,8 @@ from varken.helpers import hashit, connection_handler
 
 
 class LidarrAPI(object):
-    def __init__(self, server, dbmanager):
-        self.dbmanager = dbmanager
+    def __init__(self, server, output):
+        self.output = output
         self.server = server
         # Create session to reduce server web thread load, and globally define pageSize for all requests
         self.session = Session()
@@ -28,8 +28,8 @@ class LidarrAPI(object):
             params = {'start': last_days, 'end': today}
         else:
             params = {'start': today, 'end': future}
-        influx_payload = []
-        influx_albums = []
+        points = []
+        albums = []
 
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint, params=params))
         get = connection_handler(self.session, req, self.server.verify_ssl)
@@ -50,14 +50,14 @@ class LidarrAPI(object):
         for album in albums:
             percent_of_tracks = album.statistics.get('percentOfTracks', 0)
             if percent_of_tracks != 100:
-                influx_albums.append(
+                albums.append(
                     (album.title, album.releaseDate, album.artist['artistName'], album.id, percent_of_tracks,
                      f"{album.statistics.get('trackFileCount', 0)}/{album.statistics.get('trackCount', 0)}")
                 )
 
-        for title, release_date, artist_name, album_id, percent_complete, complete_count in influx_albums:
+        for title, release_date, artist_name, album_id, percent_complete, complete_count in albums:
             hash_id = hashit(f'{self.server.id}{title}{album_id}')
-            influx_payload.append(
+            points.append(
                 {
                     "measurement": "Lidarr",
                     "tags": {
@@ -78,12 +78,12 @@ class LidarrAPI(object):
                 }
             )
 
-        self.dbmanager.write_points(influx_payload)
+        self.output.write_points(points)
 
     def get_queue(self):
         endpoint = '/api/v1/queue'
         now = datetime.now(timezone.utc).astimezone().isoformat()
-        influx_payload = []
+        points = []
         params = {'pageSize': 1000}
 
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint, params=params))
@@ -109,7 +109,7 @@ class LidarrAPI(object):
             else:
                 protocol_id = 0
             hash_id = hashit(f'{self.server.id}{song.title}{song.artistId}')
-            influx_payload.append(
+            points.append(
                 {
                     "measurement": "Lidarr",
                     "tags": {
@@ -129,4 +129,4 @@ class LidarrAPI(object):
                 }
             )
 
-        self.dbmanager.write_points(influx_payload)
+        self.output.write_points(points)
