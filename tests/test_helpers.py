@@ -152,10 +152,12 @@ def maxmind_answers(monkeypatch, *replies):
     return calls
 
 
-def test_download_uses_basic_auth_with_the_account_id(tmp_path, monkeypatch):
+def test_download_uses_basic_auth_with_the_account_id(tmp_path, monkeypatch, caplog):
     calls = maxmind_answers(monkeypatch, FakeDownload(body=DATABASE))
 
-    assert geoip_handler(tmp_path).download() is True
+    with caplog.at_level('INFO'):
+        assert geoip_handler(tmp_path).download() is True
+    assert 'Installed a new GeoLite2 DB' in caplog.text
 
     url, kwargs = calls[0]
     assert url == 'https://download.maxmind.com/geoip/databases/GeoLite2-City/download'
