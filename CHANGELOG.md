@@ -18,6 +18,9 @@ The first HoneyBearTech release, planned as 2.0.0: Varken is now a standalone pr
 - **Breaking:** Python 3.14 (the image's base is `python:3.14.7-slim`, pinned by digest). Every dependency is
   updated to its current release (requests 2.34, urllib3 2.8, geoip2 5.3, schedule 1.2, distro 1.9,
   influxdb 5.3.2) and pinned with hashes.
+- The `hash` field Varken writes is a SHA-256 instead of an MD5 of the same values (it only identifies
+  items; dashboards counting distinct values across the upgrade may count an item twice for one retention
+  window).
 - The example `docker-compose.yml` pins InfluxDB 1.12 and Grafana 13 by digest, reads settings from `.env`
   (template `.env.example`) and runs Varken with a read-only root filesystem, no capabilities and
   `no-new-privileges`. Grafana's Angular worldmap and piechart plugins are gone from it, since Grafana 12+ can't

@@ -20,8 +20,8 @@ def test_clean_sid_check_keeps_valid_ids():
     assert clean_sid_check('x', 'sonarr') is False
 
 
-def test_hashit_is_a_stable_md5():
-    assert hashit('abc') == '900150983cd24fb0d6963f7d28e17f72'
+def test_hashit_is_a_stable_sha256():
+    assert hashit('abc') == 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
 
 
 def test_rfc1918_ip_check():

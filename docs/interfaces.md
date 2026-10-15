@@ -87,7 +87,7 @@ coordinates.
 `rx_bytes_current`, `tx_bytes_total`, `tx_bytes_current`, `cpu_loadavg_1`, `cpu_loadavg_5`,
 `cpu_loadavg_15`, `cpu_util`, `mem_util`.
 
-The `hash` field is an MD5 of identifying values, used by dashboards to count distinct items; it is not a
+The `hash` field is a SHA-256 (an MD5 before 2.0.0) of identifying values, used by dashboards to count distinct items; it is not a
 security control. These names are kept as upstream Varken wrote them so existing Grafana dashboards keep
 working; a change to them is a breaking change ([SUPPORT.md](../SUPPORT.md)).
 

@@ -1,4 +1,4 @@
-from hashlib import md5
+from hashlib import sha256
 from datetime import date, timedelta
 from time import sleep
 from logging import getLogger
@@ -134,7 +134,8 @@ class GeoIPHandler(object):
 
 def hashit(string):
     encoded = string.encode()
-    hashed = md5(encoded, usedforsecurity=False).hexdigest()  # a stable point id, not a security hash
+    # A stable id that dashboards count distinct items by. SHA-256 rather than MD5, so scanners needn't ask.
+    hashed = sha256(encoded).hexdigest()
 
     return hashed
 

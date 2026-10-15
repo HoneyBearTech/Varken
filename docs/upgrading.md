@@ -26,8 +26,8 @@ cp .env .env.backup                               # compose only
 ## From upstream Varken 1.7.x (boerderij/varken) to 2.0.0
 
 2.0.0 is the first release of this fork. Your `varken.ini`, your `VRKN_*` variables and the data in
-InfluxDB carry over unchanged: the settings and the measurements Varken writes are the same as in 1.7.7, so
-existing dashboards keep working. What changes:
+InfluxDB carry over unchanged: the settings, measurement names, tags and fields Varken writes are the same as
+in 1.7.7, so existing dashboards keep working. What changes:
 
 1. **The image name.** `boerderij/varken` (Docker Hub, and its GHCR and Quay copies) is replaced by
    `ghcr.io/honeybeartech/varken`. Change `image:` in your compose file or template, and pin a version:
@@ -60,7 +60,11 @@ existing dashboards keep working. What changes:
    unmasked ([security.md](security.md#fixed-in-200)). Regenerate the Tautulli API key if in doubt, and any
    secret that is in logs you kept or shared.
 
-Two related changes are worth knowing about:
+Three related changes are worth knowing about:
+
+- The `hash` field is now a SHA-256 instead of an MD5 of the same values. A panel that counts distinct
+  `hash` values over a window that spans the upgrade counts an item seen on both sides twice, until that
+  window has passed (at most the 30-day retention).
 
 - Upstream's example compose file used the untagged `influxdb` image, which now pulls InfluxDB 2 or later. Varken
   needs InfluxDB 1.x: pin a 1.x tag (the example compose file uses `influxdb:1.12.4`).

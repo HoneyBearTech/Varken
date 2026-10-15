@@ -22,5 +22,7 @@ jobs:
           allow-licenses: >-
             MIT, MIT-0, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, Zlib, Unlicense, CC0-1.0,
             PSF-2.0, Python-2.0, MPL-2.0
-          # yamllint (GPL-3.0) is a development tool that is never shipped in the image.
-          allow-dependencies-licenses: pkg:pypi/yamllint
+          # yamllint (GPL-3.0) is a development tool that is never shipped in the image. aiohappyeyeballs (via
+          # geoip2 -> aiohttp) declares PSF-2.0 and ships Python's license text, whose history section the
+          # scanner misreads as GPL.
+          allow-dependencies-licenses: pkg:pypi/yamllint, pkg:pypi/aiohappyeyeballs
