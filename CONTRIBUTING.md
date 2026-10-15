@@ -47,6 +47,10 @@ unit tests with a coverage floor, builds the image and checks that it runs as no
 down, and validates the compose file. CodeQL, dependency review, a DCO check and OpenSSF
 Scorecard also run on the repository, and Trivy scans the image weekly for known vulnerabilities.
 
+The maintainer also keeps a copy on a self-hosted GitLab, mirrored from GitHub by a scheduled job in
+[`.gitlab-ci.yml`](.gitlab-ci.yml), which re-runs the "Checks + tests" steps that need no Docker daemon on
+every commit it receives. Changes go to GitHub only; a commit made on the GitLab copy stops the mirror.
+
 The tests in [`tests/`](tests/) are offline: they run against recorded API responses and mocks, and never
 reach Tautulli, the \*arr apps or MaxMind.
 

@@ -136,3 +136,6 @@ Python 3.14 with [requests](https://requests.readthedocs.io/),
 [schedule](https://github.com/dbader/schedule) and [distro](https://github.com/python-distro/distro)
 ([dependencies.md](dependencies.md)).
 Distributed as a container image for linux/amd64 and linux/arm64, or run from a checkout.
+
+GitHub is the project's home. [`.gitlab-ci.yml`](../.gitlab-ci.yml) is the pipeline of the copy on the
+maintainer's self-hosted GitLab: it mirrors GitHub and re-runs the CI checks that need no Docker daemon.
