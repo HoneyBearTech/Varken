@@ -9,11 +9,12 @@ first look, the [quick start](quick-start.md) is shorter; this page covers the c
 - **Prometheus**, able to reach Varken on port 9180 ([below](#scraping-it-with-prometheus)).
 - **Grafana**, or anything else that can query Prometheus, to look at the data. Varken includes neither; in
   the maintainer's setup, [Argus](https://github.com/HoneyBearTech/Argus) provides both.
-- For Tautulli: your public IPv4 address for `fallback_ip` and, optionally, a **MaxMind license key**
-  ([free GeoLite2 account](https://www.maxmind.com/en/geolite2/signup)) to place viewers on a map. Without
+- For Tautulli: your public IPv4 address for `fallback_ip` and, optionally, a **MaxMind license key and
+  account ID** ([free GeoLite2 account](https://www.maxmind.com/en/geolite2/signup)) to place viewers on a map. Without
   a key, GeoIP is off and streams have no location.
 - An API key for each service you want to read, or a read-only login for UniFi.
-- With GeoIP on, outbound HTTPS to `download.maxmind.com` and, rarely, `api.ipify.org` (see
+- With GeoIP on, outbound HTTPS to `download.maxmind.com` (which redirects to MaxMind's storage on
+  `*.r2.cloudflarestorage.com`) and, rarely, `api.ipify.org` (see
   [interfaces.md](interfaces.md#interfaces-varken-uses)). With GeoIP off, neither.
 - For the image: a Linux host (amd64 or arm64) with Docker. For a bare install: Python 3.14 on any OS
   Python supports.
@@ -32,7 +33,7 @@ The compose file reads these from `.env`, besides the `VRKN_*` settings:
 
 | Variable | Default | What |
 | --- | --- | --- |
-| `VARKEN_VERSION` | `latest` | Image tag to run. Set a release such as `2.1.0`, so upgrades happen when you choose. |
+| `VARKEN_VERSION` | `latest` | Image tag to run. Set a release such as `2.2.0`, so upgrades happen when you choose. |
 | `CONFIG_ROOT` | `/srv/config` (required) | Where app data lives; Varken's is `CONFIG_ROOT/varken/config`, mounted at `/config`. Not inside `/var/lib/docker/volumes`. |
 | `VARKEN_UID` / `VARKEN_GID` | `1000` | The user and group the container runs as; they must own `CONFIG_ROOT/varken/config`. |
 | `VARKEN_METRICS_BIND` | `127.0.0.1:9180` | Host address and port `/metrics` is published on. Keep it on a loopback or private address. |
@@ -49,7 +50,7 @@ docker run -d --name varken --restart unless-stopped \
   --user 1000:1000 --read-only --cap-drop ALL --security-opt no-new-privileges:true \
   --env-file .env -v /srv/config/varken/config:/config \
   --network <the network Prometheus is on> \
-  ghcr.io/honeybeartech/varken:2.1.0
+  ghcr.io/honeybeartech/varken:2.2.0
 ```
 
 The host directory must belong to uid 1000. Prefer it to a Docker named volume: `docker volume prune` (and
@@ -60,7 +61,7 @@ it needs no `chown`: the image creates `/config` owned by 1000:1000. For a Prome
 Instead of an `.env` file you can write `config/varken.ini` yourself from
 [`data/varken.example.ini`](../data/varken.example.ini) (`chmod 600`, owned by uid 1000). Images are
 published for linux/amd64 and linux/arm64 as `ghcr.io/honeybeartech/varken`, tagged with the version
-(`2.1.0`), major.minor (`2.1`) and `latest`. [Verify the image](verifying-releases.md) before the first
+(`2.2.0`), major.minor (`2.2`) and `latest`. [Verify the image](verifying-releases.md) before the first
 start; pinning its digest is stronger than pinning a tag.
 
 ## Option 3: Unraid
@@ -78,7 +79,7 @@ is in `/opt/Varken`, a virtual environment in `/opt/Varken/varken-venv`, and a `
 
 ```sh
 sudo git clone https://github.com/HoneyBearTech/Varken.git /opt/Varken
-cd /opt/Varken && sudo git checkout v2.1.0
+cd /opt/Varken && sudo git checkout v2.2.0
 sudo python3.14 -m venv varken-venv
 sudo varken-venv/bin/pip install --require-hashes --no-deps -r requirements.txt
 

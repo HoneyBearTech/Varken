@@ -11,7 +11,7 @@ places viewers on a map; without one, streams have no location.
 
 ```sh
 git clone https://github.com/HoneyBearTech/Varken.git && cd Varken
-git checkout v2.1.0                        # a release tag instead of master
+git checkout v2.2.0                        # a release tag instead of master
 cp .env.example .env && chmod 600 .env
 sudo mkdir -p /srv/config/varken/config && sudo chown -R 1000:1000 /srv/config/varken
 ```
@@ -23,9 +23,9 @@ in `.env` and give it to them instead). Keep it a host directory rather than a n
 
 Edit `.env`:
 
-- `VARKEN_VERSION`: the release to run, for example `2.1.0`.
-- `VRKN_GLOBAL_MAXMIND_LICENSE_KEY`: your MaxMind license key, or leave it empty to run without GeoIP
-  (Varken then never contacts MaxMind).
+- `VARKEN_VERSION`: the release to run, for example `2.2.0`.
+- `VRKN_GLOBAL_MAXMIND_LICENSE_KEY` and `VRKN_GLOBAL_MAXMIND_ACCOUNT_ID`: your MaxMind license key and
+  account ID, or leave the key empty to run without GeoIP (Varken then never contacts MaxMind).
 - `VRKN_TAUTULLI_1_URL`: Tautulli's host and port without `http://`, for example
   `tautulli.example.com:8181`, and `VRKN_TAUTULLI_1_APIKEY`. If you reach Tautulli over HTTPS, set
   `VRKN_TAUTULLI_1_SSL=true` and `VRKN_TAUTULLI_1_VERIFY_SSL=true`.
@@ -67,7 +67,8 @@ curl -s http://127.0.0.1:9180/metrics | grep varken_job_up
 last run failed, and the log says why. After that, with `DEBUG=false`, Varken stays quiet unless something
 fails. Common first-run errors:
 
-- `Could not download MaxMind DB`: a wrong license key. To run without GeoIP, leave the key empty.
+- `MaxMind refused the account ID and license key` or `Could not download the MaxMind DB`: check both, or
+  leave the key empty to run without GeoIP. Varken keeps running either way, with no locations.
 - `No MaxMind license key: GeoIP is off ...` is not an error: it means no key is set.
 - `Your api key is incorrect for ...` or `Cannot resolve the url/ip/port`: check the Tautulli URL, key
   and `SSL` setting.

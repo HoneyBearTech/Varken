@@ -35,6 +35,9 @@ The second pass built most of Phase 2, which also ships in 2.0.0:
 their `/api/v3` (Sonarr 4 and Radarr 4 or later), fixes the Lidarr module, and ships a Grafana dashboard: the
 original Varken dashboard ported to these metrics ([dashboard/](../dashboard/README.md)).
 
+**2.2.0** (2026-10-15) downloads the GeoLite2 database with MaxMind's account ID and Basic auth instead of the
+license key in the URL, and keeps running when that download fails.
+
 ## Over the following year
 
 **Next, Phase 3: Argus integration** (**Planned**, in the [Argus](https://github.com/HoneyBearTech/Argus) repository)
@@ -46,9 +49,7 @@ original Varken dashboard ported to these metrics ([dashboard/](../dashboard/REA
 
 - Log at INFO by default instead of DEBUG.
 - `verify_ssl` on by default. This is a breaking change and will be announced in the changelog.
-- Download the GeoLite2 database with MaxMind's account ID + license key Basic authentication, instead of
-  the license key in the URL.
-- Timeouts on every request to the services and MaxMind.
+- Timeouts on every request to the services (the MaxMind download has one from 2.2.0).
 - Sonarr 5's new API (Sonarr 5 is in beta as of October 2026), once Sonarr 5 is stable, alongside `/api/v3`
   for Sonarr 4.
 - Raise test coverage to 80 %, and adopt `ruff format` and a wider ruff rule set.

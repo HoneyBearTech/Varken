@@ -270,9 +270,22 @@ def pin_datasource(node, uid):
     return node
 
 
+# Services the owner doesn't run: Argus' copy has none of their panels.
+ARGUS_WITHOUT = ('varken_ombi_', 'varken_sickchill_')
+
+
+def uses(panel, prefix):
+    return any(prefix in target['expr'] for target in panel['targets'])
+
+
 def argus_dashboard():
-    """Argus' copy: its provisioned data source, uid and tags, and the link to its other dashboards."""
+    """Argus' copy: its provisioned data source, uid and tags, and the link to its other dashboards. The owner runs
+    neither Ombi nor SickChill, so their panels are left out and the growth tiles take the rest of their row."""
     dash = pin_datasource(copy.deepcopy(dashboard()), 'prometheus')
+    dash['panels'] = [panel for panel in dash['panels'] if not any(uses(panel, prefix) for prefix in ARGUS_WITHOUT)]
+    for panel in dash['panels']:
+        if panel['title'] in ('Movies Added', 'Episodes Added'):
+            panel['gridPos'] = g(0 if panel['title'] == 'Movies Added' else 12, 6, 12, 3)
     dash.update(uid='argus-varken', tags=['argus', 'media', 'varken'], links=[{
         'title': 'Argus dashboards', 'type': 'dashboards', 'tags': ['argus'], 'asDropdown': True,
         'includeVars': False, 'keepTime': True, 'targetBlank': False, 'icon': 'external link'}])

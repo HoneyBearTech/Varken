@@ -1,9 +1,8 @@
 import io
 import tarfile
-from urllib.error import HTTPError, URLError
 
 import pytest
-from requests.exceptions import ChunkedEncodingError, ConnectionError, InvalidSchema, SSLError
+from requests.exceptions import ChunkedEncodingError, ConnectionError, HTTPError, InvalidSchema, SSLError
 
 from varken import helpers
 from varken.helpers import (GeoIPHandler, boolcheck, clean_sid_check, connection_handler, hashit,
@@ -86,23 +85,26 @@ def test_connection_handler_survives_connection_errors(error):
     assert connection_handler(FakeSession(error), FakeRequest(), False) is False
 
 
-def geoip_handler(folder):
+def geoip_handler(folder, account_id='123456'):
     """A handler without the __init__ that opens the database."""
     handler = GeoIPHandler.__new__(GeoIPHandler)
     handler.data_folder = str(folder)
     handler.maxmind_license_key = 'license'
+    handler.maxmind_account_id = account_id
     handler.dbfile = str(folder / 'GeoLite2-City.mmdb')
     handler.logger = helpers.getLogger()
+    handler.reader = None
+    handler.last_failure = None
     return handler
 
 
-def tar_with(*members):
-    """Write a .tar.gz whose members are (TarInfo, bytes or None)."""
-    def fake_urlretrieve(url, filename):
-        with tarfile.open(filename, 'w:gz') as tar:
-            for info, data in members:
-                tar.addfile(info, io.BytesIO(data) if data is not None else None)
-    return fake_urlretrieve
+def tar_gz(*members):
+    """A .tar.gz whose members are (TarInfo, bytes or None)."""
+    data = io.BytesIO()
+    with tarfile.open(fileobj=data, mode='w:gz') as tar:
+        for info, content in members:
+            tar.addfile(info, io.BytesIO(content) if content is not None else None)
+    return data.getvalue()
 
 
 def file_member(name, data):
@@ -111,17 +113,80 @@ def file_member(name, data):
     return info, data
 
 
-def test_download_extracts_the_database(tmp_path, monkeypatch):
-    monkeypatch.setattr(helpers, 'urlretrieve', tar_with(
-        file_member('GeoLite2-City_20261013/README.txt', b'readme'),
-        file_member('GeoLite2-City_20261013/GeoLite2-City.mmdb', b'database'),
-    ))
+DATABASE = tar_gz(file_member('GeoLite2-City_20261013/README.txt', b'readme'),
+                  file_member('GeoLite2-City_20261013/GeoLite2-City.mmdb', b'database'))
+
+
+class FakeDownload:
+    """What requests.get returns for the download: a status and a streamed body, or an exception to raise."""
+
+    def __init__(self, status=200, body=b''):
+        self.status_code, self.body = status, body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise HTTPError(response=self)
+
+    def iter_content(self, chunk_size):
+        yield self.body
+
+
+def maxmind_answers(monkeypatch, *replies):
+    """Make requests.get answer each download with the next reply; return the calls made."""
+    calls, replies = [], list(replies)
+
+    def fake_get(url, **kwargs):
+        calls.append((url, kwargs))
+        reply = replies.pop(0) if len(replies) > 1 else replies[0]
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+    monkeypatch.setattr(helpers, 'requests_get', fake_get)
+    monkeypatch.setattr(helpers, 'sleep', lambda seconds: None)
+    return calls
+
+
+def test_download_uses_basic_auth_with_the_account_id(tmp_path, monkeypatch):
+    calls = maxmind_answers(monkeypatch, FakeDownload(body=DATABASE))
+
+    assert geoip_handler(tmp_path).download() is True
+
+    url, kwargs = calls[0]
+    assert url == 'https://download.maxmind.com/geoip/databases/GeoLite2-City/download'
+    assert kwargs['auth'] == ('123456', 'license')
+    assert kwargs['params'] == {'suffix': 'tar.gz'}  # the key is never in the URL
+    assert kwargs['timeout'] and kwargs['stream']
+    assert (tmp_path / 'GeoLite2-City.mmdb').read_bytes() == b'database'
+    assert sorted(path.name for path in tmp_path.iterdir()) == ['GeoLite2-City.mmdb']
+
+
+def test_download_falls_back_to_the_legacy_url_without_an_account_id(tmp_path, monkeypatch, caplog):
+    calls = maxmind_answers(monkeypatch, FakeDownload(body=DATABASE))
+
+    assert geoip_handler(tmp_path, account_id=None).download() is True
+
+    url, kwargs = calls[0]
+    assert url == 'https://download.maxmind.com/app/geoip_download'
+    assert kwargs['params']['license_key'] == 'license' and kwargs['auth'] is None
+    assert 'No MaxMind account ID' in caplog.text
+
+
+def test_download_replaces_the_database_in_one_step(tmp_path, monkeypatch):
+    (tmp_path / 'GeoLite2-City.mmdb').write_bytes(b'old')
+    old_inode = (tmp_path / 'GeoLite2-City.mmdb').stat().st_ino
+    maxmind_answers(monkeypatch, FakeDownload(body=DATABASE))
 
     geoip_handler(tmp_path).download()
 
+    # A new file renamed over the old one: a reader still mapping the old file keeps working.
     assert (tmp_path / 'GeoLite2-City.mmdb').read_bytes() == b'database'
-    assert not (tmp_path / 'GeoLite2-City.tar.gz').exists()
-    assert not (tmp_path / 'README.txt').exists()
+    assert (tmp_path / 'GeoLite2-City.mmdb').stat().st_ino != old_inode
 
 
 def test_download_refuses_a_link_in_the_archive(tmp_path, monkeypatch):
@@ -129,64 +194,111 @@ def test_download_refuses_a_link_in_the_archive(tmp_path, monkeypatch):
     link = tarfile.TarInfo('GeoLite2-City_20261013/GeoLite2-City.mmdb')
     link.type = tarfile.SYMTYPE
     link.linkname = '/etc/passwd'
-    monkeypatch.setattr(helpers, 'urlretrieve', tar_with((link, None)))
+    maxmind_answers(monkeypatch, FakeDownload(body=tar_gz((link, None))))
 
     with pytest.raises(tarfile.FilterError):
         geoip_handler(tmp_path).download()
 
-    assert not (tmp_path / 'GeoLite2-City.mmdb').is_symlink()
+    assert not (tmp_path / 'GeoLite2-City.mmdb').exists()
+    assert not (tmp_path / 'GeoLite2-City.tar.gz').exists()
 
 
-@pytest.fixture
-def http_error():
-    """HTTPErrors that are closed after the test (each holds a response body)."""
-    errors = []
+def test_download_stops_on_wrong_credentials(tmp_path, monkeypatch, caplog):
+    calls = maxmind_answers(monkeypatch, FakeDownload(status=401))
 
-    def make(code, reason):
-        error = HTTPError('https://download.maxmind.com/', code, reason, {}, io.BytesIO())
-        errors.append(error)
-        return error
-
-    yield make
-    for error in errors:
-        error.close()
+    assert geoip_handler(tmp_path).download() is False
+    assert len(calls) == 1
+    assert 'maxmind_account_id and maxmind_license_key' in caplog.text
 
 
-def raise_error(error):
-    def fake_urlretrieve(url, filename):
-        raise error
-    return fake_urlretrieve
+def test_download_retries_server_errors_three_times(tmp_path, monkeypatch):
+    calls = maxmind_answers(monkeypatch, FakeDownload(status=503))
 
-
-def test_download_stops_on_a_wrong_license_key(tmp_path, monkeypatch, http_error):
-    # Regression: HTTPError was caught as URLError first, so this branch never ran.
-    monkeypatch.setattr(helpers, 'urlretrieve', raise_error(http_error(401, 'Unauthorized')))
-    messages = []
-    handler = geoip_handler(tmp_path)
-    monkeypatch.setattr(handler.logger, 'error', lambda msg, *args: messages.append(msg))
-
-    assert handler.download() == 1
-    assert 'license key' in messages[0]
-
-
-def test_download_retries_server_errors_three_times(tmp_path, monkeypatch, http_error):
-    calls = []
-
-    def failing(url, filename):
-        calls.append(url)
-        raise http_error(503, 'Unavailable')
-
-    monkeypatch.setattr(helpers, 'urlretrieve', failing)
-    monkeypatch.setattr(helpers, 'sleep', lambda seconds: None)
-
-    assert geoip_handler(tmp_path).download() == 1
+    assert geoip_handler(tmp_path).download() is False
     assert len(calls) == 3
 
 
-def test_download_stops_when_maxmind_is_unreachable(tmp_path, monkeypatch):
-    monkeypatch.setattr(helpers, 'urlretrieve', raise_error(URLError('no route')))
+def test_download_recovers_from_one_failed_attempt(tmp_path, monkeypatch):
+    calls = maxmind_answers(monkeypatch, ConnectionError('reset'), FakeDownload(body=DATABASE))
 
-    assert geoip_handler(tmp_path).download() == 1
+    assert geoip_handler(tmp_path).download() is True
+    assert len(calls) == 2
+
+
+def test_download_errors_never_log_the_url(tmp_path, monkeypatch, caplog):
+    error = ConnectionError('HTTPSConnectionPool: /app/geoip_download?license_key=license')
+    maxmind_answers(monkeypatch, error)
+
+    assert geoip_handler(tmp_path, account_id=None).download() is False
+    assert 'license_key' not in caplog.text and 'ConnectionError' in caplog.text
+
+
+def test_a_failed_first_download_leaves_varken_running_without_locations(tmp_path, monkeypatch):
+    # Regression: it called exit(1), so a wrong MaxMind key stopped Varken, Tautulli metrics and all.
+    maxmind_answers(monkeypatch, FakeDownload(status=401))
+
+    handler = GeoIPHandler(str(tmp_path), 'license', '123456')
+
+    assert handler.reader is None
+    assert handler.lookup('203.0.113.5').city.name is None
+
+
+class FakeReader:
+    opened = []
+
+    def __init__(self, path):
+        if not __import__('os').path.exists(path):
+            raise FileNotFoundError(path)
+        self.closed = False
+        FakeReader.opened.append(self)
+
+    def close(self):
+        self.closed = True
+
+
+def test_the_next_update_downloads_a_database_the_first_start_missed(tmp_path, monkeypatch):
+    FakeReader.opened = []
+    monkeypatch.setattr(helpers, 'Reader', FakeReader)
+    maxmind_answers(monkeypatch, FakeDownload(status=503), FakeDownload(status=503), FakeDownload(status=503),
+                    FakeDownload(body=DATABASE))
+    handler = GeoIPHandler(str(tmp_path), 'license', '123456')
+    assert handler.reader is None
+    monkeypatch.setattr(helpers, 'monotonic', lambda: handler.last_failure + helpers.MAXMIND_RETRY_AFTER + 1)
+
+    handler.update()
+
+    assert isinstance(handler.reader, FakeReader)
+    assert handler.last_failure is None
+
+
+def test_the_update_job_waits_an_hour_after_a_failed_download(tmp_path, monkeypatch):
+    # Varken runs every job once at start-up: the update right after a failed first download mustn't hit MaxMind
+    # again (it rate-limits failures).
+    calls = maxmind_answers(monkeypatch, FakeDownload(status=401))
+    handler = GeoIPHandler(str(tmp_path), 'license', '123456')
+
+    handler.update()
+    assert len(calls) == 1
+
+    monkeypatch.setattr(helpers, 'monotonic', lambda: handler.last_failure + helpers.MAXMIND_RETRY_AFTER + 1)
+    handler.update()
+    assert len(calls) == 2
+
+
+def test_an_update_swaps_in_a_new_database_when_the_old_one_is_due(tmp_path, monkeypatch):
+    FakeReader.opened = []
+    monkeypatch.setattr(helpers, 'Reader', FakeReader)
+    (tmp_path / 'GeoLite2-City.mmdb').write_bytes(b'old')
+    old = 1_700_000_000  # 2023: long past due
+    __import__('os').utime(tmp_path / 'GeoLite2-City.mmdb', (old, old))
+    maxmind_answers(monkeypatch, FakeDownload(body=DATABASE))
+    handler = GeoIPHandler(str(tmp_path), 'license', '123456')
+    first = handler.reader
+
+    handler.update()
+
+    assert first.closed and handler.reader is not first
+    assert (tmp_path / 'GeoLite2-City.mmdb').read_bytes() == b'database'
 
 
 def run_in_thread(function):
@@ -224,9 +336,11 @@ def test_geoip_is_off_without_a_license_key(tmp_path, key):
 
 
 def test_geoip_is_on_with_a_license_key(tmp_path, monkeypatch):
-    monkeypatch.setattr(helpers, 'GeoIPHandler', lambda folder, key: ('handler', folder, key))
+    monkeypatch.setattr(helpers, 'GeoIPHandler', lambda folder, key, account: ('handler', folder, key, account))
 
-    assert helpers.geoip_handler(str(tmp_path), 'real-key') == ('handler', str(tmp_path), 'real-key')
+    assert helpers.geoip_handler(str(tmp_path), 'real-key', '123456') == ('handler', str(tmp_path), 'real-key',
+                                                                         '123456')
+    assert helpers.geoip_handler(str(tmp_path), 'real-key', '')[3] is None
 
 
 def test_no_geoip_knows_no_location():

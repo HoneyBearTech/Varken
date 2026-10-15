@@ -63,3 +63,12 @@ def test_the_argus_copy_pins_argus_data_source():
     assert '${datasource}' not in text
     assert dash['uid'] == 'argus-varken' and 'argus' in dash['tags']
     assert [v['name'] for v in dash['templating']['list']] == list(make_dashboard.LIBRARIES)
+
+
+def test_the_argus_copy_leaves_ombi_and_sickchill_out():
+    full, argus = make_dashboard.dashboard()['panels'], make_dashboard.argus_dashboard()['panels']
+    assert not [p['title'] for p in argus if make_dashboard.uses(p, 'varken_ombi_')]
+    assert not [p['title'] for p in argus if make_dashboard.uses(p, 'varken_sickchill_')]
+    assert len(argus) == len(full) - 8
+    # Ids stay as in the full dashboard, so links to a panel work in both.
+    assert {p['title']: p['id'] for p in argus}.items() <= {p['title']: p['id'] for p in full}.items()

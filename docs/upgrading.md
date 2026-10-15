@@ -107,6 +107,13 @@ docker compose logs -f varken
 For a bare install: `git fetch --tags && git checkout vX.Y.Z`, reinstall `requirements.txt` with
 `--require-hashes --no-deps` (it may have changed), and restart the service.
 
+### 2.1.x to 2.2.0
+
+- **GeoIP users: add your MaxMind account ID** (`maxmind_account_id` or `VRKN_GLOBAL_MAXMIND_ACCOUNT_ID`; it's
+  on MaxMind's account portal). Without it GeoIP keeps working through the old download URL, with a warning
+  in the log. Your `varken.ini` gets the key, empty, on the first start.
+- A failed GeoLite2 download no longer stops Varken.
+
 ### 2.0.x to 2.1.0
 
 - **With the example compose file:** it now keeps Varken's data in `CONFIG_ROOT/varken/config` and needs

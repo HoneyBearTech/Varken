@@ -28,8 +28,8 @@ Varken runs until it is stopped. It exits with status 1 when the data folder is 
 `VRKN_*_FILE` can't be read or is set together with the variable it replaces, a URL in the config is
 invalid, `fallback_ip` is a private address, a `[prometheus]` setting is invalid (`bind` isn't an IP address,
 `port` isn't a number from 1 to 65535), the metrics port can't be opened (for example because it is in
-use; Varken logs which address and port), every service is disabled, or a MaxMind license key is set and the
-GeoLite2 database is missing and can't be downloaded.
+use; Varken logs which address and port), or every service is disabled. A GeoLite2 database that can't be
+downloaded doesn't stop it (streams have no location until a later download works).
 
 The image copies the current `varken.example.ini` into `/config`, then runs `python /app/Varken.py` with
 `DATA_FOLDER=/config` (and `DEBUG=True` unless you set it).
@@ -157,7 +157,7 @@ the services it reads.
 | Ombi | `GET /api/v1/Request/count`, `GET /api/v1/Request/movie`, `GET /api/v1/Request/tv`, `GET /api/v1/Issues/count` | `Apikey` header |
 | SickChill | `GET /api/<apikey>/?cmd=future&type=missed\|today\|soon\|later\|snatched` | the key is part of the path (SickChill's API requires it) |
 | UniFi controller | `POST /api/login` (username and password as JSON; keeps the `unifises` cookie), `GET /api/self/sites`, `GET /api/s/<site>/stat/device` | session cookie |
-| MaxMind | `GET https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&suffix=tar.gz&license_key=…` when the database is missing or over 30 days old; only with a license key set (GeoIP on) | license key as a query parameter ([a known weakness](security.md#known-weaknesses)) |
+| MaxMind | `GET https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz`, following its redirect to Cloudflare R2 (60 s timeout), when the database is missing or over 30 days old; only with a license key set (GeoIP on). Without `maxmind_account_id`: `GET https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&suffix=tar.gz&license_key=…` | HTTP Basic auth, account ID and license key (not sent on to R2); without an account ID, the license key as a query parameter ([a known weakness](security.md#known-weaknesses)) |
 | ipify | `GET https://api.ipify.org` (10 s timeout) to learn the host's own public address, only with GeoIP on and when neither a viewer's address nor `fallback_ip` is in the GeoLite2 database; the answer is then reused until Varken restarts | none (a separate request; before 2.0.0 this went to `http://ip.42.pl` with the Tautulli API key attached, [now fixed](security.md#fixed-in-200)) |
 
 Supported versions: Sonarr 4 and Radarr 4 or later (their `/api/v3`), and Lidarr 1 or later (`/api/v1`).
@@ -165,8 +165,8 @@ Before 2.1.0 the Sonarr and Radarr modules used the unversioned `/api/...` paths
 longer serve. A reply in an unexpected shape (an older API, say) logs an error and marks the job down.
 Sonarr 5's new API is [planned](roadmap.md); Sonarr 5 is in beta as of 2.1.0.
 
-Requests to the services and MaxMind have no timeouts today ([security.md](security.md#known-weaknesses));
-only the ipify lookup has one.
+Requests to the services have no timeouts today ([security.md](security.md#known-weaknesses)); the MaxMind
+download (60 s) and the ipify lookup (10 s) have one.
 
 ## Files
 
@@ -187,5 +187,5 @@ version and digest, the hash-pinned packages from [`requirements.txt`](../requir
 `/app`. It runs as the unprivileged uid/gid 1000:1000 with `DATA_FOLDER=/config`; `/config` is the only
 path it writes to, and belongs to 1000:1000 in the image, so a new named volume there starts out writable.
 Releases are published for linux/amd64 and linux/arm64, tagged with the version
-(`2.1.0`), major.minor (`2.1`) and `latest`, signed and with an SBOM and provenance
+(`2.2.0`), major.minor (`2.2`) and `latest`, signed and with an SBOM and provenance
 ([verifying-releases.md](verifying-releases.md)). It declares `EXPOSE 9180` for `/metrics`.

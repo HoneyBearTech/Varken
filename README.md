@@ -55,7 +55,8 @@ affiliated with the original authors: please don't take questions about this ver
 
 Every module supports several servers. Tautulli locations come from MaxMind's
 [GeoLite2](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) database, which needs a free MaxMind
-license key; without one, Varken runs with GeoIP off and streams have no location.
+account (its account ID and a license key); without a key, Varken runs with GeoIP off and streams have no
+location.
 
 ## Getting started
 
@@ -91,7 +92,7 @@ environment variable named `VRKN_<SECTION>_<KEY>`, for example `VRKN_TAUTULLI_1_
 lists every setting and its default.
 
 - `[global]`: which server ids each module collects from (`false` turns a module off), and the MaxMind license
-  key.
+  key and account ID.
 - `[prometheus]`: the `/metrics` endpoint, which is always on: `bind` (`0.0.0.0`), `port` (`9180`) and
   `stream_details` (per-viewer metrics and Ombi requesters, off by default). An `[influxdb]` section left over from upstream is
   ignored.
