@@ -2,7 +2,7 @@
 # its own stack); Grafana then reads the data from Prometheus.
 #
 #   cp .env.example .env     # then fill in the services you use (docs/configuration.md lists every setting)
-#   mkdir -p config && sudo chown 1000:1000 config
+#   sudo mkdir -p /srv/config/varken/config && sudo chown -R 1000:1000 /srv/config/varken   # CONFIG_ROOT in .env
 #   docker compose up -d
 name: varken
 
@@ -16,8 +16,9 @@ services:
     environment:
       TZ: ${TZ:-UTC}
     volumes:
-      # varken.ini, the GeoLite2 database and logs/.
-      - ${VARKEN_CONFIG_DIR:-./config}:/config
+      # varken.ini, the GeoLite2 database and logs/, in CONFIG_ROOT/varken/config. A host directory, never a named
+      # volume: `docker volume prune` deletes a named volume while its container is stopped.
+      - ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/varken/config:/config
     ports:
       # /metrics, for a Prometheus on this host. The endpoint has no authentication: publish it only on a loopback
       # or private address, or leave this out when Prometheus shares the container's Docker network.

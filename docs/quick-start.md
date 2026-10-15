@@ -13,12 +13,13 @@ places viewers on a map; without one, streams have no location.
 git clone https://github.com/HoneyBearTech/Varken.git && cd Varken
 git checkout v2.0.0                        # a release tag instead of master
 cp .env.example .env && chmod 600 .env
-mkdir -p config && sudo chown 1000:1000 config
+sudo mkdir -p /srv/config/varken/config && sudo chown -R 1000:1000 /srv/config/varken
 ```
 
-`config/` holds `varken.ini`, the GeoLite2 database and the logs. It must belong to uid 1000, the user the
-image runs as (or set `VARKEN_UID`/`VARKEN_GID` in `.env` and give it to them instead). A Docker named volume
-in its place needs no `chown`: the image's `/config` already belongs to uid 1000.
+`CONFIG_ROOT/varken/config` (`CONFIG_ROOT` is `/srv/config` in `.env.example`) holds `varken.ini`, the GeoLite2
+database and the logs. It must belong to uid 1000, the user the image runs as (or set `VARKEN_UID`/`VARKEN_GID`
+in `.env` and give it to them instead). Keep it a host directory rather than a named Docker volume:
+`docker volume prune` deletes named volumes whose container is stopped.
 
 Edit `.env`:
 

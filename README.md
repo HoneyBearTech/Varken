@@ -65,7 +65,7 @@ neither; in the maintainer's setup, [Argus](https://github.com/HoneyBearTech/Arg
 git clone https://github.com/HoneyBearTech/Varken.git
 cd Varken
 cp .env.example .env                       # fill in your services; never commit .env
-mkdir -p config && sudo chown 1000:1000 config
+sudo mkdir -p /srv/config/varken/config && sudo chown -R 1000:1000 /srv/config/varken   # CONFIG_ROOT
 docker compose up -d
 docker compose logs -f varken
 ```

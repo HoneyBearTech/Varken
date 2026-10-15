@@ -7,6 +7,15 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+- The example `docker-compose.yml` keeps Varken's data in `CONFIG_ROOT/varken/config` (`CONFIG_ROOT` in `.env`,
+  required; `/srv/config` in `.env.example`), replacing `VARKEN_CONFIG_DIR`. The docs recommend a host directory
+  over a named Docker volume, which `docker volume prune` deletes while its container is stopped.
+- A first start without `varken.ini` logs at INFO ("creating it from varken.example.ini") instead of an ERROR.
+
+### Fixed
+- The error for a data folder Varken can't write to named the folder and the error the wrong way round.
+
 ## [2.0.0] - 2026-10-15
 
 The first HoneyBearTech release: Varken is now a standalone project maintained at
