@@ -1,0 +1,40 @@
+# Settings for the repo's Python tooling. Varken runs from a checkout (Varken.py + the varken/ package) and
+# isn't published to PyPI; this file only configures ruff, pytest and coverage. Tools are pinned with hashes
+# in requirements-dev.txt.
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+
+[tool.ruff.lint]
+# pycodestyle, Pyflakes, bugbear and the bandit security rules. The upstream code predates most other rule
+# families; widening the set (and adopting ruff format) is on the roadmap. Exceptions are made per line,
+# with a reason.
+select = ["E", "F", "W", "B", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S101", # pytest uses assert
+    "S105", # fixtures use placeholder credentials
+    "S106",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["--strict-config", "--strict-markers", "-ra"]
+# Any warning is a failure, except the archived influxdb client's own deprecation warning on import.
+filterwarnings = [
+    "error",
+    "ignore:datetime.datetime.utcfromtimestamp:DeprecationWarning:influxdb",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["varken"]
+
+[tool.coverage.report]
+# The floor is the current figure; it rises toward 80 % (the roadmap), never down.
+fail_under = 55
+show_missing = true
+skip_covered = true

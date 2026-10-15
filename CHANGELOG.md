@@ -1,4 +1,47 @@
-# Change Log
+# Changelog
+
+All notable changes to this project are documented in this file. The format is based on
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html). Releases up to 1.7.7 are the original
+[Boerderij/Varken](https://github.com/Boerderij/Varken) releases, kept below as they were written.
+
+## [Unreleased]
+
+The first HoneyBearTech release, planned as 2.0.0: Varken is now a standalone project maintained at
+[HoneyBearTech/Varken](https://github.com/HoneyBearTech/Varken). See [upgrading](docs/upgrading.md).
+
+### Changed
+- **Breaking:** the image is now `ghcr.io/honeybeartech/varken`, built for linux/amd64 and linux/arm64
+  (linux/arm/v7 is no longer built).
+- **Breaking:** the container runs as an unprivileged user (uid/gid 1000), so the config folder must belong to
+  that user (`chown -R 1000:1000`), or run the container with `user:`. The Unraid template uses `--user 99:100`.
+- **Breaking:** Python 3.14 (the image's base is `python:3.14.7-slim`, pinned by digest). Every dependency is
+  updated to its current release (requests 2.34, urllib3 2.8, geoip2 5.3, schedule 1.2, distro 1.9,
+  influxdb 5.3.2) and pinned with hashes.
+- The example `docker-compose.yml` pins InfluxDB 1.12 and Grafana 13 by digest, reads settings from `.env`
+  (template `.env.example`) and runs Varken with a read-only root filesystem, no capabilities and
+  `no-new-privileges`. Grafana's Angular worldmap and piechart plugins are gone from it, since Grafana 12+ can't
+  load them.
+- Releases are signed: the image with cosign (keyless), with an SBOM and SLSA provenance, and the release files
+  with a signed `SHA256SUMS`. See [verifying releases](docs/verifying-releases.md).
+
+### Fixed
+- **Security:** when neither a stream's IP nor `fallback_ip` was in the GeoLite2 database, Varken looked up
+  its public IP with the Tautulli session, which sent the Tautulli API key in plain HTTP to a third-party site
+  (ip.42.pl). The lookup now uses a separate HTTPS request to api.ipify.org that carries no credentials. If
+  your logs ever showed "Looked the public IP", rotate your Tautulli API key.
+- **Security:** API keys, usernames, passwords and URLs set through `VRKN_*` environment variables weren't
+  redacted from the logs (only values from `varken.ini` were), and with debug logging on by default they could
+  appear in request lines. They're redacted now, as is the MaxMind license key and any secret inside an
+  exception message.
+- **Security:** the GeoLite2 archive is extracted with Python's `data` filter, so a tampered archive can't
+  create links or write outside the data folder.
+- A wrong MaxMind license key (HTTP 401) is now reported as such; it used to be reported as a generic download
+  problem.
+- The startup log works on current `distro` releases, which removed `linux_distribution()`.
+
+### Removed
+- Links to the original project's Discord, wiki, Docker Hub image and donation page.
 
 ## [v1.7.7](https://github.com/Boerderij/Varken/tree/v1.7.7) (2020-12-21)
 [Full Changelog](https://github.com/Boerderij/Varken/compare/1.7.6...v1.7.7)

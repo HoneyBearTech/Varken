@@ -1,0 +1,57 @@
+name: Image scan
+
+# Scans the varken image for known vulnerabilities with fixes available (Trivy, HIGH and CRITICAL): both the
+# image built from the default branch (what the next release will ship) and the latest published release on GHCR
+# (what users run). Weekly, when the image's inputs change, and on demand. Findings go to the repository's
+# code scanning alerts and are fixed or triaged as described in docs/dependencies.md; most come from the base
+# image and are fixed by Dependabot's base-image bump.
+on:
+  push:
+    branches: [master]
+    paths: ["Dockerfile", "requirements.txt", ".github/workflows/scan.yml"]
+  schedule:
+    - cron: "30 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Scan ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write # upload the results to code scanning
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: master, image: "varken:scan", source: docker }
+          - { target: release, image: "ghcr.io/honeybeartech/varken:latest", source: remote }
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build the image from the default branch
+        if: matrix.target == 'master'
+        run: docker build -t varken:scan .
+
+      - name: Scan
+        env:
+          IMAGE: ${{ matrix.image }}
+          SOURCE: ${{ matrix.source }}
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/out" \
+            aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa \
+            image --image-src "$SOURCE" --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --no-progress \
+            --format sarif --output /out/trivy.sarif "$IMAGE"
+          jq -r '"\(.runs[0].results | length) finding(s)"' trivy.sarif
+
+      - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: trivy.sarif
+          category: trivy-${{ matrix.target }}

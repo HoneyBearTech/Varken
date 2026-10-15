@@ -12,7 +12,7 @@ if version_info < (3, 6, 2):
 
 # Server Structures
 class InfluxServer(NamedTuple):
-    password: str = 'root'
+    password: str = 'root'  # noqa: S105 -- InfluxDB 1.x's documented default, overridden by varken.ini
     port: int = 8086
     ssl: bool = False
     url: str = 'localhost'
@@ -82,7 +82,7 @@ class SickChillServer(NamedTuple):
 class UniFiServer(NamedTuple):
     get_usg_stats_run_seconds: int = 30
     id: int = None
-    password: str = 'ubnt'
+    password: str = 'ubnt'  # noqa: S105 -- UniFi's factory default, overridden by varken.ini
     site: str = None
     url: str = 'unifi.domain.tld:8443'
     username: str = 'ubnt'

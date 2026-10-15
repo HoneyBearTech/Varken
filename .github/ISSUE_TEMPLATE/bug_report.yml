@@ -1,0 +1,39 @@
+name: Bug report
+description: Varken did something wrong (missing or wrong data, a crash, a module that stopped working).
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Thanks for reporting. **Security problems go to the private form instead** (see SECURITY.md).
+        Leave out API keys, passwords, MaxMind license keys, hostnames and addresses: replace them with
+        placeholders.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: >-
+        The Varken release (for example 2.0.0) or commit you run, how you run it (Docker image or Python), and
+        the version of the app involved (Tautulli, Sonarr, InfluxDB, ...).
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log output
+      description: >-
+        The relevant part of `docker logs varken` or `logs/varken.log` in the data folder. Varken redacts API
+        keys, usernames, passwords and URLs it knows about, but check before posting.
+      render: text
+  - type: textarea
+    id: config
+    attributes:
+      label: The relevant part of your varken.ini or VRKN_* variables
+      description: Only the section involved. Remove `apikey`, `username`, `password` and `url` values first.
+      render: ini

@@ -1,11 +1,14 @@
 from logging import getLogger
-from requests import Session, Request
+from requests import Session, Request, get as requests_get
 from geoip2.errors import AddressNotFoundError
 from datetime import datetime, timezone, date, timedelta
 from influxdb.exceptions import InfluxDBClientError
 
 from varken.structures import TautulliStream
 from varken.helpers import hashit, connection_handler, itemgetter_with_default
+
+# Looked up once, when neither a stream's IP nor the configured fallback IP is in the GeoLite2 database.
+PUBLIC_IP_URL = 'https://api.ipify.org'
 
 
 class TautulliAPI(object):
@@ -44,9 +47,7 @@ class TautulliAPI(object):
 
         for session in sessions:
             # Check to see if ip_address_public attribute exists as it was introduced in v2
-            try:
-                getattr(session, 'ip_address_public')
-            except AttributeError:
+            if not hasattr(session, 'ip_address_public'):
                 self.logger.error('Public IP attribute missing!!! Do you have an old version of Tautulli (v1)?')
                 exit(1)
 
@@ -62,7 +63,8 @@ class TautulliAPI(object):
                     except AddressNotFoundError as e:
                         self.logger.error('%s', e)
 
-                        self.my_ip = self.session.get('http://ip.42.pl/raw').text
+                        # A plain request, not self.session: that one adds the Tautulli API key to every URL.
+                        self.my_ip = requests_get(PUBLIC_IP_URL, timeout=10).text.strip()
                         self.logger.debug('Looked the public IP and set it to %s', self.my_ip)
 
                         geodata = self.geoiphandler.lookup(self.my_ip)
@@ -271,7 +273,8 @@ class TautulliAPI(object):
                     except AddressNotFoundError as e:
                         self.logger.error('%s', e)
 
-                        self.my_ip = self.session.get('http://ip.42.pl/raw').text
+                        # A plain request, not self.session: that one adds the Tautulli API key to every URL.
+                        self.my_ip = requests_get(PUBLIC_IP_URL, timeout=10).text.strip()
                         self.logger.debug('Looked the public IP and set it to %s', self.my_ip)
 
                         geodata = self.geoiphandler.lookup(self.my_ip)
@@ -365,4 +368,5 @@ class TautulliAPI(object):
                 if "beyond retention policy" in str(e):
                     self.logger.debug('Only imported 30 days of data per retention policy')
                 else:
-                    self.logger.error('Something went wrong... post this output in discord: %s', e)
+                    self.logger.error('Something went wrong... please open an issue at '
+                                      'https://github.com/HoneyBearTech/Varken/issues with this output: %s', e)

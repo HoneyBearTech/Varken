@@ -1,0 +1,6 @@
+# Tools for the checks and tests (not needed to run Varken). Pinned with hashes in
+# requirements-dev.txt, regenerated with:  uv pip compile --generate-hashes --python-version 3.14 requirements-dev.in -o requirements-dev.txt
+coverage
+pytest
+ruff
+yamllint
