@@ -7,6 +7,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-10-15
+
 ### Fixed
 - A key that `varken.ini` doesn't have yet (one a newer Varken added, such as 2.2.0's `maxmind_account_id`) is
   filled in from the example with an INFO line, not an ERROR.
