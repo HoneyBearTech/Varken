@@ -7,7 +7,9 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
-The first HoneyBearTech release, planned as 2.0.0: Varken is now a standalone project maintained at
+## [2.0.0] - 2026-10-15
+
+The first HoneyBearTech release: Varken is now a standalone project maintained at
 [HoneyBearTech/Varken](https://github.com/HoneyBearTech/Varken), and serves its data as Prometheus metrics
 instead of writing it to InfluxDB. See [upgrading](docs/upgrading.md).
 

@@ -12,8 +12,8 @@ project stopped at 1.7.7 in December 2020; this fork picked it up in October 202
 modernized the runtime and the project around it: Python 3.14, hash-pinned dependencies, a non-root image
 for amd64 and arm64 on GHCR, offline tests, CI with linting, secret scanning and dependency auditing, and
 signed releases with an SBOM and provenance. It also
-fixed two inherited security bugs ([security.md](security.md#fixed-in-200)). **2.0.0**, the first release,
-ships that work.
+fixed two inherited security bugs ([security.md](security.md#fixed-in-200)). **2.0.0** (2026-10-15), the first
+release, ships that work.
 
 The second pass built most of Phase 2, which also ships in 2.0.0:
 

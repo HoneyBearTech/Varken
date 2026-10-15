@@ -14,8 +14,7 @@ workflow when a version tag is pushed. You can check that what you run came from
   the same provenance as in-toto JSON Lines in `varken-<version>.intoto.jsonl`);
 - the **version tag** in git is signed with the maintainer's SSH key.
 
-This applies to releases from **2.0.0 onward**, the first release from this repository; none has been
-published yet. Upstream Boerderij/Varken releases and the `boerderij/varken` images were not signed this
+This applies to releases from **2.0.0 onward**, the first release from this repository. Upstream Boerderij/Varken releases and the `boerderij/varken` images were not signed this
 way and can't be verified with these commands. You need
 [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) 3.0 or later (with cosign 2.6, add
 `--new-bundle-format` to `cosign verify`). The examples use version 2.0.0; substitute the one you run.
