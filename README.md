@@ -34,6 +34,8 @@ affiliated with the original authors: please don't take questions about this ver
   [assurance case](docs/assurance-case.md) behind them.
 - [External interfaces](docs/interfaces.md): the APIs Varken calls, the Prometheus metrics it serves, and the
   command line. [Dependencies and vulnerability management](docs/dependencies.md).
+- [Grafana dashboard](dashboard/README.md): the original Varken dashboard on the Prometheus metrics, ready to
+  import.
 - [Roadmap](docs/roadmap.md): where the project is going, and what it won't do.
 - [Support](SUPPORT.md): which versions get fixes, and for how long.
 - [Contributing](CONTRIBUTING.md), [Code of Conduct](CODE_OF_CONDUCT.md), [Governance](GOVERNANCE.md) and
@@ -44,11 +46,11 @@ affiliated with the original authors: please don't take questions about this ver
 | Service | Data |
 |---|---|
 | [Tautulli](https://tautulli.com/) | Current streams (player, quality, transcode decision, bandwidth, GeoIP location) and library sizes |
-| [Sonarr](https://sonarr.tv/) | Queue, missing episodes and upcoming episodes |
-| [Radarr](https://radarr.video/) | Queue and missing movies |
-| [Lidarr](https://lidarr.audio/) | Queue, missing albums and upcoming albums |
-| [Ombi](https://ombi.io/) | Request counts by type and status, issue counts |
-| [SickChill](https://sickchill.github.io/) | Missing episodes |
+| [Sonarr](https://sonarr.tv/) 4+ | Queue, missing episodes and upcoming episodes |
+| [Radarr](https://radarr.video/) 4+ | Queue and missing movies |
+| [Lidarr](https://lidarr.audio/) 1+ | Queue, missing albums and upcoming albums (job health only) |
+| [Ombi](https://ombi.io/) | Request and issue counts by status, and each request |
+| [SickChill](https://sickchill.github.io/) | Missed and upcoming episodes |
 | [UniFi](https://ui.com/) | Gateway (USG) statistics |
 
 Every module supports several servers. Tautulli locations come from MaxMind's
@@ -72,8 +74,8 @@ docker compose logs -f varken
 
 Then add a scrape job to your Prometheus: `varken:9180` when Prometheus shares Varken's Docker network, or
 `<host>:9180` through the published port ([quick start](docs/quick-start.md#3-scrape-it-with-prometheus)). In
-Grafana, use that Prometheus as the data source and build dashboards on the
-[metrics Varken serves](docs/interfaces.md#output-prometheus-metrics). The [quick start](docs/quick-start.md)
+Grafana, use that Prometheus as the data source and import the [Varken dashboard](dashboard/README.md), or
+build your own on the [metrics Varken serves](docs/interfaces.md#output-prometheus-metrics). The [quick start](docs/quick-start.md)
 walks through the first run, and [installing](docs/installing.md) covers running the image on its own
 (`ghcr.io/honeybeartech/varken`), Unraid, and Python with systemd.
 
@@ -91,7 +93,7 @@ lists every setting and its default.
 - `[global]`: which server ids each module collects from (`false` turns a module off), and the MaxMind license
   key.
 - `[prometheus]`: the `/metrics` endpoint, which is always on: `bind` (`0.0.0.0`), `port` (`9180`) and
-  `stream_details` (per-viewer metrics, off by default). An `[influxdb]` section left over from upstream is
+  `stream_details` (per-viewer metrics and Ombi requesters, off by default). An `[influxdb]` section left over from upstream is
   ignored.
 - `[<module>-<id>]`, such as `[tautulli-1]` or `[sonarr-2]`: the server's address, API key, TLS settings, which
   data to collect and how often.

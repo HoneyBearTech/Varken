@@ -1,0 +1,65 @@
+"""The Grafana dashboard in dashboard/: generated, and built only from metrics and labels Varken serves."""
+import importlib.util
+import re
+from pathlib import Path
+
+import pytest
+
+from tests.sample_metrics import sample
+
+ROOT = Path(__file__).resolve().parent.parent
+spec = importlib.util.spec_from_file_location('make_dashboard', ROOT / 'dashboard' / 'make_dashboard.py')
+make_dashboard = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(make_dashboard)
+
+SERIES = re.compile(r'^(\w+)\{(.*)\} ', re.MULTILINE)
+
+
+@pytest.fixture(scope='module')
+def served():
+    """Every metric name in the sample scrape, with the labels it carries."""
+    labels = {}
+    for name, label_text in SERIES.findall(sample()):
+        labels.setdefault(name, set()).update(re.findall(r'(\w+)="', label_text))
+    return labels
+
+
+def test_the_committed_dashboard_is_up_to_date():
+    assert make_dashboard.main(['--check']) == 0
+
+
+def test_it_has_the_original_dashboards_35_panels():
+    panels = make_dashboard.dashboard()['panels']
+    assert len(panels) == 35
+    assert len({panel['id'] for panel in panels}) == 35
+
+
+def test_every_query_uses_metrics_and_labels_varken_serves(served):
+    for panel in make_dashboard.dashboard()['panels']:
+        for target in panel['targets']:
+            names = set(re.findall(r'\bvarken_\w+', target['expr']))
+            assert names, panel['title']
+            for name in names:
+                assert name in served, (panel['title'], name)
+            used = set(re.findall(r'(\w+)\s*(?:=~|!=|=)\s*"', target['expr']))
+            used |= set(re.findall(r'by \(([\w, ]+)\)', target['expr'])[0].replace(' ', '').split(',')
+                        if 'by (' in target['expr'] else [])
+            for label in used:
+                assert any(label in served[name] for name in names), (panel['title'], label)
+
+
+def test_every_table_column_is_a_label_of_its_metric(served):
+    for panel in make_dashboard.dashboard()['panels']:
+        if panel['type'] != 'table':
+            continue
+        name = re.match(r'(\w+)', panel['targets'][0]['expr']).group(1)
+        columns = panel['transformations'][0]['options']['include']['names']
+        assert set(columns) <= served[name], (panel['title'], set(columns) - served[name])
+
+
+def test_the_argus_copy_pins_argus_data_source():
+    dash = make_dashboard.argus_dashboard()
+    text = make_dashboard.formatted(dash)
+    assert '${datasource}' not in text
+    assert dash['uid'] == 'argus-varken' and 'argus' in dash['tags']
+    assert [v['name'] for v in dash['templating']['list']] == list(make_dashboard.LIBRARIES)

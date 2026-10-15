@@ -28,11 +28,12 @@ on the same private network.
 - **It writes only to its data folder**: `varken.ini` (when it creates or completes it), the GeoLite2
   database and logs. The database archive is extracted with Python's `data`
   filter, so a tampered archive can't write elsewhere or create links.
-- **Responses are data.** API responses are parsed as JSON and mapped onto fixed structures; nothing from
-  them is executed. The config is read with `ConfigParser` without interpolation.
+- **Responses are data.** API responses are parsed as JSON and only read; nothing from them is
+  executed. The config is read with `ConfigParser` without interpolation.
 - **Viewer IP addresses aren't exported.** The Tautulli module turns a viewer's public address into a city
   and region (or nothing, with GeoIP off); the address itself never reaches the metrics, and the debug log
-  shows only its last octet. Who watches what is in the metrics only with `stream_details = true`.
+  shows only its last octet. Who watches what, the city's coordinates, and who requested what in Ombi are
+  in the metrics only with `stream_details = true`.
 
 ## Running it securely
 
@@ -64,7 +65,7 @@ your own:
 ```yaml
 services:
   varken:
-    image: ghcr.io/honeybeartech/varken:2.0.0
+    image: ghcr.io/honeybeartech/varken:2.1.0
     user: "1000:1000"
     read_only: true
     cap_drop: [ALL]
@@ -95,7 +96,10 @@ reach it. The endpoint has **no authentication and no TLS**, and no rate limit.
 - Even without per-viewer metrics, it shows how many streams are running, on which platforms and in which
   quality, and what your libraries hold.
 - Leave `stream_details = false` unless everyone who can reach the endpoint or query Prometheus may see who
-  is watching what and from which city. Viewer IP addresses are never exported.
+  is watching what and from which city (with its coordinates), and who requested what in Ombi. Viewer IP
+  addresses are never exported.
+- Without `stream_details`, the Sonarr, Radarr, SickChill and Ombi metrics still list titles: what is
+  queued, missing, airing soon and requested.
 - Prometheus keeps what it scrapes for its own retention time; treat it as personal data (below).
 
 ### Logs and data
@@ -105,8 +109,8 @@ reach it. The endpoint has **no authentication and no TLS**, and no rate limit.
 - `LOG_TO_FILE=false` keeps the log out of the data folder, so it lives only where the container runtime or
   journald keeps stdout.
 - Treat Prometheus, Grafana and Varken's logs as personal data. With `stream_details = true` the metrics
-  show who watched what, when, on which player and, with GeoIP on, from which city; even without it they
-  show when your server is in use. Restrict who can open those dashboards, and think before sharing a viewer
+  show who watched what, when, on which player and, with GeoIP on, from which city, and who requested what
+  in Ombi; even without it they show when your server is in use. Restrict who can open those dashboards, and think before sharing a viewer
   account. Prometheus keeps 15 days unless you change its retention. Without a MaxMind license key, no
   locations are recorded at all.
 

@@ -17,6 +17,10 @@ from varken import BRANCH, VERSION, helpers
 
 JOB_LABELS = ['service', 'server', 'job']
 PLAYER_STATES = {0: 'playing', 1: 'paused', 3: 'buffering'}
+# What the Tautulli module records when a viewer can't be located; exported as "" instead.
+UNKNOWN_PLACE = ('👽', 37.234332396, -115.80666344)
+OMBI_REQUEST_STATUS = {0: 'denied', 1: 'approved', 2: 'available', 3: 'pending'}
+SICKCHILL_STATUS = {0: 'future', 1: 'later', 2: 'soon', 3: 'today', 4: 'missed'}
 
 
 def job_key(job, kwargs):
@@ -34,6 +38,20 @@ def job_key(job, kwargs):
 def label(value):
     """A tag value as a label value: 'Direct Play' -> 'direct_play'."""
     return str(value).strip().lower().replace(' ', '_')
+
+
+def text(value):
+    """A tag value as label text; None becomes ""."""
+    return '' if value is None else str(value)
+
+
+def flag(value):
+    """A 0/1 tag as "true"/"false"."""
+    return 'true' if str(value) in ('1', 'True', 'true') else 'false'
+
+
+def info(name, documentation, labels):
+    return GaugeMetricFamily(name, documentation, labels=labels)
 
 
 class JobErrors(Handler):
@@ -142,6 +160,8 @@ class Metrics(object):
         yield points
 
         yield from self.tautulli(jobs)
+        yield from self.arrs(jobs)
+        yield from self.ombi(jobs)
 
     def tautulli(self, jobs):
         streams = GaugeMetricFamily('varken_tautulli_streams', 'Current streams.', labels=['server'])
@@ -160,10 +180,13 @@ class Metrics(object):
                                       labels=['server', 'library', 'type', 'item'])
         details = self.server.stream_details
         session_info = GaugeMetricFamily('varken_tautulli_session_info',
-                                         'One series per current session: who watches what, how and where. Only '
-                                         'with stream_details = true.',
-                                         labels=['server', 'session_id', 'user', 'title', 'product', 'platform',
-                                                 'quality', 'transcode_decision', 'location', 'region_code'])
+                                         'One series per current session: who watches what, how and where (the '
+                                         "viewer's city and its coordinates with GeoIP on). Only with "
+                                         'stream_details = true.',
+                                         labels=['server', 'session_id', 'user', 'friendly_name', 'title', 'product',
+                                                 'product_version', 'platform', 'quality', 'quality_profile',
+                                                 'transcode_decision', 'video_decision', 'state', 'location',
+                                                 'full_location', 'region_code', 'latitude', 'longitude'])
         progress = GaugeMetricFamily('varken_tautulli_session_progress_ratio',
                                      'How far into the item each current session is (0 to 1). Only with '
                                      'stream_details = true.', labels=['server', 'session_id'])
@@ -191,11 +214,17 @@ class Metrics(object):
                                   label(tags['video_decision']), str(tags['quality']), str(tags['platform']))
                         counts[labels] = counts.get(labels, 0) + 1
                         if details:
+                            located = (tags.get('latitude'), tags.get('longitude')) != UNKNOWN_PLACE[1:]
+                            place = text(tags.get('location'))
                             session_info.add_metric(
-                                [server, str(tags['session_id']), str(tags['username']), str(tags['title']),
-                                 str(tags['product']), str(tags['platform']), str(tags['quality']),
-                                 label(tags['transcode_decision']), str(tags['location']),
-                                 str(tags['region_code'] or '')], 1)
+                                [server, text(tags['session_id']), text(tags['username']),
+                                 text(tags.get('friendly_name')), text(tags['title']), text(tags['product']),
+                                 text(tags.get('product_version')), text(tags['platform']), text(tags['quality']),
+                                 text(tags.get('quality_profile')), label(tags['transcode_decision']),
+                                 label(tags['video_decision']), state, '' if place == UNKNOWN_PLACE[0] else place,
+                                 text(tags.get('full_location')), text(tags.get('region_code')),
+                                 text(tags.get('latitude')) if located else '',
+                                 text(tags.get('longitude')) if located else ''], 1)
                             try:
                                 progress.add_metric([server, str(tags['session_id'])],
                                                     float(tags['progress_percent']) / 100)
@@ -218,3 +247,80 @@ class Metrics(object):
         if details:
             yield session_info
             yield progress
+
+    def arrs(self, jobs):
+        """Sonarr, Radarr and SickChill items: what's queued, missing or airing."""
+        sonarr_queue = info('varken_sonarr_queue_item_info', "One series per episode in Sonarr's download queue.",
+                            ['server', 'series', 'episode', 'title', 'protocol', 'quality'])
+        sonarr_episodes = info('varken_sonarr_episode_info',
+                               'One series per episode Sonarr is missing (kind="missing": monitored, aired in the '
+                               'last missing_days, no file) or that airs soon (kind="future": today through '
+                               'future_days).',
+                               ['server', 'kind', 'series', 'episode', 'title', 'airs', 'downloaded'])
+        radarr_queue = info('varken_radarr_queue_item_info', "One series per movie in Radarr's download queue.",
+                            ['server', 'movie', 'quality', 'protocol'])
+        radarr_missing = info('varken_radarr_missing_info',
+                              'One series per monitored movie Radarr has no file for; available="true" once it '
+                              'is released.', ['server', 'movie', 'available'])
+        sickchill_episodes = info('varken_sickchill_episode_info',
+                                  "One series per episode on SickChill's coming-episodes list.",
+                                  ['server', 'show', 'episode', 'title', 'airdate', 'status'])
+        for (service, server, job), (ok, _, written) in sorted(jobs.items()):
+            if not ok:
+                continue
+            for point in written:
+                tags = point.get('tags', {})
+                if service == 'sonarr' and job == 'queue':
+                    sonarr_queue.add_metric([server, text(tags.get('name')), text(tags.get('sxe')),
+                                             text(tags.get('epname')), label(tags.get('protocol', '')),
+                                             text(tags.get('quality'))], 1)
+                elif service == 'sonarr' and job in ('missing', 'future'):
+                    sonarr_episodes.add_metric([server, job, text(tags.get('name')), text(tags.get('sxe')),
+                                                text(tags.get('epname')), text(tags.get('airsUTC')),
+                                                flag(tags.get('downloaded'))], 1)
+                elif service == 'radarr' and job == 'queue':
+                    radarr_queue.add_metric([server, text(tags.get('name')), text(tags.get('quality')),
+                                             label(tags.get('protocol', ''))], 1)
+                elif service == 'radarr' and job == 'missing':
+                    available = 'true' if str(tags.get('Missing_Available')) == '0' else 'false'
+                    radarr_missing.add_metric([server, text(tags.get('name')), available], 1)
+                elif service == 'sickchill' and job == 'missing':
+                    sickchill_episodes.add_metric([server, text(tags.get('name')), text(tags.get('sxe')),
+                                                   text(tags.get('epname')), text(tags.get('airdate')),
+                                                   SICKCHILL_STATUS.get(tags.get('type'), 'other')], 1)
+        yield sonarr_queue
+        yield sonarr_episodes
+        yield radarr_queue
+        yield radarr_missing
+        yield sickchill_episodes
+
+    def ombi(self, jobs):
+        """Ombi's request and issue counts, and each request."""
+        requests = info('varken_ombi_requests', 'Ombi requests by status.', ['server', 'status'])
+        issues = info('varken_ombi_issues', 'Ombi issues by status.', ['server', 'status'])
+        request_info = info('varken_ombi_request_info',
+                            'One series per Ombi request; user (the requester) only with stream_details = true.',
+                            ['server', 'type', 'title', 'status', 'requested', 'user'])
+        details = self.server.stream_details
+        for (service, server, job), (ok, _, written) in sorted(jobs.items()):
+            if service != 'ombi' or not ok:
+                continue
+            for point in written:
+                tags, fields = point.get('tags', {}), point.get('fields', {})
+                if job == 'request_counts':
+                    for status in ('pending', 'approved', 'available'):
+                        if status in fields:
+                            requests.add_metric([server, status], fields[status])
+                elif job == 'issue_counts':
+                    for status in ('pending', 'in_progress', 'resolved'):
+                        if status in fields:
+                            issues.add_metric([server, status], fields[status])
+                elif job == 'all_requests' and tags.get('type') == 'Requests':
+                    request_info.add_metric(
+                        [server, 'movie' if tags.get('request_type') == 1 else 'tv', text(tags.get('title')),
+                         OMBI_REQUEST_STATUS.get(tags.get('status'), 'other'), text(tags.get('requested_date')),
+                         text(tags.get('requested_user')) if details else ''], 1)
+        yield requests
+        yield issues
+        yield request_info
+

@@ -150,8 +150,11 @@ def test_tautulli_stream_details_when_enabled(monkeypatch):
     run_tautulli(metrics, monkeypatch, ACTIVITY, 'get_activity')
 
     assert value(metrics, 'varken_tautulli_session_info', server='1', session_id='abc', user='viewer',
-                 title='Some Show - Pilot', product='Plex Web', platform='Windows', quality='1080p',
-                 transcode_decision='direct_stream', location='Springfield', region_code='IL') == 1
+                 friendly_name='Viewer', title='Some Show - Pilot', product='Plex Web', product_version='4.1',
+                 platform='Windows', quality='1080p', quality_profile='Original',
+                 transcode_decision='direct_stream', video_decision='transcode', state='paused',
+                 location='Springfield', full_location='Illinois - Springfield', region_code='IL',
+                 latitude='39.8', longitude='-89.6') == 1
     assert value(metrics, 'varken_tautulli_session_progress_ratio', server='1', session_id='abc') == 0.42
     assert '203.0.113.5' not in generate_latest(metrics.registry).decode()
 
@@ -216,13 +219,24 @@ def test_errors_logged_outside_a_job_change_nothing(metrics):
     assert metrics.snapshot() == {}
 
 
-def test_the_ci_sample_has_every_tautulli_metric():
+def test_the_ci_sample_has_every_metric():
     from tests.sample_metrics import sample
 
     text = sample()
-    for name in ('varken_tautulli_streams', 'varken_tautulli_sessions', 'varken_tautulli_library_items',
-                 'varken_tautulli_session_info', 'varken_tautulli_session_progress_ratio', 'varken_job_up'):
-        assert f'\n{name}{{' in text
+    for name in ('varken_build_info', 'varken_job_up', 'varken_job_last_success_timestamp_seconds',
+                 'varken_job_points', 'varken_tautulli_streams', 'varken_tautulli_streams_by_decision',
+                 'varken_tautulli_bandwidth_bytes_per_second', 'varken_tautulli_sessions',
+                 'varken_tautulli_library_items', 'varken_tautulli_session_info',
+                 'varken_tautulli_session_progress_ratio', 'varken_sonarr_queue_item_info',
+                 'varken_sonarr_episode_info', 'varken_radarr_queue_item_info', 'varken_radarr_missing_info',
+                 'varken_sickchill_episode_info', 'varken_ombi_requests', 'varken_ombi_issues',
+                 'varken_ombi_request_info'):
+        assert f'\n{name}{{' in text, name
+    for job in ('activity', 'stats', 'queue', 'missing', 'future', 'request_counts', 'issue_counts',
+                'all_requests'):
+        assert f'job="{job}"' in text, job
+    up = [line for line in text.splitlines() if line.startswith('varken_job_up{')]
+    assert len(up) == 11 and all(line.endswith(' 1.0') for line in up), up
 
 
 def test_a_port_in_use_exits_cleanly():
@@ -232,3 +246,15 @@ def test_a_port_in_use_exits_cleanly():
         port = taken.getsockname()[1]
         with pytest.raises(SystemExit):
             Metrics(PrometheusServer(bind='127.0.0.1', port=port)).start()
+
+
+def test_an_unlocated_viewer_has_no_place_on_the_map(monkeypatch):
+    # The Tautulli module records an alien and Area 51 for viewers it can't place; the metrics leave them empty.
+    from varken.helpers import NoGeoIP
+    metrics = Metrics(PrometheusServer(stream_details=True))
+    monkeypatch.setattr(tautulli, 'connection_handler', lambda session, request, verify: ACTIVITY)
+    metrics.run(TautulliAPI(SERVER, metrics, NoGeoIP()).get_activity)
+
+    (labels,) = [dict(labels) for name, labels in samples(metrics) if name == 'varken_tautulli_session_info']
+    assert (labels['location'], labels['latitude'], labels['longitude'], labels['full_location']) == ('', '', '', '')
+

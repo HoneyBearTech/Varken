@@ -2,11 +2,16 @@ from logging import getLogger
 from requests import Session, Request
 from datetime import datetime, timezone, date, timedelta
 
-from varken.structures import Queue, SonarrTVShow
 from varken.helpers import hashit, connection_handler
 
 
+def episode_code(season, episode):
+    return f'S{season:0>2}E{episode:0>2}'
+
+
 class SonarrAPI(object):
+    """Sonarr through its v3 API (Sonarr 4; Sonarr 3 serves the same API)."""
+
     def __init__(self, server, output):
         self.output = output
         self.server = server
@@ -20,59 +25,50 @@ class SonarrAPI(object):
         return f"<sonarr-{self.server.id}>"
 
     def get_calendar(self, query="Missing"):
-        endpoint = '/api/calendar/'
+        endpoint = '/api/v3/calendar'
         today = str(date.today())
         last_days = str(date.today() - timedelta(days=self.server.missing_days))
         future = str(date.today() + timedelta(days=self.server.future_days))
         now = datetime.now(timezone.utc).astimezone().isoformat()
         if query == "Missing":
-            params = {'start': last_days, 'end': today}
+            params = {'start': last_days, 'end': today, 'includeSeries': 'true'}
         else:
-            params = {'start': today, 'end': future}
+            params = {'start': today, 'end': future, 'includeSeries': 'true'}
         points = []
-        air_days = []
-        missing = []
 
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint, params=params))
         get = connection_handler(self.session, req, self.server.verify_ssl)
 
-        if not get:
+        if get is False:
+            return
+        if not isinstance(get, list):
+            self.logger.error('Unexpected reply from Sonarr\'s calendar (is it Sonarr 3 or later?): %s', get)
             return
 
-        tv_shows = []
         for show in get:
             try:
-                tv_shows.append(SonarrTVShow(**show))
-            except TypeError as e:
-                self.logger.error('TypeError has occurred : %s while creating SonarrTVShow structure for show. Data '
-                                  'attempted is: %s', e, show)
-
-        for show in tv_shows:
-            sxe = f'S{show.seasonNumber:0>2}E{show.episodeNumber:0>2}'
-            if show.hasFile:
-                downloaded = 1
-            else:
-                downloaded = 0
-            if query == "Missing":
-                if show.monitored and not downloaded:
-                    missing.append((show.series['title'], downloaded, sxe, show.title, show.airDateUtc, show.id))
-            else:
-                air_days.append((show.series['title'], downloaded, sxe, show.title, show.airDateUtc, show.id))
-
-        for series_title, dl_status, sxe, episode_title, air_date_utc, sonarr_id in (air_days or missing):
+                series_title = show['series']['title']
+                sxe = episode_code(show['seasonNumber'], show['episodeNumber'])
+            except (KeyError, TypeError) as e:
+                self.logger.error('Skipping a Sonarr calendar entry without series or episode numbers (%s): %s', e,
+                                  show)
+                continue
+            downloaded = 1 if show.get('hasFile') else 0
+            if query == "Missing" and (not show.get('monitored') or downloaded):
+                continue
             hash_id = hashit(f'{self.server.id}{series_title}{sxe}')
             points.append(
                 {
                     "measurement": "Sonarr",
                     "tags": {
                         "type": query,
-                        "sonarrId": sonarr_id,
+                        "sonarrId": show.get('id'),
                         "server": self.server.id,
                         "name": series_title,
-                        "epname": episode_title,
+                        "epname": show.get('title', ''),
                         "sxe": sxe,
-                        "airsUTC": air_date_utc,
-                        "downloaded": dl_status
+                        "airsUTC": show.get('airDateUtc', ''),
+                        "downloaded": downloaded
                     },
                     "time": now,
                     "fields": {
@@ -85,56 +81,43 @@ class SonarrAPI(object):
 
     def get_queue(self):
         points = []
-        endpoint = '/api/queue'
+        endpoint = '/api/v3/queue'
+        params = {'includeSeries': 'true', 'includeEpisode': 'true'}
         now = datetime.now(timezone.utc).astimezone().isoformat()
-        queue = []
 
-        req = self.session.prepare_request(Request('GET', self.server.url + endpoint))
+        req = self.session.prepare_request(Request('GET', self.server.url + endpoint, params=params))
         get = connection_handler(self.session, req, self.server.verify_ssl)
 
-        if not get:
+        if get is False:
+            return
+        if not isinstance(get, dict) or not isinstance(get.get('records'), list):
+            self.logger.error('Unexpected reply from Sonarr\'s queue (is it Sonarr 3 or later?): %s', get)
             return
 
-        download_queue = []
-        for show in get:
+        for item in get['records']:
             try:
-                download_queue.append(Queue(**show))
-            except TypeError as e:
-                self.logger.error('TypeError has occurred : %s while creating Queue structure. Data attempted is: '
-                                  '%s', e, show)
-        if not download_queue:
-            return
-
-        for show in download_queue:
-            try:
-                sxe = f"S{show.episode['seasonNumber']:0>2}E{show.episode['episodeNumber']:0>2}"
-            except TypeError as e:
-                self.logger.error('TypeError has occurred : %s while processing the sonarr queue. \
-                                  Remove invalid queue entry. Data attempted is: %s', e, show)
+                series_title = item['series']['title']
+                episode = item['episode']
+                sxe = episode_code(episode['seasonNumber'], episode['episodeNumber'])
+                quality = item['quality']['quality']['name']
+            except (KeyError, TypeError) as e:
+                # A queue entry Sonarr hasn't matched to an episode (an unknown download, say).
+                self.logger.debug('Skipping a Sonarr queue entry without a series or episode (%s): %s', e, item)
                 continue
-
-            if show.protocol.upper() == 'USENET':
-                protocol_id = 1
-            else:
-                protocol_id = 0
-
-            queue.append((show.series['title'], show.episode['title'], show.protocol.upper(),
-                          protocol_id, sxe, show.id, show.quality['quality']['name']))
-
-        for series_title, episode_title, protocol, protocol_id, sxe, sonarr_id, quality in queue:
+            protocol = str(item.get('protocol', '')).upper()
             hash_id = hashit(f'{self.server.id}{series_title}{sxe}')
             points.append(
                 {
                     "measurement": "Sonarr",
                     "tags": {
                         "type": "Queue",
-                        "sonarrId": sonarr_id,
+                        "sonarrId": item.get('id'),
                         "server": self.server.id,
                         "name": series_title,
-                        "epname": episode_title,
+                        "epname": episode.get('title', ''),
                         "sxe": sxe,
                         "protocol": protocol,
-                        "protocol_id": protocol_id,
+                        "protocol_id": 1 if protocol == 'USENET' else 0,
                         "quality": quality
                     },
                     "time": now,
@@ -143,7 +126,6 @@ class SonarrAPI(object):
                     }
                 }
             )
-        if points:
-            self.output.write_points(points)
-        else:
+        if not points:
             self.logger.debug("No queue items for sonarr instance.")
+        self.output.write_points(points)

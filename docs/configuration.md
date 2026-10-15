@@ -97,7 +97,7 @@ Varken's output, always on: an HTTP endpoint at `/metrics` that Prometheus scrap
 | --- | --- | --- | --- |
 | `bind` | `VRKN_PROMETHEUS_BIND` | `0.0.0.0` | The address to listen on. Must be an IP address (IPv4 or IPv6), not a host name, or Varken stops. `0.0.0.0` is every IPv4 interface (in a container, the container's own); `127.0.0.1` keeps it to the same host. |
 | `port` | `VRKN_PROMETHEUS_PORT` | `9180` | The port to listen on, from 1 to 65535, or Varken stops. ScyllaDB also uses 9180 by default; pick another port if something on the host already has it. |
-| `stream_details` | `VRKN_PROMETHEUS_STREAM_DETAILS` | `false` | Add the per-viewer Tautulli metrics: who is watching what, on which player, and from which city. Personal data, so off by default; viewer IP addresses are never exported either way. |
+| `stream_details` | `VRKN_PROMETHEUS_STREAM_DETAILS` | `false` | Add the per-viewer Tautulli metrics (who is watching what, on which player, and from which city, with its coordinates) and the requester of each Ombi request. Personal data, so off by default; viewer IP addresses are never exported either way. |
 
 The endpoint has no authentication and no TLS. Keep it on a private network (a Docker network shared with
 Prometheus, for example) or bind it to `127.0.0.1`; see [security.md](security.md#the-metrics-endpoint).
@@ -137,6 +137,8 @@ or `api.ipify.org`.
 
 ## `[sonarr-N]`
 
+Sonarr 4 or later; Varken reads its `/api/v3`.
+
 | Key | Environment variable | Example | Meaning |
 | --- | --- | --- | --- |
 | `missing_days` | `VRKN_SONARR_<ID>_MISSING_DAYS` | `7` | Record monitored episodes without a file that aired in the last N days. `0` turns this off. |
@@ -148,6 +150,8 @@ or `api.ipify.org`.
 
 ## `[radarr-N]`
 
+Radarr 4 or later; Varken reads its `/api/v3`.
+
 | Key | Environment variable | Example | Meaning |
 | --- | --- | --- | --- |
 | `queue` | `VRKN_RADARR_<ID>_QUEUE` | `true` | Record the download queue. |
@@ -156,6 +160,8 @@ or `api.ipify.org`.
 | `get_missing_run_seconds` | `VRKN_RADARR_<ID>_GET_MISSING_RUN_SECONDS` | `300` | How often. |
 
 ## `[lidarr-N]`
+
+Lidarr 1 or later; Varken reads its `/api/v1`.
 
 | Key | Environment variable | Example | Meaning |
 | --- | --- | --- | --- |
