@@ -13,7 +13,7 @@ class BlacklistFilter(Filter):
     max_files = 5
     log_folder = 'logs'
 
-    blacklisted_strings = ['apikey',  'username',  'password', 'url']
+    blacklisted_strings = ['apikey', 'username', 'password', 'url', 'maxmind_license_key']
 
     def __init__(self, filteredstrings):
         super().__init__()
@@ -25,7 +25,10 @@ class BlacklistFilter(Filter):
                 if item in record.msg:
                     record.msg = record.msg.replace(item, 8 * '*' + item[-5:])
                 if any(item in str(arg) for arg in record.args):
-                    record.args = tuple(arg.replace(item, 8 * '*' + item[-5:]) if isinstance(arg, str) else arg
+                    # Anything but a number is redacted through its text, so an exception or a request whose
+                    # text contains a secret (an API key in a URL, say) doesn't carry it into the log.
+                    record.args = tuple(str(arg).replace(item, 8 * '*' + item[-5:])
+                                        if not isinstance(arg, (int, float)) and item in str(arg) else arg
                                         for arg in record.args)
             except TypeError:
                 pass

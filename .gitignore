@@ -13,3 +13,28 @@ varken-venv/
 venv/
 logs/
 __pycache__
+
+# Varken runtime data in the default data folder
+data/logs/
+config/
+
+# Settings for docker-compose.yml (template: .env.example); never commit secrets
+.env
+.envrc
+
+# Keys and certificates never belong in the repo
+*.pem
+*.key
+
+# The old in-repo vault path; project notes live in Chronos, never here
+.obsidian-docs/
+
+# Python tooling
+.venv/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml

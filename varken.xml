@@ -2,14 +2,14 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>Varken</Name>
-  <Repository>boerderij/varken</Repository>
-  <Registry>https://hub.docker.com/r/boerderij/varken/~/dockerfile/</Registry>
+  <Repository>ghcr.io/honeybeartech/varken</Repository>
+  <Registry>https://github.com/HoneyBearTech/Varken/pkgs/container/varken</Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
-  <Support>https://discord.gg/VjZ6qSM</Support>
-  <Project/>
+  <Support>https://github.com/HoneyBearTech/Varken/issues</Support>
+  <Project>https://github.com/HoneyBearTech/Varken</Project>
   <Overview>
     Varken is a standalone command-line utility to aggregate data from the Plex ecosystem into InfluxDB. Examples use Grafana for a frontend
   </Overview>
@@ -17,7 +17,7 @@
   <WebUI/>
   <TemplateURL/>
   <Icon>Pig.png</Icon>
-  <ExtraParams/>
+  <ExtraParams>--user 99:100</ExtraParams>
   <PostArgs/>
   <CPUset/>
   <DonateText/>
@@ -36,20 +36,7 @@
       <Mode>rw</Mode>
     </Volume>
   </Data>
-  <Environment>
-    <Variable>
-      <Value>99</Value>
-      <Name>PGID</Name>
-      <Mode/>
-    </Variable>
-    <Variable>
-      <Value>100</Value>
-      <Name>PUID</Name>
-      <Mode/>
-    </Variable>
-  </Environment>
+  <Environment/>
   <Labels/>
-  <Config Name="PGID" Target="PGID" Default="" Mode="" Description="Container Variable: PGID" Type="Variable" Display="always" Required="true" Mask="false">99</Config>
-  <Config Name="PUID" Target="PUID" Default="" Mode="" Description="Container Variable: PUID" Type="Variable" Display="always" Required="true" Mask="false">100</Config>
   <Config Name="Varken DataDir" Target="/config" Default="" Mode="rw" Description="Container Path: /config" Type="Path" Display="advanced-hide" Required="true" Mask="false">/mnt/user/appdata/varken</Config>
 </Container>

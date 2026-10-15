@@ -31,6 +31,10 @@ class INIParser(object):
     def config_blacklist(self):
         filtered_strings = [section.get(k) for key, section in self.config.items()
                             for k in section if k in BlacklistFilter.blacklisted_strings]
+        # VRKN_* environment variables override the file, so their values are just as secret.
+        secret_suffixes = tuple(f'_{key}' for key in BlacklistFilter.blacklisted_strings)
+        filtered_strings.extend(value for name, value in env.items()
+                                if name.startswith('VRKN_') and name.lower().endswith(secret_suffixes))
         self.filtered_strings = list(filter(None, filtered_strings))
         # Added matching for domains that use /locations. ConnectionPool ignores the location in logs
         domains_only = [string.split('/')[0] for string in filtered_strings if '/' in string]

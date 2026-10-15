@@ -1,4 +1,4 @@
-from hashlib import md5
+from hashlib import sha256
 from datetime import date, timedelta
 from time import sleep
 from logging import getLogger
@@ -86,12 +86,8 @@ class GeoIPHandler(object):
         while not downloaded:
             self.logger.info('Downloading GeoLite2 DB from MaxMind...')
             try:
-                urlretrieve(maxmind_url, tar_dbfile)
+                urlretrieve(maxmind_url, tar_dbfile)  # noqa: S310 -- a fixed https:// URL
                 downloaded = True
-            except URLError as e:
-                self.logger.error("Problem downloading new MaxMind DB: %s", e)
-                result_status = 1
-                return result_status
             except HTTPError as e:
                 if e.code == 401:
                     self.logger.error("Your MaxMind license key is incorect! Check your config: %s", e)
@@ -106,6 +102,11 @@ class GeoIPHandler(object):
                     self.logger.error("Retried downloading the new MaxMind DB 3 times and failed... Aborting!")
                     result_status = 1
                     return result_status
+            # After HTTPError, which is a subclass of URLError.
+            except URLError as e:
+                self.logger.error("Problem downloading new MaxMind DB: %s", e)
+                result_status = 1
+                return result_status
         try:
             remove(self.dbfile)
         except FileNotFoundError:
@@ -119,7 +120,9 @@ class GeoIPHandler(object):
             if 'GeoLite2-City.mmdb' in files.name:
                 self.logger.debug('"GeoLite2-City.mmdb" FOUND in tar file')
                 files.name = basename(files.name)
-                tar.extract(files, self.data_folder)
+                # The "data" filter refuses links, devices and anything that would land outside the data
+                # folder, so a tampered archive can't write elsewhere.
+                tar.extract(files, self.data_folder, filter='data')
                 self.logger.debug('%s has been extracted to %s', files, self.data_folder)
         tar.close()
         try:
@@ -131,7 +134,8 @@ class GeoIPHandler(object):
 
 def hashit(string):
     encoded = string.encode()
-    hashed = md5(encoded).hexdigest()
+    # A stable id that dashboards count distinct items by. SHA-256 rather than MD5, so scanners needn't ask.
+    hashed = sha256(encoded).hexdigest()
 
     return hashed
 

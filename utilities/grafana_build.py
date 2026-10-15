@@ -5,12 +5,13 @@
 # docker exec -it varken python3 /config/grafana_build.py
 from sys import exit
 from requests import Session
+from requests.exceptions import RequestException
 from json.decoder import JSONDecodeError
 
 docker = True  # True if using a docker container, False if not
 host_ip = '127.0.0.1'  # Only relevant if docker = False
 username = 'admin'  # Grafana username
-password = 'admin'  # Grafana password
+password = 'admin'  # Grafana password  # noqa: S105 -- placeholder the user edits
 grafana_url = 'http://grafana:3000'
 verify = False  # Verify SSL
 
@@ -160,5 +161,5 @@ try:
     make_dashboard = session.post(url_base + '/dashboards/import', json=dashboard_data, auth=auth, verify=verify)
     if make_dashboard.status_code == 200 and make_dashboard.json().get('imported'):
         print(f'Created dashboard "{our_dashboard["title"]}"')
-except:
-    print('Shit...')
+except (RequestException, ValueError) as e:
+    print(f'Could not create the dashboard: {e}')

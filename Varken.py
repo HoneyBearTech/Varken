@@ -6,7 +6,7 @@ from sys import version
 from threading import Thread
 from os import environ as env
 from os import access, R_OK, getenv
-from distro import linux_distribution
+from distro import name as distro_name
 from os.path import isdir, abspath, dirname, join
 from argparse import ArgumentParser, RawTextHelpFormatter
 from logging import getLogger, StreamHandler, Formatter, DEBUG
@@ -27,7 +27,7 @@ from varken.sickchill import SickChillAPI
 from varken.varkenlogger import VarkenLogger
 
 
-PLATFORM_LINUX_DISTRO = ' '.join(x for x in linux_distribution() if x)
+PLATFORM_LINUX_DISTRO = distro_name(pretty=True)
 
 
 def thread(job, **kwargs):
