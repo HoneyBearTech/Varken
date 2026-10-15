@@ -166,6 +166,6 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           gh release create "$TAG" --repo "$REPO" --verify-tag \
-            --title "varken ${TAG}" --notes-file notes.md \
+            --title "Varken ${TAG}" --notes-file notes.md \
             varken-*.tar.gz image.txt SHA256SUMS SHA256SUMS.sigstore.json varken-*.provenance.sigstore.json \
             varken-*.intoto.jsonl

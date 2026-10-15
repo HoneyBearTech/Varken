@@ -33,14 +33,8 @@ signatures, including the commit they were built from. A tag such as `2.0.0` can
 for the strongest guarantee, pin the digest from the release's `image.txt` (after verifying it, below), for
 example `image: ghcr.io/honeybeartech/varken@sha256:…` in your compose file.
 
-With the [GitHub CLI](https://cli.github.com/) you can also check the image's provenance against this
-repository:
-
-```sh
-gh attestation verify oci://ghcr.io/honeybeartech/varken:2.0.0 --repo HoneyBearTech/Varken
-```
-
-To see the SBOM and the provenance:
+The image's SBOM and SLSA provenance are attached to it in the registry by the build (the GitHub
+attestations described below cover the release files, not the image). To see them:
 
 ```sh
 docker buildx imagetools inspect ghcr.io/honeybeartech/varken:2.0.0 --format '{{ json .SBOM }}'
