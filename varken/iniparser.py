@@ -18,6 +18,7 @@ class INIParser(object):
         self.config = None
         self.data_folder = data_folder
         self.filtered_strings = None
+        self.rectified = False
         self.services = ['sonarr', 'radarr', 'lidarr', 'ombi', 'tautulli', 'sickchill', 'unifi']
 
         self.logger = getLogger()
@@ -143,6 +144,17 @@ class INIParser(object):
             self.logger.debug('%s is a valid URL in module [%s].', url_check, module)
             return url_check
 
+    def missing_key(self, error):
+        """A key varken.ini doesn't have (one a newer Varken added, usually): fill it in from the example and parse
+        again. If the key is still missing after that, the example lacks it too, so stop rather than loop."""
+        if self.rectified:
+            self.logger.error('[%s] %s is missing from varken.example.ini too. Exiting.', error.section, error.option)
+            exit(1)
+        self.logger.info('varken.ini has no %s in [%s] (new in this version?): adding it from varken.example.ini',
+                         error.option, error.section)
+        self.rectified = True
+        self.rectify_ini()
+
     def rectify_ini(self):
         self.logger.debug('Rectifying varken.ini with varken.example.ini')
         current_ini = self.config
@@ -153,7 +165,8 @@ class INIParser(object):
                 self.logger.debug('Section %s missing. Adding...', name)
                 current_ini[name] = {}
             for key, value in section.items():
-                if not current_ini[name].get(key):
+                # Only keys that are missing: a key left empty on purpose (no MaxMind key, say) stays empty.
+                if key not in current_ini[name]:
                     self.logger.debug('%s is missing in %s. Adding defaults...', key, name)
                     current_ini[name][key] = value
 
@@ -175,8 +188,7 @@ class INIParser(object):
             stream_details = boolcheck(env.get('VRKN_PROMETHEUS_STREAM_DETAILS',
                                                self.config.get('prometheus', 'stream_details')))
         except NoOptionError as e:
-            self.logger.error('Missing key in %s. Error: %s', "prometheus", e)
-            self.rectify_ini()
+            self.missing_key(e)
             return
         except ValueError as e:
             self.logger.error('Invalid configuration value in prometheus. Error: %s', e)
@@ -197,8 +209,7 @@ class INIParser(object):
             try:
                 setattr(self, f'{service}_enabled', self.enable_check(f'{service}_server_ids'))
             except NoOptionError as e:
-                self.logger.error('Missing global %s. Error: %s', f'{service}_server_ids', e)
-                self.rectify_ini()
+                self.missing_key(e)
                 return
             service_enabled = getattr(self, f'{service}_enabled')
 
@@ -352,8 +363,7 @@ class INIParser(object):
 
                         getattr(self, f'{service}_servers').append(server)
                     except NoOptionError as e:
-                        self.logger.error('Missing key in %s. Error: %s', section, e)
-                        self.rectify_ini()
+                        self.missing_key(e)
                         return
                     except ValueError as e:
                         self.logger.error("Invalid configuration value in %s. Error: %s", section, e)

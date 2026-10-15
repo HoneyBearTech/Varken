@@ -7,6 +7,13 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Fixed
+- A key that `varken.ini` doesn't have yet (one a newer Varken added, such as 2.2.0's `maxmind_account_id`) is
+  filled in from the example with an INFO line, not an ERROR.
+- Filling in missing keys no longer overwrites keys left empty on purpose (an empty `maxmind_license_key`
+  came back as the example's placeholder).
+- A key missing from `varken.example.ini` as well stops Varken with an error instead of recursing forever.
+
 ## [2.2.0] - 2026-10-15
 
 ### Added

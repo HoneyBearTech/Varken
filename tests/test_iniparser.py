@@ -173,3 +173,39 @@ def test_a_2_1_ini_gets_the_maxmind_account_id(data_folder):
 
     assert 'maxmind_account_id' in (data_folder / 'varken.ini').read_text()
     assert parser.tautulli_servers[0].maxmind_account_id is None
+
+
+def test_a_key_new_in_this_version_is_added_without_an_error(data_folder, caplog):
+    # Regression: upgrading to 2.2.0 logged "ERROR ... Missing key in tautulli-1" for maxmind_account_id.
+    example = (data_folder / 'varken.example.ini').read_text()
+    (data_folder / 'varken.ini').write_text(example.replace('maxmind_account_id =\n', ''))
+
+    with caplog.at_level(logging.INFO):
+        INIParser(str(data_folder))
+
+    assert 'varken.ini has no maxmind_account_id in [global]' in caplog.text
+    assert 'ERROR' not in [record.levelname for record in caplog.records]
+
+
+def test_a_key_left_empty_on_purpose_stays_empty(data_folder):
+    # Regression: filling in missing keys also replaced empty values with the example's.
+    example = (data_folder / 'varken.example.ini').read_text()
+    ini = example.replace('maxmind_license_key = xxxxxxxxxxxxxxxx\n', 'maxmind_license_key =\n')
+    (data_folder / 'varken.ini').write_text(ini.replace('get_stats_run_seconds = 3600\n', ''))
+
+    INIParser(str(data_folder))
+
+    text = (data_folder / 'varken.ini').read_text()
+    assert 'get_stats_run_seconds = 3600' in text
+    assert 'maxmind_license_key = \n' in text or 'maxmind_license_key =\n' in text
+
+
+def test_a_key_missing_from_the_example_too_exits_instead_of_looping(data_folder):
+    for name in ('varken.ini', 'varken.example.ini'):
+        path = data_folder / name
+        if not path.exists():
+            path.write_text((data_folder / 'varken.example.ini').read_text())
+        path.write_text(path.read_text().replace('get_stats_run_seconds = 3600\n', ''))
+
+    with pytest.raises(SystemExit):
+        INIParser(str(data_folder))
