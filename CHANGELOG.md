@@ -14,6 +14,9 @@ All notable changes to this project are documented in this file. The format is b
   came back as the example's placeholder).
 - A key missing from `varken.example.ini` as well stops Varken with an error instead of recursing forever.
 
+### Changed
+- A successful GeoLite2 download logs `Installed a new GeoLite2 DB (… MB)`; before, only failures were logged.
+
 ## [2.2.0] - 2026-10-15
 
 ### Added

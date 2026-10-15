@@ -150,6 +150,7 @@ class GeoIPHandler(object):
                 pass
         replace(new_dbfile, self.dbfile)
         self.last_failure = None
+        self.logger.info('Installed a new GeoLite2 DB (%.1f MB)', stat(self.dbfile).st_size / 1e6)
         return True
 
 
