@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 from varken.iniparser import INIParser
@@ -142,3 +144,13 @@ def test_an_unreadable_secret_file_exits(data_folder, monkeypatch, tmp_path):
 
     with pytest.raises(SystemExit):
         INIParser(str(data_folder))
+
+
+def test_a_first_start_is_not_an_error(data_folder, caplog):
+    caplog.set_level(logging.INFO)
+
+    INIParser(str(data_folder))
+
+    created = [r for r in caplog.records if 'creating it from varken.example.ini' in r.getMessage()]
+    assert created and created[0].levelname == 'INFO'
+    assert not [r for r in caplog.records if r.levelname == 'ERROR']

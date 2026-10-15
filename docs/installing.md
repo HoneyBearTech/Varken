@@ -33,8 +33,8 @@ The compose file reads these from `.env`, besides the `VRKN_*` settings:
 | Variable | Default | What |
 | --- | --- | --- |
 | `VARKEN_VERSION` | `latest` | Image tag to run. Set a release such as `2.0.0`, so upgrades happen when you choose. |
-| `VARKEN_CONFIG_DIR` | `./config` | Host folder mounted at `/config`. |
-| `VARKEN_UID` / `VARKEN_GID` | `1000` | The user and group the container runs as; they must own `VARKEN_CONFIG_DIR`. |
+| `CONFIG_ROOT` | `/srv/config` (required) | Where app data lives; Varken's is `CONFIG_ROOT/varken/config`, mounted at `/config`. Not inside `/var/lib/docker/volumes`. |
+| `VARKEN_UID` / `VARKEN_GID` | `1000` | The user and group the container runs as; they must own `CONFIG_ROOT/varken/config`. |
 | `VARKEN_METRICS_BIND` | `127.0.0.1:9180` | Host address and port `/metrics` is published on. Keep it on a loopback or private address. |
 | `TZ` | `UTC` | Time zone for log timestamps. |
 
@@ -44,17 +44,17 @@ When Prometheus runs in Docker on the same host, it can join Varken's network (`
 ## Option 2: `docker run`
 
 ```sh
-mkdir -p config && sudo chown 1000:1000 config
+sudo mkdir -p /srv/config/varken/config && sudo chown -R 1000:1000 /srv/config/varken
 docker run -d --name varken --restart unless-stopped \
   --user 1000:1000 --read-only --cap-drop ALL --security-opt no-new-privileges:true \
-  --env-file .env -v "$PWD/config:/config" \
+  --env-file .env -v /srv/config/varken/config:/config \
   --network <the network Prometheus is on> \
   ghcr.io/honeybeartech/varken:2.0.0
 ```
 
-A bind-mounted folder such as `config/` must belong to uid 1000. A Docker named volume
-(`-v varken-config:/config`) needs no `chown`: the image creates `/config` owned by 1000:1000, and a new
-volume starts out with that ownership. For a Prometheus outside Docker, replace `--network ...` with
+The host directory must belong to uid 1000. Prefer it to a Docker named volume: `docker volume prune` (and
+Portainer's "remove unused volumes") deletes a named volume whose container is stopped. If you use one anyway,
+it needs no `chown`: the image creates `/config` owned by 1000:1000. For a Prometheus outside Docker, replace `--network ...` with
 `-p 127.0.0.1:9180:9180` (or a private address instead of `127.0.0.1`).
 
 Instead of an `.env` file you can write `config/varken.ini` yourself from

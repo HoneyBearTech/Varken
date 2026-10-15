@@ -70,8 +70,9 @@ What changes:
      ghcr.io/honeybeartech/varken:2.0.0 -R 1000:1000 /config
    ```
 
-   A new named volume needs nothing: the image's `/config` belongs to 1000:1000, and Docker gives a new,
-   empty volume that ownership. Bind-mounted folders always need the `chown`.
+   Bind-mounted host directories (recommended, such as `CONFIG_ROOT/varken/config`) always need the `chown`.
+   A new named volume needs none, since the image's `/config` belongs to 1000:1000, but `docker volume prune`
+   deletes named volumes whose container is stopped.
 4. **32-bit ARM (linux/arm/v7) images are no longer built.** Images exist for linux/amd64 and linux/arm64.
    On a 32-bit ARM device, move to a 64-bit OS or use a bare-Python install.
 5. **Bare-Python installs need Python 3.14** and a fresh virtual environment with the hash-pinned
