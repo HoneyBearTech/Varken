@@ -87,25 +87,6 @@ class UniFiServer(NamedTuple):
     verify_ssl: bool = False
 
 
-# Shared
-class Queue(NamedTuple):
-    downloadId: str = None
-    episode: dict = None
-    estimatedCompletionTime: str = None
-    id: int = None
-    movie: dict = None
-    protocol: str = None
-    quality: dict = None
-    series: dict = None
-    size: float = None
-    sizeleft: float = None
-    status: str = None
-    statusMessages: list = None
-    timeleft: str = None
-    title: str = None
-    trackedDownloadStatus: str = None
-
-
 # Ombi Structures
 class OmbiRequestCounts(NamedTuple):
     approved: int = 0
@@ -175,73 +156,6 @@ class OmbiMovieRequest(NamedTuple):
     languageCode: str = None
     requestedByAlias: str = None
     requestStatus: str = None
-
-
-# Sonarr
-class SonarrTVShow(NamedTuple):
-    absoluteEpisodeNumber: int = None
-    airDate: str = None
-    airDateUtc: str = None
-    episodeFile: dict = None
-    episodeFileId: int = None
-    episodeNumber: int = None
-    hasFile: bool = None
-    id: int = None
-    lastSearchTime: str = None
-    monitored: bool = None
-    overview: str = None
-    sceneAbsoluteEpisodeNumber: int = None
-    sceneEpisodeNumber: int = None
-    sceneSeasonNumber: int = None
-    seasonNumber: int = None
-    series: dict = None
-    seriesId: int = None
-    title: str = None
-    unverifiedSceneNumbering: bool = None
-
-
-# Radarr
-class RadarrMovie(NamedTuple):
-    added: str = None
-    addOptions: str = None
-    alternativeTitles: list = None
-    certification: str = None
-    cleanTitle: str = None
-    downloaded: bool = None
-    folderName: str = None
-    genres: list = None
-    hasFile: bool = None
-    id: int = None
-    images: list = None
-    imdbId: str = None
-    inCinemas: str = None
-    isAvailable: bool = None
-    lastInfoSync: str = None
-    minimumAvailability: str = None
-    monitored: bool = None
-    movieFile: dict = None
-    overview: str = None
-    path: str = None
-    pathState: str = None
-    physicalRelease: str = None
-    physicalReleaseNote: str = None
-    profileId: int = None
-    qualityProfileId: int = None
-    ratings: dict = None
-    runtime: int = None
-    secondaryYear: str = None
-    secondaryYearSourceId: int = None
-    sizeOnDisk: int = None
-    sortTitle: str = None
-    status: str = None
-    studio: str = None
-    tags: list = None
-    title: str = None
-    titleSlug: str = None
-    tmdbId: int = None
-    website: str = None
-    year: int = None
-    youTubeTrailerId: str = None
 
 
 # Sickchill
@@ -474,50 +388,3 @@ class TautulliStream(NamedTuple):
     width: str = None
     writers: list = None
     year: str = None
-
-
-# Lidarr
-class LidarrQueue(NamedTuple):
-    artistId: int = None
-    albumId: int = None
-    language: dict = None
-    quality: dict = None
-    size: float = None
-    title: str = None
-    timeleft: str = None
-    sizeleft: float = None
-    status: str = None
-    trackedDownloadStatus: str = None
-    statusMessages: list = None
-    downloadId: str = None
-    protocol: str = None
-    downloadClient: str = None
-    indexer: str = None
-    outputPath: str = None
-    downloadForced: bool = None
-    id: int = None
-
-
-class LidarrAlbum(NamedTuple):
-    title: str = None
-    disambiguation: str = None
-    overview: str = None
-    artistId: int = None
-    foreignAlbumId: str = None
-    monitored: bool = None
-    anyReleaseOk: bool = None
-    profileId: int = None
-    duration: int = None
-    albumType: str = None
-    secondaryTypes: list = None
-    mediumCount: int = None
-    ratings: dict = None
-    releaseDate: str = None
-    releases: list = None
-    genres: list = None
-    media: list = None
-    artist: dict = None
-    images: list = None
-    links: list = None
-    statistics: dict = {}
-    id: int = None

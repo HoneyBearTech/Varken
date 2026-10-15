@@ -2,11 +2,12 @@ from logging import getLogger
 from requests import Session, Request
 from datetime import datetime, timezone, date, timedelta
 
-from varken.structures import LidarrQueue, LidarrAlbum
 from varken.helpers import hashit, connection_handler
 
 
 class LidarrAPI(object):
+    """Lidarr through its v1 API (Lidarr 1 and 2)."""
+
     def __init__(self, server, output):
         self.output = output
         self.server = server
@@ -25,55 +26,49 @@ class LidarrAPI(object):
         future = str(date.today() + timedelta(days=self.server.future_days))
         now = datetime.now(timezone.utc).astimezone().isoformat()
         if query == "Missing":
-            params = {'start': last_days, 'end': today}
+            params = {'start': last_days, 'end': today, 'includeArtist': 'true'}
         else:
-            params = {'start': today, 'end': future}
+            params = {'start': today, 'end': future, 'includeArtist': 'true'}
         points = []
-        albums = []
 
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint, params=params))
         get = connection_handler(self.session, req, self.server.verify_ssl)
 
-        if not get:
+        if get is False:
+            return
+        if not isinstance(get, list):
+            self.logger.error('Unexpected reply from Lidarr\'s calendar: %s', get)
             return
 
-        # Iteratively create a list of LidarrAlbum Objects from response json
-        albums = []
         for album in get:
             try:
-                albums.append(LidarrAlbum(**album))
-            except TypeError as e:
-                self.logger.error('TypeError has occurred : %s while creating LidarrAlbum structure for album. Data '
-                                  'attempted is: %s', e, album)
-
-        # Add Album to missing list if album is not complete
-        for album in albums:
-            percent_of_tracks = album.statistics.get('percentOfTracks', 0)
-            if percent_of_tracks != 100:
-                albums.append(
-                    (album.title, album.releaseDate, album.artist['artistName'], album.id, percent_of_tracks,
-                     f"{album.statistics.get('trackFileCount', 0)}/{album.statistics.get('trackCount', 0)}")
-                )
-
-        for title, release_date, artist_name, album_id, percent_complete, complete_count in albums:
-            hash_id = hashit(f'{self.server.id}{title}{album_id}')
+                title = album['title']
+                artist_name = album['artist']['artistName']
+            except (KeyError, TypeError) as e:
+                self.logger.error('Skipping a Lidarr calendar entry without a title or artist (%s): %s', e, album)
+                continue
+            statistics = album.get('statistics') or {}
+            percent_of_tracks = statistics.get('percentOfTracks', 0)
+            # Missing: monitored albums that came out in the last missing_days without every track.
+            if query == "Missing" and (not album.get('monitored') or percent_of_tracks == 100):
+                continue
+            hash_id = hashit(f'{self.server.id}{title}{album.get("id")}')
             points.append(
                 {
                     "measurement": "Lidarr",
                     "tags": {
                         "type": query,
-                        "sonarrId": album_id,
+                        "sonarrId": album.get('id'),
                         "server": self.server.id,
                         "albumName": title,
                         "artistName": artist_name,
-                        "percentComplete": percent_complete,
-                        "completeCount": complete_count,
-                        "releaseDate": release_date
+                        "percentComplete": percent_of_tracks,
+                        "completeCount": f"{statistics.get('trackFileCount', 0)}/{statistics.get('trackCount', 0)}",
+                        "releaseDate": album.get('releaseDate', '')
                     },
                     "time": now,
                     "fields": {
                         "hash": hash_id
-
                     }
                 }
             )
@@ -89,38 +84,32 @@ class LidarrAPI(object):
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint, params=params))
         get = connection_handler(self.session, req, self.server.verify_ssl)
 
-        if not get:
+        if get is False:
+            return
+        if not isinstance(get, dict) or not isinstance(get.get('records'), list):
+            self.logger.error('Unexpected reply from Lidarr\'s queue: %s', get)
             return
 
-        queue = []
-        for song in get['records']:
+        for item in get['records']:
             try:
-                queue.append(LidarrQueue(**song))
-            except TypeError as e:
-                self.logger.error('TypeError has occurred : %s while creating LidarrQueue structure for show. Data '
-                                  'attempted is: %s', e, song)
-
-        if not queue:
-            return
-
-        for song in queue:
-            if song.protocol.upper() == 'USENET':
-                protocol_id = 1
-            else:
-                protocol_id = 0
-            hash_id = hashit(f'{self.server.id}{song.title}{song.artistId}')
+                quality = item['quality']['quality']['name']
+            except (KeyError, TypeError):
+                quality = ''
+            protocol = str(item.get('protocol', ''))
+            title = item.get('title', '')
+            hash_id = hashit(f'{self.server.id}{title}{item.get("artistId")}')
             points.append(
                 {
                     "measurement": "Lidarr",
                     "tags": {
                         "type": "Queue",
-                        "id": song.id,
+                        "id": item.get('id'),
                         "server": self.server.id,
-                        "title": song.title,
-                        "quality": song.quality['quality']['name'],
-                        "protocol": song.protocol,
-                        "protocol_id": protocol_id,
-                        "indexer": song.indexer
+                        "title": title,
+                        "quality": quality,
+                        "protocol": protocol,
+                        "protocol_id": 1 if protocol.upper() == 'USENET' else 0,
+                        "indexer": item.get('indexer', '')
                     },
                     "time": now,
                     "fields": {
