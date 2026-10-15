@@ -64,6 +64,12 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # What Varken logs at start-up and reports as varken_build_info (the Dockerfile writes them into
+          # varken/__init__.py); a build without them reports 0.0.0.
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            BRANCH=release
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
           sbom: true
           provenance: mode=max
           # Releases are built from scratch: an Actions cache is scoped to the tag that writes it, so it

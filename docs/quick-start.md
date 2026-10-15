@@ -75,7 +75,7 @@ fails. Common first-run errors:
 - `port is already allocated` from Docker: something on the host already uses 9180. Set
   `VARKEN_METRICS_BIND` to another port, for example `127.0.0.1:9181`, and scrape that.
 
-Until 2.0.0 is published, skip the `git checkout`, build the image from `master` yourself with
+To try unreleased changes, skip the `git checkout`, build the image from `master` yourself with
 `docker build -t ghcr.io/honeybeartech/varken:latest .`, and leave `VARKEN_VERSION=latest`.
 
 ## 3. Scrape it with Prometheus

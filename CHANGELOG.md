@@ -7,7 +7,9 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
-The first HoneyBearTech release, planned as 2.0.0: Varken is now a standalone project maintained at
+## [2.0.0] - 2026-10-15
+
+The first HoneyBearTech release: Varken is now a standalone project maintained at
 [HoneyBearTech/Varken](https://github.com/HoneyBearTech/Varken), and serves its data as Prometheus metrics
 instead of writing it to InfluxDB. See [upgrading](docs/upgrading.md).
 
@@ -38,7 +40,7 @@ instead of writing it to InfluxDB. See [upgrading](docs/upgrading.md).
 - **Breaking:** the container runs as an unprivileged user (uid/gid 1000), so the config folder must belong to
   that user (`chown -R 1000:1000`), or run the container with `user:`. The Unraid template uses `--user 99:100`
   and publishes port 9180.
-- **Breaking:** Python 3.14 (the image's base is `python:3.14.7-slim`, pinned by digest). Every dependency is
+- **Breaking:** Python 3.14 (the image's base is `python:3.14.8-slim`, pinned by digest). Every dependency is
   updated to its current release (requests 2.34, urllib3 2.8, geoip2 5.3, schedule 1.2, distro 1.9) and
   pinned with hashes.
 - **Breaking:** the example `docker-compose.yml` runs Varken alone, with no InfluxDB and no Grafana: bring
