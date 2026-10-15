@@ -7,6 +7,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-15
+
 ### Added
 - Metrics for what the \*arr apps and Ombi hold, one series per item: `varken_sonarr_queue_item_info`,
   `varken_sonarr_episode_info` (missing and upcoming episodes), `varken_radarr_queue_item_info`,

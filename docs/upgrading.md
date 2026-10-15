@@ -109,6 +109,11 @@ For a bare install: `git fetch --tags && git checkout vX.Y.Z`, reinstall `requir
 
 ### 2.0.x to 2.1.0
 
+- **With the example compose file:** it now keeps Varken's data in `CONFIG_ROOT/varken/config` and needs
+  `CONFIG_ROOT` in `.env` (it stops with "set CONFIG_ROOT in .env" otherwise); `VARKEN_CONFIG_DIR` is gone.
+  Move your data folder there (2.0.0's default was `./config`), keep it owned by uid 1000, and set
+  `CONFIG_ROOT`: for example `mkdir -p /srv/config/varken && mv ./config /srv/config/varken/config` with
+  `CONFIG_ROOT=/srv/config`. Your own compose file needs no change.
 - **Sonarr and Radarr 4 or later.** The Sonarr and Radarr modules now read `/api/v3`. Older Sonarr and Radarr
   releases aren't supported; with one, those jobs log an error and `varken_job_up` is `0`.
 - New metrics only: nothing is renamed or removed. With `stream_details = true`, `varken_tautulli_session_info`

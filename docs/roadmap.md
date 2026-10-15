@@ -31,6 +31,10 @@ The second pass built most of Phase 2, which also ships in 2.0.0:
 - GeoIP is optional: without a MaxMind license key, Varken runs without locations and contacts neither
   MaxMind nor `api.ipify.org`.
 
+**2.1.0** (2026-10-15) adds item metrics for Sonarr, Radarr, SickChill and Ombi, moves Sonarr and Radarr to
+their `/api/v3` (Sonarr 4 and Radarr 4 or later), fixes the Lidarr module, and ships a Grafana dashboard: the
+original Varken dashboard ported to these metrics ([dashboard/](../dashboard/README.md)).
+
 ## Over the following year
 
 **Next, Phase 3: Argus integration** (**Planned**, in the [Argus](https://github.com/HoneyBearTech/Argus) repository)

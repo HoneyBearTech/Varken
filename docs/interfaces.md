@@ -187,5 +187,5 @@ version and digest, the hash-pinned packages from [`requirements.txt`](../requir
 `/app`. It runs as the unprivileged uid/gid 1000:1000 with `DATA_FOLDER=/config`; `/config` is the only
 path it writes to, and belongs to 1000:1000 in the image, so a new named volume there starts out writable.
 Releases are published for linux/amd64 and linux/arm64, tagged with the version
-(`2.0.0`), major.minor (`2.0`) and `latest`, signed and with an SBOM and provenance
+(`2.1.0`), major.minor (`2.1`) and `latest`, signed and with an SBOM and provenance
 ([verifying-releases.md](verifying-releases.md)). It declares `EXPOSE 9180` for `/metrics`.
