@@ -34,6 +34,8 @@ affiliated with the original authors: please don't take questions about this ver
   [assurance case](docs/assurance-case.md) behind them.
 - [External interfaces](docs/interfaces.md): the APIs Varken calls, the Prometheus metrics it serves, and the
   command line. [Dependencies and vulnerability management](docs/dependencies.md).
+- [Grafana dashboard](dashboard/README.md): the original Varken dashboard on the Prometheus metrics, ready to
+  import.
 - [Roadmap](docs/roadmap.md): where the project is going, and what it won't do.
 - [Support](SUPPORT.md): which versions get fixes, and for how long.
 - [Contributing](CONTRIBUTING.md), [Code of Conduct](CODE_OF_CONDUCT.md), [Governance](GOVERNANCE.md) and
@@ -72,8 +74,8 @@ docker compose logs -f varken
 
 Then add a scrape job to your Prometheus: `varken:9180` when Prometheus shares Varken's Docker network, or
 `<host>:9180` through the published port ([quick start](docs/quick-start.md#3-scrape-it-with-prometheus)). In
-Grafana, use that Prometheus as the data source and build dashboards on the
-[metrics Varken serves](docs/interfaces.md#output-prometheus-metrics). The [quick start](docs/quick-start.md)
+Grafana, use that Prometheus as the data source and import the [Varken dashboard](dashboard/README.md), or
+build your own on the [metrics Varken serves](docs/interfaces.md#output-prometheus-metrics). The [quick start](docs/quick-start.md)
 walks through the first run, and [installing](docs/installing.md) covers running the image on its own
 (`ghcr.io/honeybeartech/varken`), Unraid, and Python with systemd.
 
