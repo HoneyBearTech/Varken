@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 """Build the Varken Grafana dashboard: the original "Varken [Official]" dashboard, ported to Prometheus.
 
 Writes dashboard/varken.json, which imports into any Grafana with a Prometheus data source (pick it in the

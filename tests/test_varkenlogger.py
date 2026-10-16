@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 import logging
 
 from varken.varkenlogger import BlacklistFilter, VarkenLogger

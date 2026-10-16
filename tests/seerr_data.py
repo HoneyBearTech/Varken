@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 """Replies from Seerr 3.5's API, shared by the tests and the CI sample scrape. The counts are the fields a live
 Seerr 3.5.0 returns; the requests follow its MediaRequest and Media entities (server/entity/*.ts)."""
 from varken.structures import SeerrServer

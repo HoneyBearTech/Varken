@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2018 Boerderij
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 from logging.handlers import RotatingFileHandler
 from logging import Filter, DEBUG, INFO, getLogger, Formatter, StreamHandler
 

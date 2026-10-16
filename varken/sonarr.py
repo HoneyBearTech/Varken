@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2018 Boerderij
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 from logging import getLogger
 from requests import Session, Request
 from datetime import datetime, timezone, date, timedelta

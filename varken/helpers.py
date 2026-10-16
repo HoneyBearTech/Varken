@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2018 Boerderij
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 import re
 from hashlib import sha256
 from datetime import date, timedelta

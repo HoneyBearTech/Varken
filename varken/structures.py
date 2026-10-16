@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2018 Boerderij
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 from sys import version_info
 from typing import NamedTuple
 from logging import getLogger

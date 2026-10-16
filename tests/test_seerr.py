@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 """Seerr: request and issue counts, and the requests still waiting."""
 from urllib.parse import urlsplit
 

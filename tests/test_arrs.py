@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 """Sonarr and Radarr (API v3), Lidarr (v1), and the item metrics for Sonarr, Radarr, SickChill and Ombi."""
 import pytest
 

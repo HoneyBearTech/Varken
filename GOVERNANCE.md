@@ -64,6 +64,19 @@ Who can change the code, releases and project settings, as of the date of this f
 | Security advisories and private vulnerability reports | the maintainer | GitHub |
 | Automated changes | Dependabot (pull requests only) | GitHub, short-lived `GITHUB_TOKEN` |
 
+### Two-factor authentication
+
+Everyone with write access to the repository, or access to any resource in the table above, must use
+two-factor authentication on their GitHub account with an authenticator app, a passkey or a security key;
+SMS alone doesn't count. The maintainer's account uses it. A collaborator without it isn't given access.
+
+### Granting access
+
+Nobody gets more than read access by default. Before a contributor is given write access or any access in the
+table above, the maintainer reviews their history with the project (merged pull requests and reviews over a
+period of months), confirms two-factor authentication, and records the change in this file in the same pull
+request. Access is the least the role needs, and is removed when it's no longer used.
+
 There are no other collaborators. Workflows use the per-job `GITHUB_TOKEN`, read-only unless a job asks for
 more, and pull requests from forks get read-only tokens and no secrets. The project stores no repository
 secrets.
