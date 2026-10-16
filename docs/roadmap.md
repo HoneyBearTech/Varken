@@ -45,6 +45,8 @@ changes: new configs check TLS certificates, GeoIP needs the MaxMind account ID,
 nothing ([upgrading](upgrading.md)).
 
 **3.1.0** (2026-10-16) installs a GeoLite2 download only if it matches the SHA-256 MaxMind publishes beside it.
+**3.2.0** (2026-10-16) adds Lidarr item metrics (the queue, and missing and upcoming albums) and a classic copy of
+the Argus dashboard in the original Varken look.
 
 ## Over the following year
 

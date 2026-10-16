@@ -65,7 +65,7 @@ your own:
 ```yaml
 services:
   varken:
-    image: ghcr.io/honeybeartech/varken:3.1.0
+    image: ghcr.io/honeybeartech/varken:3.2.0
     user: "1000:1000"
     read_only: true
     cap_drop: [ALL]
