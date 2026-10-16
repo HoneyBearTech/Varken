@@ -119,3 +119,19 @@ def test_the_classic_copy_has_the_original_look():
         area = {(col, row) for col in range(x, x + w) for row in range(y, y + h)}
         assert not cells & area, panel['title'] or panel['fieldConfig']['defaults'].get('displayName')
         cells |= area
+
+
+def test_the_pies_cover_the_time_range_not_just_this_moment():
+    # Regression: pies of the current sessions were empty whenever nobody was watching.
+    for build in (make_dashboard.dashboard, make_dashboard.argus_dashboard, make_dashboard.classic_dashboard):
+        pies = [p for p in build()['panels'] if p['type'] == 'piechart']
+        assert len(pies) == 2
+        assert all('avg_over_time(varken_tautulli_sessions[$__range])' in p['targets'][0]['expr'] for p in pies)
+
+
+def test_the_heat_strip_asks_for_few_enough_points():
+    # Regression: one point a minute was 721 over 12 hours, and status history refused to draw them.
+    strip = next(p for p in make_dashboard.classic_dashboard()['panels'] if p['type'] == 'status-history')
+    assert strip['maxDataPoints'] <= 200
+    assert '$__interval' in strip['targets'][0]['expr']
+
