@@ -71,12 +71,12 @@ def test_the_argus_copy_leaves_ombi_and_sickchill_out():
     full, argus = make_dashboard.dashboard()['panels'], make_dashboard.argus_dashboard()['panels']
     assert not [p['title'] for p in argus if make_dashboard.uses(p, 'varken_ombi_')]
     assert not [p['title'] for p in argus if make_dashboard.uses(p, 'varken_sickchill_')]
-    assert len(argus) == len(full) - 8 + 7  # Seerr's 6 tiles and table in Ombi's places
+    assert len(argus) == len(full) - 8 + 7 + 3  # Seerr's 6 tiles and table in Ombi's places, and Lidarr's 3 tables
     assert len({p['id'] for p in argus}) == len(argus)
     # The original panels keep their ids, so links to a panel work in both; Seerr's are numbered after them.
     original = {p['id']: p['title'] for p in full}
     assert all(original[p['id']] == p['title'] for p in argus if p['id'] in original)
-    assert sorted(p['id'] for p in argus if p['id'] not in original) == list(range(len(full) + 1, len(full) + 8))
+    assert sorted(p['id'] for p in argus if p['id'] not in original) == list(range(len(full) + 1, len(full) + 11))
 
 
 def test_the_argus_copy_names_the_instance_of_each_sonarr_and_radarr_row(served):

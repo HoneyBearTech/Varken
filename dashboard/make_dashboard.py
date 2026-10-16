@@ -296,6 +296,23 @@ def seerr_panels():
     ]
 
 
+def lidarr_panels():
+    """Lidarr's queue and its missing and upcoming albums, for Argus (the original dashboard had no Lidarr)."""
+    return [
+        table('Music in Queue', "Releases in Lidarr's download queue.", 'varken_lidarr_queue_item_info',
+              g(0, 38, 8, 6), {'artist': 'Artist', 'album': 'Album', 'release': 'Release', 'quality': 'Quality',
+                               'protocol': 'Protocol'}),
+        table('Missing Albums', "Monitored albums released in Lidarr's last `missing_days` without every track.",
+              'varken_lidarr_album_info{kind="missing"}', g(8, 38, 8, 6),
+              {'released': 'Released', 'artist': 'Artist', 'album': 'Album', 'tracks': 'Tracks'},
+              sort='released', times=['released']),
+        table('Albums Coming Out', "Albums coming out from today through Lidarr's `future_days`.",
+              'varken_lidarr_album_info{kind="future"}', g(16, 38, 8, 6),
+              {'released': 'Released', 'artist': 'Artist', 'album': 'Album', 'tracks': 'Tracks'},
+              sort='released', times=['released']),
+    ]
+
+
 # Argus reads Sonarr and Radarr as server 1 and their 4K instances as server 2 (its compose file), so its copy's
 # Sonarr and Radarr tables say which instance each row is from.
 ARGUS_INSTANCES = {'1': 'HD', '2': '4K'}
@@ -330,8 +347,9 @@ def argus_dashboard():
     for panel in dash['panels']:
         if panel['type'] == 'table' and (uses(panel, 'varken_sonarr_') or uses(panel, 'varken_radarr_')):
             with_instance_column(panel)
-    # Seerr where Ombi was, numbered after the original 35 panels.
-    for number, panel in enumerate(pin_datasource(seerr_panels(), 'prometheus'), len(dashboard()['panels']) + 1):
+    # Seerr where Ombi was, and Lidarr below, numbered after the original 35 panels.
+    added = seerr_panels() + lidarr_panels()
+    for number, panel in enumerate(pin_datasource(added, 'prometheus'), len(dashboard()['panels']) + 1):
         panel['id'] = number
         dash['panels'].append(panel)
     dash.update(uid='argus-varken', tags=['argus', 'media', 'varken'], links=[{
@@ -365,6 +383,7 @@ CLASSIC_GRID = {
     'TV Shows on Today (Sonarr)': g(16, 14, 8, 5), 'Users Online': g(0, 17, 16, 7),
     'Missing Available Movies': g(16, 19, 8, 5), 'Requests Waiting (Seerr)': g(0, 24, 16, 9),
     'Missing TV Shows (Last 7 Days)': g(16, 24, 8, 5),
+    'Music in Queue': g(0, 33, 8, 6), 'Missing Albums': g(8, 33, 8, 6), 'Albums Coming Out': g(16, 33, 8, 6),
 }
 # The original's device colours.
 DEVICE_COLOURS = {'Android': '#a4ca39', 'Chrome': '#db3236', 'Chromecast': '#039BE5', 'NetCast': '#c8135c',
@@ -445,7 +464,7 @@ def classic_dashboard():
             panel['fieldConfig']['defaults']['color'] = {'mode': 'fixed', 'fixedColor': '#24c3ff'}
             panel['options']['layers'][0]['config']['style'].update(size={'fixed': 5},
                                                                      color={'fixed': '#24c3ff'})
-        elif title in ('Movies in Queue', 'TV Shows in Queue'):
+        elif title in ('Movies in Queue', 'TV Shows in Queue', 'Music in Queue'):
             colour_rows_by(panel, 'protocol', {'usenet': '#629e51', 'torrent': 'rgb(168, 147, 4)'})
         elif title == 'TV Shows on Today (Sonarr)':
             colour_rows_by(panel, 'downloaded', {'false': '#0a50a1', 'true': '#24c3ff'})
@@ -454,8 +473,10 @@ def classic_dashboard():
                                             'buffering': 'rgb(168, 147, 4)'})
         elif title == 'Requests Waiting (Seerr)':
             colour_rows_by(panel, 'status', {'pending': '#052b51', 'processing': '#967302'})
-        elif title == 'Missing TV Shows (Last 7 Days)':
+        elif title in ('Missing TV Shows (Last 7 Days)', 'Missing Albums'):
             colour_rows(panel, '#bf1b00')
+        elif title == 'Albums Coming Out':
+            colour_rows(panel, '#0a50a1')
     return dash
 
 

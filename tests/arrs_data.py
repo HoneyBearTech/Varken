@@ -46,9 +46,12 @@ ALBUMS = [
     {'id': 43, 'title': 'Not Yet', 'releaseDate': '2026-10-18T00:00:00Z', 'monitored': True,
      'artist': {'artistName': 'B Band'}},
 ]
-LIDARR_QUEUE = {'page': 1, 'totalRecords': 1, 'records': [
+LIDARR_QUEUE = {'page': 1, 'totalRecords': 2, 'records': [
     {'id': 51, 'artistId': 7, 'albumId': 41, 'title': 'A.Band-Half.There-FLAC', 'protocol': 'torrent',
-     'indexer': 'Some Indexer', 'quality': {'quality': {'name': 'FLAC'}}, 'status': 'downloading'},
+     'indexer': 'Some Indexer', 'quality': {'quality': {'name': 'FLAC'}}, 'status': 'downloading',
+     'artist': {'artistName': 'A Band'}, 'album': {'title': 'Half There'}},
+    # A download Lidarr hasn't matched to an album: listed under its release name only.
+    {'id': 52, 'title': 'Unknown.Release-MP3', 'protocol': 'usenet', 'quality': {'quality': {'name': 'MP3-320'}}},
 ]}
 RADARR_QUEUE = {'page': 1, 'totalRecords': 1, 'records': [
     {'id': 31, 'protocol': 'torrent', 'quality': {'quality': {'name': 'Bluray-2160p'}},

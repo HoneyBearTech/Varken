@@ -79,7 +79,7 @@ class LidarrAPI(object):
         endpoint = '/api/v1/queue'
         now = datetime.now(timezone.utc).astimezone().isoformat()
         points = []
-        params = {'pageSize': 1000}
+        params = {'pageSize': 1000, 'includeArtist': 'true', 'includeAlbum': 'true'}
 
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint, params=params))
         get = connection_handler(self.session, req, self.server.verify_ssl)
@@ -97,6 +97,9 @@ class LidarrAPI(object):
                 quality = ''
             protocol = str(item.get('protocol', ''))
             title = item.get('title', '')
+            # The artist and album (with includeArtist/includeAlbum); a download Lidarr hasn't matched has neither.
+            artist = (item.get('artist') or {}).get('artistName', '')
+            album = (item.get('album') or {}).get('title', '')
             hash_id = hashit(f'{self.server.id}{title}{item.get("artistId")}')
             points.append(
                 {
@@ -106,6 +109,8 @@ class LidarrAPI(object):
                         "id": item.get('id'),
                         "server": self.server.id,
                         "title": title,
+                        "artistName": artist,
+                        "albumName": album,
                         "quality": quality,
                         "protocol": protocol,
                         "protocol_id": 1 if protocol.upper() == 'USENET' else 0,

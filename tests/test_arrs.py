@@ -129,6 +129,8 @@ def test_lidarr_missing_keeps_monitored_albums_without_every_track(metrics, monk
     tags = [point['tags'] for point in metrics.snapshot()[('lidarr', '1', 'missing')][2]]
     assert [(t['albumName'], t['percentComplete'], t['completeCount']) for t in tags] == [
         ('Half There', 50, '5/10'), ('Not Yet', 0, '0/0')]
+    assert value(metrics, 'varken_lidarr_album_info', server='1', kind='missing', artist='A Band', album='Half There',
+                 released='2026-10-01T00:00:00Z', tracks='5/10') == 1
 
 
 def test_lidarr_future_lists_every_album(metrics, monkeypatch):
@@ -137,6 +139,8 @@ def test_lidarr_future_lists_every_album(metrics, monkeypatch):
     metrics.run(LidarrAPI(LIDARR, metrics).get_calendar, query='Future')
 
     assert value(metrics, 'varken_job_points', service='lidarr', server='1', job='future') == 3
+    assert value(metrics, 'varken_lidarr_album_info', server='1', kind='future', artist='B Band', album='Not Yet',
+                 released='2026-10-18T00:00:00Z', tracks='0/0') == 1
 
 
 def test_lidarr_queue_uses_api_v1_records(metrics, monkeypatch):
@@ -146,8 +150,13 @@ def test_lidarr_queue_uses_api_v1_records(metrics, monkeypatch):
     metrics.run(LidarrAPI(LIDARR, metrics).get_queue)
 
     assert '/api/v1/queue?' in requests[0].url
+    assert 'includeArtist=true' in requests[0].url and 'includeAlbum=true' in requests[0].url
     assert value(metrics, 'varken_job_up', service='lidarr', server='1', job='queue') == 1
-    assert value(metrics, 'varken_job_points', service='lidarr', server='1', job='queue') == 1
+    assert value(metrics, 'varken_job_points', service='lidarr', server='1', job='queue') == 2
+    assert value(metrics, 'varken_lidarr_queue_item_info', server='1', artist='A Band', album='Half There',
+                 release='A.Band-Half.There-FLAC', quality='FLAC', protocol='torrent') == 1
+    assert value(metrics, 'varken_lidarr_queue_item_info', server='1', artist='', album='',
+                 release='Unknown.Release-MP3', quality='MP3-320', protocol='usenet') == 1
 
 
 @pytest.mark.parametrize(('job', 'kwargs', 'reply'), [

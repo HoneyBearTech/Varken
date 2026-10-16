@@ -250,7 +250,7 @@ class Metrics(object):
             yield progress
 
     def arrs(self, jobs):
-        """Sonarr, Radarr and SickChill items: what's queued, missing or airing."""
+        """Sonarr, Radarr, Lidarr and SickChill items: what's queued, missing or coming out."""
         sonarr_queue = info('varken_sonarr_queue_item_info', "One series per episode in Sonarr's download queue.",
                             ['server', 'series', 'episode', 'title', 'protocol', 'quality'])
         sonarr_episodes = info('varken_sonarr_episode_info',
@@ -263,6 +263,13 @@ class Metrics(object):
         radarr_missing = info('varken_radarr_missing_info',
                               'One series per monitored movie Radarr has no file for; available="true" once it '
                               'is released.', ['server', 'movie', 'available'])
+        lidarr_queue = info('varken_lidarr_queue_item_info', "One series per release in Lidarr's download queue.",
+                            ['server', 'artist', 'album', 'release', 'quality', 'protocol'])
+        lidarr_albums = info('varken_lidarr_album_info',
+                             'One series per album Lidarr is missing tracks for (kind="missing": monitored, '
+                             'released in the last missing_days) or that comes out soon (kind="future": today '
+                             'through future_days).',
+                             ['server', 'kind', 'artist', 'album', 'released', 'tracks'])
         sickchill_episodes = info('varken_sickchill_episode_info',
                                   "One series per episode on SickChill's coming-episodes list.",
                                   ['server', 'show', 'episode', 'title', 'airdate', 'status'])
@@ -285,6 +292,13 @@ class Metrics(object):
                 elif service == 'radarr' and job == 'missing':
                     available = 'true' if str(tags.get('Missing_Available')) == '0' else 'false'
                     radarr_missing.add_metric([server, text(tags.get('name')), available], 1)
+                elif service == 'lidarr' and job == 'queue':
+                    lidarr_queue.add_metric([server, text(tags.get('artistName')), text(tags.get('albumName')),
+                                             text(tags.get('title')), text(tags.get('quality')),
+                                             label(tags.get('protocol', ''))], 1)
+                elif service == 'lidarr' and job in ('missing', 'future'):
+                    lidarr_albums.add_metric([server, job, text(tags.get('artistName')), text(tags.get('albumName')),
+                                              text(tags.get('releaseDate')), text(tags.get('completeCount'))], 1)
                 elif service == 'sickchill' and job == 'missing':
                     sickchill_episodes.add_metric([server, text(tags.get('name')), text(tags.get('sxe')),
                                                    text(tags.get('epname')), text(tags.get('airdate')),
@@ -293,6 +307,8 @@ class Metrics(object):
         yield sonarr_episodes
         yield radarr_queue
         yield radarr_missing
+        yield lidarr_queue
+        yield lidarr_albums
         yield sickchill_episodes
 
     def ombi(self, jobs):
