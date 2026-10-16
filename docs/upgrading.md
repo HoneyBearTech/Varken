@@ -1,6 +1,6 @@
 # Upgrading
 
-Only the latest release and `master` get fixes ([SUPPORT.md](../SUPPORT.md)), so upgrade when a new one
+Only the latest release and `main` get fixes ([SUPPORT.md](../SUPPORT.md)), so upgrade when a new one
 comes out. Every release's notes (and [CHANGELOG.md](../CHANGELOG.md)) list what changed and anything you
 need to do first.
 

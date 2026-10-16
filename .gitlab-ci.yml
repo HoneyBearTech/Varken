@@ -1,7 +1,8 @@
 # GitLab CI for the copy of this repository on the maintainer's self-hosted GitLab (Community Edition, on the LAN).
 # GitHub is the project's home: every change lands there first, through a pull request that GitHub Actions
 # (.github/workflows/) must pass. This pipeline keeps the GitLab copy in step and re-checks what arrives:
-# - mirror: on a schedule, fetches master and the tags from GitHub and pushes them here, fast-forward only, so a
+# - mirror: on a schedule, fetches GitHub's default branch (whatever it is called: it was master until 2026-10-16,
+#   now main) and the tags, and pushes them here under the same names, fast-forward only, so a
 #   commit made on GitLab directly stops the mirror rather than being overwritten. GitLab CE can't pull-mirror, and
 #   GitHub can't reach this GitLab. It pushes with a project access token (Maintainer, write_repository) held in the
 #   masked, protected CI/CD variable MIRROR_TOKEN, and doesn't run without it.
@@ -41,13 +42,16 @@ mirror:
     GIT_STRATEGY: none
     MIRROR_SOURCE: https://github.com/HoneyBearTech/Varken.git
   # The token reaches git through a credential helper for this GitLab only, never a URL or an argument. The repo
-  # is bare: git refuses to fetch into a checked-out branch, which master would be under git's default
-  # init.defaultBranch.
+  # is bare: git refuses to fetch into a checked-out branch, which the default branch would be under git's default
+  # init.defaultBranch. The branch is read from GitHub's HEAD, so renaming it there doesn't break the mirror.
   script:
     - git init -q --bare mirror && cd mirror
     - git config "credential.$CI_SERVER_URL.helper" '!f() { echo username=oauth2; echo "password=$MIRROR_TOKEN"; }; f'
-    - git fetch --no-tags "$MIRROR_SOURCE" "refs/heads/master:refs/heads/master" "refs/tags/*:refs/tags/*"
-    - git push "$CI_SERVER_URL/$CI_PROJECT_PATH.git" "refs/heads/master:refs/heads/master" "refs/tags/*:refs/tags/*"
+    - branch=$(git ls-remote --symref "$MIRROR_SOURCE" HEAD | sed -n 's|^ref: refs/heads/\(.*\)\tHEAD$|\1|p')
+    - test -n "$branch" || { echo "Couldn't read GitHub's default branch"; exit 1; }
+    - echo "Mirroring $branch"
+    - git fetch --no-tags "$MIRROR_SOURCE" "refs/heads/$branch:refs/heads/$branch" "refs/tags/*:refs/tags/*"
+    - git push "$CI_SERVER_URL/$CI_PROJECT_PATH.git" "refs/heads/$branch:refs/heads/$branch" "refs/tags/*:refs/tags/*"
 
 # The tests import Varken's modules, so they need its runtime dependencies too. The sample scrape goes to promtool.
 checks:

@@ -7,7 +7,7 @@ name: Image scan
 # image and are fixed by Dependabot's base-image bump.
 on:
   push:
-    branches: [master]
+    branches: [main, master] # master only until the default branch is renamed
     paths: ["Dockerfile", "requirements.txt", ".github/workflows/scan.yml"]
   schedule:
     - cron: "30 2 * * 1"
@@ -28,7 +28,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { target: master, image: "varken:scan", source: docker }
+          - { target: main, image: "varken:scan", source: docker }
           - { target: release, image: "ghcr.io/honeybeartech/varken:latest", source: remote }
 
     steps:
@@ -37,7 +37,7 @@ jobs:
           persist-credentials: false
 
       - name: Build the image from the default branch
-        if: matrix.target == 'master'
+        if: matrix.target == 'main'
         run: docker build -t varken:scan .
 
       - name: Scan

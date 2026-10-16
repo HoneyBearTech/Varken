@@ -22,7 +22,7 @@ original project's Discord, wiki or issue tracker, and don't expect help with th
 | --- | --- | --- |
 | The latest release | bug fixes and security fixes | the next release is published |
 | An older release | nothing | it stopped being supported when the next release came out |
-| `master` (the default branch) | bug fixes and security fixes | always (it's where fixes land first) |
+| `main` (the default branch) | bug fixes and security fixes | always (it's where fixes land first) |
 | Upstream Boerderij/Varken 1.7.7 and earlier, and the `boerderij/varken` images | nothing from this project | unmaintained since 2020; [upgrade to 2.0.0](docs/upgrading.md) |
 
 - A fix is released as a new version (a patch release such as 2.0.1 for fixes only), never applied to an
@@ -39,4 +39,4 @@ original project's Discord, wiki or issue tracker, and don't expect help with th
   announced in the release notes and in this table first.
 
 Images stay available on GHCR after their support ends, so existing installations keep working, but they
-won't get fixes: run the latest release, or `master` from a checkout.
+won't get fixes: run the latest release, or `main` from a checkout.
