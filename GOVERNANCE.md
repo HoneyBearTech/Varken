@@ -23,7 +23,11 @@ Decisions happen in the open wherever possible:
 - **Bugs, features and questions** are discussed in
   [GitHub Issues](https://github.com/HoneyBearTech/Varken/issues). Anyone can open one or comment.
 - **Changes** land only through pull requests to the default branch, `main`, which must pass the
-  required CI check ("Checks + tests") and are squash-merged. The pull request description records what
+  required checks, be up to date with `main`, and are squash-merged; nobody can push to `main` directly,
+  force-push or delete it. A pull request needs a code owner's approval after its last push. With one
+  maintainer there is no second reviewer: the maintainer, as repository admin, merges their own pull
+  requests through the ruleset's pull-request-only bypass, so every change still goes through a pull request
+  and its checks. A second maintainer would end that bypass. The pull request description records what
   changed and why.
 - **Direction** is published in the [roadmap](docs/roadmap.md), including what the project does not intend
   to do. Larger design choices are explained in the pull requests that make them.

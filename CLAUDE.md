@@ -46,7 +46,7 @@ Update these files as the project evolves: tick roadmap checkboxes, add a Pass-M
 - Tests are offline (fixtures and mocks, no network). New behaviour gets tests; a bug fix gets a regression test; coverage never drops below the floor in `pyproject.toml` (`fail_under = 65`).
 - User-visible changes go under "Unreleased" in `CHANGELOG.md`; docs in `docs/` stay true (mark unbuilt things **Planned**).
 - Metric names and labels (`docs/interfaces.md`) are a public interface: renaming or removing one is a breaking change.
-- Commits are signed off (`git commit -s`, DCO). Workflows: `permissions: contents: read` at the top, actions pinned to full SHAs, untrusted input only through `env:`. CI's job name "Checks + tests" is the required check, so keep it.
+- Commits are signed off (`git commit -s`, DCO). Workflows: `permissions: contents: read` at the top, actions pinned to full SHAs, untrusted input only through `env:`. CI's job name "Checks + tests" is the required check, so keep it. The default-branch ruleset also requires a code owner's approval after the last push and an up-to-date branch; the owner merges through the admin pull-request bypass (`gh pr merge --squash --admin`, owner's decision 2026-10-16), never by pushing.
 - Ruff rules are `E, F, W, B, S` at line length 120; exceptions are per line with a reason. `ruff format` isn't adopted yet (it's on the roadmap).
 
 ## Commands
