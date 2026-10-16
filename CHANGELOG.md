@@ -7,6 +7,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-16
+
 ### Changed
 - A GeoLite2 download is installed only if it matches the SHA-256 MaxMind publishes beside it
   (`suffix=tar.gz.sha256`, with the same Basic auth). A mismatch, or a checksum that can't be read, fails the

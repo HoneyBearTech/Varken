@@ -44,6 +44,8 @@ setting new in a version is added to `varken.ini` with an INFO line, not an ERRO
 changes: new configs check TLS certificates, GeoIP needs the MaxMind account ID, and masked secrets keep
 nothing ([upgrading](upgrading.md)).
 
+**3.1.0** (2026-10-16) installs a GeoLite2 download only if it matches the SHA-256 MaxMind publishes beside it.
+
 ## Over the following year
 
 **Next, Phase 3: Argus integration** (**Planned**, in the [Argus](https://github.com/HoneyBearTech/Argus) repository)
