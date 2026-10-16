@@ -134,8 +134,9 @@ it with `git rebase --signoff main` and force-push your branch.
 
 ## Pull requests
 
-- Changes land on `main` only through a pull request that passes "Checks + tests". Pull requests are
-  squash-merged.
+- Changes land on `main` only through a pull request that passes the required checks ("Checks + tests",
+  DCO, dependency review, CodeQL), is up to date with `main` and is approved by a code owner (the maintainer;
+  see [GOVERNANCE.md](GOVERNANCE.md)). Pull requests are squash-merged.
 - Keep each pull request focused on one change, and describe what it does and why.
 - Add a line to `CHANGELOG.md` under `## [Unreleased]` for anything a user would notice, and update
   `data/varken.example.ini`, `.env.example`, [docs/configuration.md](docs/configuration.md) and the other docs when you
