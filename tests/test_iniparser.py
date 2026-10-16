@@ -228,3 +228,29 @@ def test_seerr_is_off_by_default_and_configured_from_the_environment(data_folder
     assert server.get_request_counts is True and server.get_issue_counts is True and server.get_requests is False
     assert server.get_request_counts_run_seconds == 300
     assert 'key-from-a-file' in parser.filtered_strings
+
+
+def test_new_configs_check_certificates(data_folder):
+    INIParser(str(data_folder))
+
+    text = (data_folder / 'varken.ini').read_text()
+    assert 'verify_ssl = false' not in text and 'verify_ssl = true' in text
+
+
+def test_https_without_certificate_checks_is_a_warning(data_folder, monkeypatch, caplog):
+    monkeypatch.setenv('VRKN_TAUTULLI_1_SSL', 'true')
+    monkeypatch.setenv('VRKN_TAUTULLI_1_VERIFY_SSL', 'false')
+
+    with caplog.at_level(logging.WARNING):
+        parser = INIParser(str(data_folder))
+
+    assert parser.tautulli_servers[0].verify_ssl is False
+    assert '[tautulli-1] uses HTTPS without checking the certificate' in caplog.text
+
+
+def test_plain_http_has_nothing_to_verify_and_no_warning(data_folder, caplog):
+    with caplog.at_level(logging.WARNING):
+        parser = INIParser(str(data_folder))
+
+    assert parser.tautulli_servers[0].verify_ssl is False  # ssl = false in the example
+    assert 'without checking the certificate' not in caplog.text

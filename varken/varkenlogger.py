@@ -4,6 +4,10 @@ from logging import Filter, DEBUG, INFO, getLogger, Formatter, StreamHandler
 from varken.helpers import mkdir_p
 
 
+# What a secret becomes in the log: nothing of it is kept (before 3.0.0 its last five characters were).
+MASK = 8 * '*'
+
+
 class BlacklistFilter(Filter):
     """
     Log filter for blacklisted tokens and passwords
@@ -23,11 +27,11 @@ class BlacklistFilter(Filter):
         for item in self.filtered_strings:
             try:
                 if item in record.msg:
-                    record.msg = record.msg.replace(item, 8 * '*' + item[-5:])
+                    record.msg = record.msg.replace(item, MASK)
                 if any(item in str(arg) for arg in record.args):
                     # Anything but a number is redacted through its text, so an exception or a request whose
                     # text contains a secret (an API key in a URL, say) doesn't carry it into the log.
-                    record.args = tuple(str(arg).replace(item, 8 * '*' + item[-5:])
+                    record.args = tuple(str(arg).replace(item, MASK)
                                         if not isinstance(arg, (int, float)) and item in str(arg) else arg
                                         for arg in record.args)
             except TypeError:

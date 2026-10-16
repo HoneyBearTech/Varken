@@ -12,8 +12,7 @@ def test_redacts_secrets_in_the_message_and_string_arguments():
     entry = record('key supersecretkey in %s', 'GET /api?apikey=supersecretkey')
 
     assert log_filter.filter(entry) is True
-    assert 'supersecretkey' not in entry.getMessage()
-    assert '********etkey' in entry.getMessage()
+    assert entry.getMessage() == 'key ******** in GET /api?apikey=********'  # nothing of the secret is kept
 
 
 def test_redacts_secrets_in_exception_arguments():

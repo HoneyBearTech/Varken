@@ -232,6 +232,11 @@ class INIParser(object):
 
                         if scheme != 'https://':
                             verify_ssl = False
+                        elif not verify_ssl:
+                            # The insecure-request warning is silenced per request, so say it once here.
+                            self.logger.warning('[%s] uses HTTPS without checking the certificate (verify_ssl = '
+                                                'false): anyone on the network path can read and change the '
+                                                'traffic, API key included', section)
 
                         if service in ['sonarr', 'radarr', 'lidarr']:
                             queue = boolcheck(env.get(f'VRKN_{envsection}_QUEUE',

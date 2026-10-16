@@ -189,15 +189,15 @@ def test_download_uses_basic_auth_with_the_account_id(tmp_path, monkeypatch, cap
     assert sorted(path.name for path in tmp_path.iterdir()) == ['GeoLite2-City.mmdb']
 
 
-def test_download_falls_back_to_the_legacy_url_without_an_account_id(tmp_path, monkeypatch, caplog):
+def test_without_an_account_id_geoip_is_off_and_maxmind_is_never_contacted(tmp_path, monkeypatch, caplog):
+    # 3.0.0 dropped the legacy download, which took the license key alone, in the URL.
     calls = maxmind_answers(monkeypatch, FakeDownload(body=DATABASE))
 
-    assert geoip_handler(tmp_path, account_id=None).download() is True
+    handler = helpers.geoip_handler(str(tmp_path), 'license', '')
 
-    url, kwargs = calls[0]
-    assert url == 'https://download.maxmind.com/app/geoip_download'
-    assert kwargs['params']['license_key'] == 'license' and kwargs['auth'] is None
-    assert 'No MaxMind account ID' in caplog.text
+    assert isinstance(handler, helpers.NoGeoIP)
+    assert calls == []
+    assert 'needs your MaxMind account ID' in caplog.text
 
 
 def test_download_replaces_the_database_in_one_step(tmp_path, monkeypatch):
@@ -252,7 +252,7 @@ def test_download_errors_never_log_the_url(tmp_path, monkeypatch, caplog):
     error = ConnectionError('HTTPSConnectionPool: /app/geoip_download?license_key=license')
     maxmind_answers(monkeypatch, error)
 
-    assert geoip_handler(tmp_path, account_id=None).download() is False
+    assert geoip_handler(tmp_path).download() is False
     assert 'license_key' not in caplog.text and 'ConnectionError' in caplog.text
 
 
@@ -363,7 +363,7 @@ def test_geoip_is_on_with_a_license_key(tmp_path, monkeypatch):
 
     assert helpers.geoip_handler(str(tmp_path), 'real-key', '123456') == ('handler', str(tmp_path), 'real-key',
                                                                          '123456')
-    assert helpers.geoip_handler(str(tmp_path), 'real-key', '')[3] is None
+    assert isinstance(helpers.geoip_handler(str(tmp_path), 'real-key', ''), helpers.NoGeoIP)
 
 
 def test_no_geoip_knows_no_location():
