@@ -34,7 +34,7 @@ def test_it_has_the_original_dashboards_35_panels():
     assert len({panel['id'] for panel in panels}) == 35
 
 
-@pytest.mark.parametrize('build', ['dashboard', 'argus_dashboard'])
+@pytest.mark.parametrize('build', ['dashboard', 'argus_dashboard', 'classic_dashboard'])
 def test_every_query_uses_metrics_and_labels_varken_serves(served, build):
     for panel in getattr(make_dashboard, build)()['panels']:
         for target in panel['targets']:
@@ -49,7 +49,7 @@ def test_every_query_uses_metrics_and_labels_varken_serves(served, build):
                 assert any(label in served[name] for name in names), (panel['title'], label)
 
 
-@pytest.mark.parametrize('build', ['dashboard', 'argus_dashboard'])
+@pytest.mark.parametrize('build', ['dashboard', 'argus_dashboard', 'classic_dashboard'])
 def test_every_table_column_is_a_label_of_its_metric(served, build):
     for panel in getattr(make_dashboard, build)()['panels']:
         if panel['type'] != 'table':
@@ -95,3 +95,27 @@ def test_the_argus_copy_names_the_instance_of_each_sonarr_and_radarr_row(served)
     for panel in make_dashboard.dashboard()['panels']:
         if panel['type'] == 'table':
             assert 'server' not in panel['transformations'][0]['options']['include']['names']
+
+
+def test_the_classic_copy_has_the_original_look():
+    classic = make_dashboard.classic_dashboard()
+    assert classic['uid'] == 'argus-varken-classic' and 'argus' in classic['tags']
+    tiles = [p for p in classic['panels'] if p['type'] == 'stat']
+    assert len(tiles) == len(make_dashboard.CLASSIC_TILES)
+    for tile in tiles:
+        # The original's singlestats: the title inside a solidly coloured tile, on its 2x2 grid.
+        assert tile['options']['colorMode'] == 'background_solid' and tile['title'] == ''
+        assert tile['gridPos']['w'] == 2 and tile['gridPos']['h'] == 2
+    bandwidth = [t for t in tiles if t['fieldConfig']['defaults']['displayName'].endswith('BW')]
+    assert all(t['targets'][0]['expr'].endswith(' * 8') and t['fieldConfig']['defaults']['unit'] == 'bps'
+               for t in bandwidth)
+    types = {p['title']: p['type'] for p in classic['panels'] if p['title']}
+    assert types['Server Popularity'] == 'status-history'
+    assert {p['timeFrom'] for p in classic['panels'] if p['type'] == 'piechart'} == {'7d'}
+    # Nothing overlaps on the grid.
+    cells = set()
+    for panel in classic['panels']:
+        x, y, w, h = (panel['gridPos'][k] for k in ('x', 'y', 'w', 'h'))
+        area = {(col, row) for col in range(x, x + w) for row in range(y, y + h)}
+        assert not cells & area, panel['title'] or panel['fieldConfig']['defaults'].get('displayName')
+        cells |= area

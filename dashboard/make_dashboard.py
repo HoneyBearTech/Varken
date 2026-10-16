@@ -1,8 +1,9 @@
 """Build the Varken Grafana dashboard: the original "Varken [Official]" dashboard, ported to Prometheus.
 
 Writes dashboard/varken.json, which imports into any Grafana with a Prometheus data source (pick it in the
-"Prometheus" variable). With --argus PATH it also writes the Argus copy, PATH/dashboards/media/varken.json,
-with Argus' pinned data source, uid and tags. --check fails if a written file is out of date.
+"Prometheus" variable). With --argus PATH it also writes the Argus copies, PATH/dashboards/media/varken.json
+and varken-classic.json (the original dashboard's look), with Argus' pinned data source, uids and tags.
+--check fails if a written file is out of date.
 
 Run from the repository root:  python dashboard/make_dashboard.py [--argus ~/GitHub/Argus] [--check]
 """
@@ -340,6 +341,124 @@ def argus_dashboard():
     return dash
 
 
+# The original "Varken [Official]" look, for Argus' classic copy: the upstream grid, tiles with solid backgrounds and
+# their titles inside, rows coloured by status, a heat strip for Server Popularity, a dark map of the US.
+CLASSIC_TILES = {
+    # title: (colour, upstream grid x, y)
+    'Total BW': ('#508642', 1, 0), 'LAN BW': ('#508642', 3, 0), 'WAN BW': ('#508642', 5, 0),
+    'Req. Pending': ('#299c46', 8, 0), 'Req. Processing': ('#299c46', 10, 0), 'Req. Available': ('#299c46', 12, 0),
+    'Movies Added': ('#967302', 14, 0), 'Movies': ('#584477', 16, 0), 'TV Shows': ('#584477', 18, 0),
+    'TV Seasons': ('#584477', 20, 0), 'TV Episodes': ('#584477', 22, 0),
+    'Total Streams': ('rgb(8, 125, 161)', 0, 2), 'Transcodes': ('rgb(8, 125, 161)', 2, 2),
+    'Direct Play': ('rgb(8, 125, 161)', 4, 2), 'Direct Stream': ('rgb(8, 125, 161)', 6, 2),
+    'Issues Open': ('#299c46', 8, 2), 'Issues Closed': ('#299c46', 10, 2), 'Req. Declined': ('#299c46', 12, 2),
+    'Episodes Added': ('#967302', 14, 2), '4K Movies': ('#584477', 16, 2), '4K TV Shows': ('#584477', 18, 2),
+    '4K TV Seasons': ('#584477', 20, 2), '4K TV Episodes': ('#584477', 22, 2),
+}
+CLASSIC_TITLES = {'Transcodes': 'Transcode Streams', 'Direct Play': 'Direct Play Streams',
+                  'Req. Processing': 'Requests Processing', 'Req. Available': 'Requests Completed',
+                  'Req. Declined': 'Requests Declined', 'Movies Added': 'Recently Added Movies',
+                  'Episodes Added': 'Recently Added TV'}
+CLASSIC_GRID = {
+    'Device Types': g(0, 4, 4, 8), 'Stream Types': g(4, 4, 4, 8), 'Movies in Queue': g(8, 4, 8, 4),
+    'Viewer Locations': g(16, 4, 8, 10), 'TV Shows in Queue': g(8, 8, 8, 4), 'Server Popularity': g(0, 12, 16, 5),
+    'TV Shows on Today (Sonarr)': g(16, 14, 8, 5), 'Users Online': g(0, 17, 16, 7),
+    'Missing Available Movies': g(16, 19, 8, 5), 'Requests Waiting (Seerr)': g(0, 24, 16, 9),
+    'Missing TV Shows (Last 7 Days)': g(16, 24, 8, 5),
+}
+# The original's device colours.
+DEVICE_COLOURS = {'Android': '#a4ca39', 'Chrome': '#db3236', 'Chromecast': '#039BE5', 'NetCast': '#c8135c',
+                  'Playstation 4': '#003791', 'Plex Media Player': '#e67817', 'Roku': '#6d3c97', 'Samsung': '#034ea2',
+                  'Tizen': '#034ea2', 'Xbox One': '#107c10', 'iOS': '#858487', 'tvOS': '#858487'}
+
+
+def colour_rows_by(panel, field, colours):
+    """Colour each row of a table by one column's value (value -> colour); other values keep the default."""
+    heading = panel['transformations'][-1]['options']['renameByName'].get(field, field)
+    panel['fieldConfig']['overrides'].append({
+        'matcher': {'id': 'byName', 'options': heading},
+        'properties': [
+            {'id': 'mappings', 'value': [{'type': 'value', 'options': {
+                value: {'color': colour, 'index': i} for i, (value, colour) in enumerate(colours.items())}}]},
+            {'id': 'custom.cellOptions', 'value': {'type': 'color-background', 'mode': 'basic', 'applyToRow': True}},
+        ],
+    })
+
+
+def colour_rows(panel, colour):
+    """Every row of a table in one colour."""
+    defaults = panel['fieldConfig']['defaults']
+    defaults['color'] = {'mode': 'fixed', 'fixedColor': colour}
+    defaults['custom']['cellOptions'] = {'type': 'color-background', 'mode': 'basic'}
+
+
+def classic_tile(panel):
+    colour, x, y = CLASSIC_TILES[panel['title']]
+    title = CLASSIC_TITLES.get(panel['title'], panel['title'])
+    defaults = panel['fieldConfig']['defaults']
+    defaults['color'] = {'mode': 'fixed', 'fixedColor': colour}
+    defaults['displayName'] = title
+    if defaults['unit'] == 'Bps':  # the original showed bits per second
+        panel['targets'][0]['expr'] = f"{panel['targets'][0]['expr']} * 8"
+        defaults['unit'] = 'bps'
+    panel.update(title='', gridPos=g(x, y, 2, 2), transparent=False)
+    panel['options'].update(colorMode='background_solid', textMode='value_and_name', justifyMode='center',
+                            text={'titleSize': 12})
+    panel['description'] = f"{title}: {panel['description']}"
+
+
+def classic_dashboard():
+    """Argus' copy in the original dashboard's look: same queries (plus the week-long pies), restyled."""
+    dash = copy.deepcopy(argus_dashboard())
+    dash.update(uid='argus-varken-classic', title='Varken [Classic]',
+                description=DESCRIPTION + ' The original dashboard\'s look.')
+    for panel in dash['panels']:
+        title = panel['title']
+        if panel['type'] == 'stat':
+            classic_tile(panel)
+            continue
+        panel['gridPos'] = CLASSIC_GRID[title]
+        if panel['type'] == 'piechart':
+            # Over the last week, as the original: average concurrent sessions by platform or decision.
+            by = 'platform' if title == 'Device Types' else 'video_decision'
+            panel['targets'][0]['expr'] = f'sum by ({by}) (avg_over_time(varken_tautulli_sessions[$__range]))'
+            panel['timeFrom'] = '7d'
+            panel['options'].update(displayLabels=['name', 'percent'],
+                                    legend={'showLegend': False, 'displayMode': 'list', 'placement': 'right'})
+            if by == 'platform':
+                panel['fieldConfig']['overrides'] = [
+                    {'matcher': {'id': 'byName', 'options': name},
+                     'properties': [{'id': 'color', 'value': {'mode': 'fixed', 'fixedColor': colour}}]}
+                    for name, colour in DEVICE_COLOURS.items()]
+        elif panel['type'] == 'timeseries':  # Server Popularity: the original's heat strip
+            panel['type'] = 'status-history'
+            panel['interval'] = '1m'
+            panel['fieldConfig'] = {'defaults': {'color': {'mode': 'continuous-BlYlRd'}, 'min': 0,
+                                                 'custom': {'lineWidth': 0, 'fillOpacity': 90}},
+                                    'overrides': []}
+            panel['options'] = {'showValue': 'never', 'rowHeight': 1, 'colWidth': 1,
+                                'legend': {'showLegend': False}, 'tooltip': {'mode': 'single', 'sort': 'none'}}
+        elif panel['type'] == 'geomap':
+            panel['options']['view'] = {'id': 'coords', 'lat': 37.9, 'lon': -94.9, 'zoom': 4, 'allLayers': True}
+            panel['options']['basemap'] = {'type': 'carto', 'name': 'Basemap',
+                                           'config': {'theme': 'dark', 'showLabels': True}}
+            panel['fieldConfig']['defaults']['color'] = {'mode': 'fixed', 'fixedColor': '#24c3ff'}
+            panel['options']['layers'][0]['config']['style'].update(size={'fixed': 5},
+                                                                     color={'fixed': '#24c3ff'})
+        elif title in ('Movies in Queue', 'TV Shows in Queue'):
+            colour_rows_by(panel, 'protocol', {'usenet': '#629e51', 'torrent': 'rgb(168, 147, 4)'})
+        elif title == 'TV Shows on Today (Sonarr)':
+            colour_rows_by(panel, 'downloaded', {'false': '#0a50a1', 'true': '#24c3ff'})
+        elif title == 'Users Online':
+            colour_rows_by(panel, 'state', {'playing': '#3f6833', 'paused': 'rgb(8, 125, 161)',
+                                            'buffering': 'rgb(168, 147, 4)'})
+        elif title == 'Requests Waiting (Seerr)':
+            colour_rows_by(panel, 'status', {'pending': '#052b51', 'processing': '#967302'})
+        elif title == 'Missing TV Shows (Last 7 Days)':
+            colour_rows(panel, '#bf1b00')
+    return dash
+
+
 def formatted(dash):
     """As Grafana exports a dashboard: 2-space indent, trailing newline."""
     return json.dumps(dash, indent=2) + '\n'
@@ -352,7 +471,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     outputs = [(HERE / 'varken.json', dashboard())]
     if args.argus:
-        outputs.append((args.argus.expanduser() / 'dashboards' / 'media' / 'varken.json', argus_dashboard()))
+        media = args.argus.expanduser() / 'dashboards' / 'media'
+        outputs.append((media / 'varken.json', argus_dashboard()))
+        outputs.append((media / 'varken-classic.json', classic_dashboard()))
     stale = []
     for path, dash in outputs:
         text = formatted(dash)
