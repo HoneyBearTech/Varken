@@ -37,7 +37,7 @@ report.
 
 ## Supported versions
 
-The latest release and the default branch (`master`) receive security fixes; a release stops receiving
+The latest release and the default branch (`main`) receive security fixes; a release stops receiving
 them when the next one is published. Releases from this repository start at 2.0.0. The upstream
 Boerderij/Varken releases (1.7.7 and earlier) are unmaintained and get no fixes from this project; see
 [SUPPORT.md](SUPPORT.md) and [docs/upgrading.md](docs/upgrading.md).

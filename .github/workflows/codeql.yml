@@ -2,9 +2,9 @@ name: CodeQL
 
 on:
   push:
-    branches: [master]
+    branches: [main, master] # master only until the default branch is renamed
   pull_request:
-    branches: [master]
+    branches: [main, master] # master only until the default branch is renamed
   schedule:
     # Catches newly-published CodeQL query packs finding issues in code that
     # hasn't changed, not just issues introduced by new commits.

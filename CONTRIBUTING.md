@@ -2,7 +2,7 @@
 
 Varken is a personal project with a single maintainer (see [GOVERNANCE.md](GOVERNANCE.md)). Contributions
 are welcome, but there is no service-level agreement, and review may take a while. Releases are tagged
-`vMAJOR.MINOR.PATCH`; only the latest release and the default branch, `master`, are supported
+`vMAJOR.MINOR.PATCH`; only the latest release and the default branch, `main`, are supported
 ([SUPPORT.md](SUPPORT.md)). Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Reporting bugs and suggesting changes
@@ -130,11 +130,11 @@ Signed-off-by: Your Name <you@example.com>
 
 using your git `user.name` and `user.email`. The DCO check
 ([`.github/workflows/dco.yml`](.github/workflows/dco.yml)) fails a pull request with an unsigned commit; fix
-it with `git rebase --signoff master` and force-push your branch.
+it with `git rebase --signoff main` and force-push your branch.
 
 ## Pull requests
 
-- Changes land on `master` only through a pull request that passes "Checks + tests". Pull requests are
+- Changes land on `main` only through a pull request that passes "Checks + tests". Pull requests are
   squash-merged.
 - Keep each pull request focused on one change, and describe what it does and why.
 - Add a line to `CHANGELOG.md` under `## [Unreleased]` for anything a user would notice, and update

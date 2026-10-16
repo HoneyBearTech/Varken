@@ -11,7 +11,7 @@ places viewers on a map; without one, streams have no location.
 
 ```sh
 git clone https://github.com/HoneyBearTech/Varken.git && cd Varken
-git checkout v2.2.1                        # a release tag instead of master
+git checkout v2.2.1                        # a release tag instead of main
 cp .env.example .env && chmod 600 .env
 sudo mkdir -p /srv/config/varken/config && sudo chown -R 1000:1000 /srv/config/varken
 ```
@@ -77,7 +77,7 @@ fails. Common first-run errors:
 - `port is already allocated` from Docker: something on the host already uses 9180. Set
   `VARKEN_METRICS_BIND` to another port, for example `127.0.0.1:9181`, and scrape that.
 
-To try unreleased changes, skip the `git checkout`, build the image from `master` yourself with
+To try unreleased changes, skip the `git checkout`, build the image from `main` yourself with
 `docker build -t ghcr.io/honeybeartech/varken:latest .`, and leave `VARKEN_VERSION=latest`.
 
 ## 3. Scrape it with Prometheus

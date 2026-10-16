@@ -4,5 +4,5 @@ contact_links:
     url: https://github.com/HoneyBearTech/Varken/security/advisories/new
     about: Please report vulnerabilities privately, never in a public issue. See SECURITY.md.
   - name: Documentation
-    url: https://github.com/HoneyBearTech/Varken/blob/master/docs/README.md
+    url: https://github.com/HoneyBearTech/Varken/blob/main/docs/README.md
     about: Installing, every setting, upgrading from upstream Varken, and the security model.

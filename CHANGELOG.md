@@ -7,6 +7,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+- The default branch is `main` (it was `master`); GitHub redirects old links. A local clone needs
+  `git branch -m master main && git fetch && git branch -u origin/main main && git remote set-head origin -a`.
+
 ## [2.2.1] - 2026-10-15
 
 ### Fixed

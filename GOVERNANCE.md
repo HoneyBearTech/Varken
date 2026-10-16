@@ -22,7 +22,7 @@ Decisions happen in the open wherever possible:
 
 - **Bugs, features and questions** are discussed in
   [GitHub Issues](https://github.com/HoneyBearTech/Varken/issues). Anyone can open one or comment.
-- **Changes** land only through pull requests to the default branch, `master`, which must pass the
+- **Changes** land only through pull requests to the default branch, `main`, which must pass the
   required CI check ("Checks + tests") and are squash-merged. The pull request description records what
   changed and why.
 - **Direction** is published in the [roadmap](docs/roadmap.md), including what the project does not intend
