@@ -32,6 +32,6 @@ source = ["varken"]
 
 [tool.coverage.report]
 # The floor is the current figure; it rises toward 80 % (the roadmap), never down.
-fail_under = 65
+fail_under = 80
 show_missing = true
 skip_covered = true

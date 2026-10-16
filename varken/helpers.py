@@ -14,13 +14,18 @@ from os.path import abspath, join, basename, isdir
 from urllib3.exceptions import InsecureRequestWarning
 from requests import get as requests_get
 from requests.exceptions import (InvalidSchema, SSLError, ConnectionError, ChunkedEncodingError, HTTPError,
-                                 RequestException)
+                                 RequestException, Timeout)
+from urllib.parse import urlsplit
 
 logger = getLogger()
 
 # Per thread (every scheduled job runs in its own): set when a request in connection_handler fails, so the Prometheus
 # output can tell a job that found nothing from one that couldn't reach its service.
 request_state = local()
+
+# Every request to a service: seconds to connect, and to wait for each read. Without them a service that accepts a
+# connection but never answers held its job's thread for good, and the scheduler started another every run.
+REQUEST_TIMEOUT = (10, 30)
 
 
 # MaxMind's documented download: Basic auth with the account ID and license key; it redirects to a presigned URL on
@@ -198,7 +203,7 @@ def connection_handler(session, request, verify, as_is_reply=False):
     disable_warnings(InsecureRequestWarning)
 
     try:
-        get = s.send(r, verify=v)
+        get = s.send(r, verify=v, timeout=REQUEST_TIMEOUT)
         if get.status_code == 401:
             if 'NoSiteContext' in str(get.content):
                 logger.info('Your Site is incorrect for %s', r.url)
@@ -221,6 +226,10 @@ def connection_handler(session, request, verify, as_is_reply=False):
         logger.error("You added http(s):// in the config file. Don't do that.")
     except SSLError as e:
         logger.error('Either your host is unreachable or you have an SSL issue. : %s', e)
+    # Before ConnectionError: a connect timeout is both.
+    except Timeout:
+        logger.error('%s did not answer within %s seconds (connect) or %s seconds (read)', urlsplit(r.url).netloc,
+                     *REQUEST_TIMEOUT)
     except ConnectionError as e:
         logger.error('Cannot resolve the url/ip/port. Check connectivity. Error: %s', e)
     except ChunkedEncodingError as e:

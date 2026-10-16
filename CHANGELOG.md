@@ -8,8 +8,16 @@ All notable changes to this project are documented in this file. The format is b
 ## [Unreleased]
 
 ### Changed
+- **Varken logs at INFO by default.** Set `DEBUG=true` (or pass `-D`) for debug logs, which record every request
+  URL. `-ND` still works and does nothing more. The image no longer sets `DEBUG=True`.
+- The coverage floor is 80 % (was 65 %).
 - The default branch is `main` (it was `master`); GitHub redirects old links. A local clone needs
   `git branch -m master main && git fetch && git branch -u origin/main main && git remote set-head origin -a`.
+
+### Fixed
+- Requests to the services had no timeout, so one that accepted a connection and never answered held its job's
+  thread for good, and the scheduler started another every run. Every request now has a 10-second connect and
+  30-second read timeout; a run that times out is marked down (`varken_job_up` 0) and the log names the host.
 
 ## [2.2.1] - 2026-10-15
 

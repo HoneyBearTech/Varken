@@ -2,7 +2,8 @@ import io
 import tarfile
 
 import pytest
-from requests.exceptions import ChunkedEncodingError, ConnectionError, HTTPError, InvalidSchema, SSLError
+from requests.exceptions import (ChunkedEncodingError, ConnectionError, ConnectTimeout, HTTPError, InvalidSchema,
+                                 ReadTimeout, SSLError)
 
 from varken import helpers
 from varken.helpers import (GeoIPHandler, boolcheck, clean_sid_check, connection_handler, hashit,
@@ -49,8 +50,10 @@ class FakeResponse:
 class FakeSession:
     def __init__(self, result):
         self.result = result
+        self.timeout = None
 
-    def send(self, request, verify):
+    def send(self, request, verify, timeout=None):
+        self.timeout = timeout
         if isinstance(self.result, Exception):
             raise self.result
         return self.result
@@ -62,6 +65,24 @@ class FakeRequest:
 
 def test_connection_handler_returns_json():
     assert connection_handler(FakeSession(FakeResponse(200, {'ok': True})), FakeRequest(), False) == {'ok': True}
+
+
+def test_every_service_request_has_a_timeout():
+    session = FakeSession(FakeResponse(200, {'ok': True}))
+
+    connection_handler(session, FakeRequest(), False)
+
+    assert session.timeout == helpers.REQUEST_TIMEOUT
+    assert all(seconds > 0 for seconds in session.timeout)
+
+
+@pytest.mark.parametrize('error', [ReadTimeout(), ConnectTimeout()])
+def test_a_service_that_does_not_answer_fails_the_run(error, caplog):
+    # Regression: requests had no timeout, so a service that accepted the connection and never answered held the
+    # job's thread for good.
+    assert run_in_thread(lambda: connection_handler(FakeSession(error), FakeRequest(), False)) is True
+    assert 'app.example.com did not answer' in caplog.text
+    assert '/api' not in caplog.text  # the host only: a URL can hold an API key
 
 
 def test_connection_handler_returns_the_response_as_is():

@@ -33,8 +33,8 @@ Edit `.env`:
   since their private addresses can't be located.
 - `VARKEN_METRICS_BIND`: where the compose file publishes `/metrics` on the host, `127.0.0.1:9180` by default
   (see [step 3](#3-scrape-it-with-prometheus)).
-- Add `DEBUG=false`, unless you are troubleshooting: the debug log is on by default and records every
-  request Varken makes.
+- Varken logs at INFO. Add `DEBUG=true` only while troubleshooting: the debug log records every request
+  Varken makes.
 
 Every other setting, and how to turn on Sonarr, Radarr and the rest, is in
 [configuration.md](configuration.md). `.env` holds secrets and is gitignored; never commit it.
@@ -64,8 +64,7 @@ curl -s http://127.0.0.1:9180/metrics | grep varken_job_up
 ```
 
 `varken_job_up{service="tautulli",server="1",job="activity"} 1.0` means Tautulli answered; `0.0` means the
-last run failed, and the log says why. After that, with `DEBUG=false`, Varken stays quiet unless something
-fails. Common first-run errors:
+last run failed, and the log says why. After that Varken stays quiet unless something fails. Common first-run errors:
 
 - `MaxMind refused the account ID and license key` or `Could not download the MaxMind DB`: check both, or
   leave the key empty to run without GeoIP. Varken keeps running either way, with no locations.

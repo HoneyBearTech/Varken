@@ -168,8 +168,8 @@ dashboards query InfluxDB and don't work with them.
 - Use `ssl = true` and `verify_ssl = true` for every service you reach over a network you don't fully
   trust; both are off in the example.
 - Give Varken its own API keys and a read-only UniFi account.
-- Set `DEBUG=false`. The debug log is on by default and records every request Varken makes. In a container,
-  `LOG_TO_FILE=false` logs to stdout only, with no `logs/` folder in `/config`.
+- Leave debug logging off (the default since 2.3.0; `DEBUG=true` turns it on): it records every request
+  Varken makes. In a container, `LOG_TO_FILE=false` logs to stdout only, with no `logs/` folder in `/config`.
 - Keep the container non-root with a read-only root filesystem, no capabilities and `no-new-privileges`, as
   in the compose file. Publish 9180 on a loopback or private address only, or not at all when Prometheus
   shares Varken's Docker network.

@@ -213,10 +213,10 @@ Varken logs to stdout and to `logs/varken.log` in the data folder (rotated at 5 
   `logs/` folder in the data folder. Useful in a container whose logs are collected anyway (`docker logs`,
   journald). It is `true` by default.
 
-- **Debug logging is on by default.** Set `DEBUG=false` in the environment, or pass `-ND` / `--no_debug`
-  (which only applies when `DEBUG` isn't set), to log at INFO. The debug log includes the URL of every request
-  Varken makes (secrets masked as below); see [security.md](security.md#known-weaknesses). Turning it off by
-  default is on the [roadmap](roadmap.md).
+- **Varken logs at INFO** (since 2.3.0; before, debug logging was the default). Set `DEBUG=true` in the
+  environment, or pass `-D` / `--debug` (which only applies when `DEBUG` isn't set), to log at DEBUG. The debug
+  log includes the URL of every request Varken makes (secrets masked as below), so turn it on only while
+  troubleshooting.
 - Secrets are masked in log lines as `********` followed by their last five characters: the values of the
   `apikey`, `username`, `password`, `url` and `maxmind_license_key` keys in `varken.ini`, and of every
   `VRKN_*` variable whose name ends in `_APIKEY`, `_USERNAME`, `_PASSWORD`, `_URL` or
