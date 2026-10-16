@@ -38,6 +38,7 @@ original Varken dashboard ported to these metrics ([dashboard/](../dashboard/REA
 **2.2.0** (2026-10-15) downloads the GeoLite2 database with MaxMind's account ID and Basic auth instead of the
 license key in the URL, and keeps running when that download fails. **2.2.1** makes upgrades quieter: a
 setting new in a version is added to `varken.ini` with an INFO line, not an ERROR.
+**2.3.0** (2026-10-16) adds a timeout to every request and logs at INFO by default.
 
 ## Over the following year
 
@@ -48,9 +49,7 @@ setting new in a version is added to `varken.ini` with an INFO line, not an ERRO
 
 **Phase 1: finish modernizing the runtime**
 
-- Log at INFO by default instead of DEBUG.
 - `verify_ssl` on by default. This is a breaking change and will be announced in the changelog.
-- Timeouts on every request to the services (the MaxMind download has one from 2.2.0).
 - Sonarr 5's new API (Sonarr 5 is in beta as of October 2026), once Sonarr 5 is stable, alongside `/api/v3`
   for Sonarr 4.
 - Raise test coverage to 80 %, and adopt `ruff format` and a wider ruff rule set.

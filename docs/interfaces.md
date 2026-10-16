@@ -20,8 +20,8 @@ python3 Varken.py [-d DATA_FOLDER] [-ND]
 | Option | What it does |
 | --- | --- |
 | `-d`, `--data-folder` | The data folder (holds `varken.ini`, the GeoLite2 database and, unless `LOG_TO_FILE=false`, `logs/`). Ignored when `DATA_FOLDER` is set in the environment. Default: `data/` next to `Varken.py`. |
-| `-ND`, `--no_debug` | Log at INFO instead of DEBUG. Ignored when `DEBUG` is set in the environment. |
-| `-D`, `--debug` | Deprecated and has no effect: debug logging is already the default. |
+| `-D`, `--debug` | Log at DEBUG instead of INFO. Ignored when `DEBUG` is set in the environment. |
+| `-ND`, `--no_debug` | Log at INFO, which is the default since 2.3.0; kept so existing scripts still work. |
 | `-h`, `--help` | Print the options and exit. |
 
 Varken runs until it is stopped. It exits with status 1 when the data folder is missing or unreadable, a
@@ -32,7 +32,7 @@ use; Varken logs which address and port), or every service is disabled. A GeoLit
 downloaded doesn't stop it (streams have no location until a later download works).
 
 The image copies the current `varken.example.ini` into `/config`, then runs `python /app/Varken.py` with
-`DATA_FOLDER=/config` (and `DEBUG=True` unless you set it).
+`DATA_FOLDER=/config`; it logs at INFO unless you set `DEBUG=true`.
 
 ### Output: Prometheus metrics
 
@@ -165,8 +165,9 @@ Before 2.1.0 the Sonarr and Radarr modules used the unversioned `/api/...` paths
 longer serve. A reply in an unexpected shape (an older API, say) logs an error and marks the job down.
 Sonarr 5's new API is [planned](roadmap.md); Sonarr 5 is in beta as of 2.1.0.
 
-Requests to the services have no timeouts today ([security.md](security.md#known-weaknesses)); the MaxMind
-download (60 s) and the ipify lookup (10 s) have one.
+Every request has a timeout: 10 seconds to connect and 30 seconds for each read for the services, 60
+seconds for the MaxMind download and 10 seconds for the ipify lookup. A service that doesn't answer in time
+fails that run (`varken_job_up` 0), and the log names its host.
 
 ## Files
 
@@ -187,5 +188,5 @@ version and digest, the hash-pinned packages from [`requirements.txt`](../requir
 `/app`. It runs as the unprivileged uid/gid 1000:1000 with `DATA_FOLDER=/config`; `/config` is the only
 path it writes to, and belongs to 1000:1000 in the image, so a new named volume there starts out writable.
 Releases are published for linux/amd64 and linux/arm64, tagged with the version
-(`2.2.1`), major.minor (`2.2`) and `latest`, signed and with an SBOM and provenance
+(`2.3.0`), major.minor (`2.3`) and `latest`, signed and with an SBOM and provenance
 ([verifying-releases.md](verifying-releases.md)). It declares `EXPOSE 9180` for `/metrics`.

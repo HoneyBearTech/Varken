@@ -44,7 +44,7 @@ RUN sed -i "s/^VERSION = .*/VERSION = \"${VERSION}\"/;s/^BRANCH = .*/BRANCH = '$
 
 # Config, the GeoLite2 database and logs live in /config (a volume). No .pyc files, so the root filesystem can
 # be read-only.
-ENV DATA_FOLDER=/config PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 DEBUG=True
+ENV DATA_FOLDER=/config PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 VOLUME ["/config"]
 # The Prometheus /metrics endpoint.
 EXPOSE 9180

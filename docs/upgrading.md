@@ -107,6 +107,12 @@ docker compose logs -f varken
 For a bare install: `git fetch --tags && git checkout vX.Y.Z`, reinstall `requirements.txt` with
 `--require-hashes --no-deps` (it may have changed), and restart the service.
 
+### 2.2.x to 2.3.0
+
+- **The log is quieter:** Varken logs at INFO unless you set `DEBUG=true` (or pass `-D`). If you set
+  `DEBUG=false` before, you can drop it.
+- A service that takes more than 30 seconds to answer a request now fails that run instead of waiting forever.
+
 ### 2.1.x to 2.2.0
 
 - **GeoIP users: add your MaxMind account ID** (`maxmind_account_id` or `VRKN_GLOBAL_MAXMIND_ACCOUNT_ID`; it's

@@ -33,7 +33,7 @@ The compose file reads these from `.env`, besides the `VRKN_*` settings:
 
 | Variable | Default | What |
 | --- | --- | --- |
-| `VARKEN_VERSION` | `latest` | Image tag to run. Set a release such as `2.2.1`, so upgrades happen when you choose. |
+| `VARKEN_VERSION` | `latest` | Image tag to run. Set a release such as `2.3.0`, so upgrades happen when you choose. |
 | `CONFIG_ROOT` | `/srv/config` (required) | Where app data lives; Varken's is `CONFIG_ROOT/varken/config`, mounted at `/config`. Not inside `/var/lib/docker/volumes`. |
 | `VARKEN_UID` / `VARKEN_GID` | `1000` | The user and group the container runs as; they must own `CONFIG_ROOT/varken/config`. |
 | `VARKEN_METRICS_BIND` | `127.0.0.1:9180` | Host address and port `/metrics` is published on. Keep it on a loopback or private address. |
@@ -50,7 +50,7 @@ docker run -d --name varken --restart unless-stopped \
   --user 1000:1000 --read-only --cap-drop ALL --security-opt no-new-privileges:true \
   --env-file .env -v /srv/config/varken/config:/config \
   --network <the network Prometheus is on> \
-  ghcr.io/honeybeartech/varken:2.2.1
+  ghcr.io/honeybeartech/varken:2.3.0
 ```
 
 The host directory must belong to uid 1000. Prefer it to a Docker named volume: `docker volume prune` (and
@@ -61,7 +61,7 @@ it needs no `chown`: the image creates `/config` owned by 1000:1000. For a Prome
 Instead of an `.env` file you can write `config/varken.ini` yourself from
 [`data/varken.example.ini`](../data/varken.example.ini) (`chmod 600`, owned by uid 1000). Images are
 published for linux/amd64 and linux/arm64 as `ghcr.io/honeybeartech/varken`, tagged with the version
-(`2.2.1`), major.minor (`2.2`) and `latest`. [Verify the image](verifying-releases.md) before the first
+(`2.3.0`), major.minor (`2.3`) and `latest`. [Verify the image](verifying-releases.md) before the first
 start; pinning its digest is stronger than pinning a tag.
 
 ## Option 3: Unraid
@@ -79,7 +79,7 @@ is in `/opt/Varken`, a virtual environment in `/opt/Varken/varken-venv`, and a `
 
 ```sh
 sudo git clone https://github.com/HoneyBearTech/Varken.git /opt/Varken
-cd /opt/Varken && sudo git checkout v2.2.1
+cd /opt/Varken && sudo git checkout v2.3.0
 sudo python3.14 -m venv varken-venv
 sudo varken-venv/bin/pip install --require-hashes --no-deps -r requirements.txt
 
@@ -168,8 +168,8 @@ dashboards query InfluxDB and don't work with them.
 - Use `ssl = true` and `verify_ssl = true` for every service you reach over a network you don't fully
   trust; both are off in the example.
 - Give Varken its own API keys and a read-only UniFi account.
-- Set `DEBUG=false`. The debug log is on by default and records every request Varken makes. In a container,
-  `LOG_TO_FILE=false` logs to stdout only, with no `logs/` folder in `/config`.
+- Leave debug logging off (the default since 2.3.0; `DEBUG=true` turns it on): it records every request
+  Varken makes. In a container, `LOG_TO_FILE=false` logs to stdout only, with no `logs/` folder in `/config`.
 - Keep the container non-root with a read-only root filesystem, no capabilities and `no-new-privileges`, as
   in the compose file. Publish 9180 on a loopback or private address only, or not at all when Prometheus
   shares Varken's Docker network.

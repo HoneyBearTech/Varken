@@ -101,7 +101,7 @@ lists every setting and its default.
 
 Any `VRKN_*` value can also be read from a file, for Docker and compose secrets: set
 `VRKN_<SECTION>_<KEY>_FILE` to its path. Environment settings for the container: `DATA_FOLDER` (default
-`/config`), `DEBUG` (`True` by default; set `False` for info-level logs), `LOG_TO_FILE` (`true` by default;
+`/config`), `DEBUG` (`false` by default, which logs at INFO; `true` for debug logs), `LOG_TO_FILE` (`true` by default;
 `false` logs to stdout only) and `TZ`.
 
 ## Running it securely

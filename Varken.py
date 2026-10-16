@@ -44,8 +44,9 @@ if __name__ == "__main__":
                             formatter_class=RawTextHelpFormatter)
 
     parser.add_argument("-d", "--data-folder", help='Define an alternate data folder location')
-    parser.add_argument("-D", "--debug", action='store_true', help='Use to enable DEBUG logging. (Deprecated)')
-    parser.add_argument("-ND", "--no_debug", action='store_true', help='Use to disable DEBUG logging')
+    parser.add_argument("-D", "--debug", action='store_true', help='Log at DEBUG instead of INFO')
+    parser.add_argument("-ND", "--no_debug", action='store_true',
+                        help='Log at INFO (the default since 2.3.0; kept so existing scripts still work)')
 
     opts = parser.parse_args()
 
@@ -66,18 +67,15 @@ if __name__ == "__main__":
         templogger.error("%s does not exist", DATA_FOLDER)
         exit(1)
 
-    # Set Debug to True if DEBUG env is set
+    # INFO by default; DEBUG with -D, or with DEBUG=true in the environment (which wins over the flags).
     enable_opts = ['True', 'true', 'yes']
     debug_opts = ['debug', 'Debug', 'DEBUG']
 
-    opts.debug = True
+    opts.debug = opts.debug and not opts.no_debug
 
     if getenv('DEBUG') is not None:
         opts.debug = True if any([getenv(string, False) for true in enable_opts
                                   for string in debug_opts if getenv(string, False) == true]) else False
-
-    elif opts.no_debug:
-        opts.debug = False
 
     # Initiate the logger
     # LOG_TO_FILE=false logs to stdout only, for containers whose logs are collected anyway.

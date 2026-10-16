@@ -65,7 +65,7 @@ your own:
 ```yaml
 services:
   varken:
-    image: ghcr.io/honeybeartech/varken:2.2.1
+    image: ghcr.io/honeybeartech/varken:2.3.0
     user: "1000:1000"
     read_only: true
     cap_drop: [ALL]
@@ -104,8 +104,8 @@ reach it. The endpoint has **no authentication and no TLS**, and no rate limit.
 
 ### Logs and data
 
-- Set `DEBUG=false` (in `.env` for the compose setup, or pass `-ND`). The debug log, on by default, records
-  every request URL (with secrets masked).
+- Leave debug logging off (the default from 2.3.0; before, set `DEBUG=false` or pass `-ND`). The debug log
+  records every request URL (with secrets masked).
 - `LOG_TO_FILE=false` keeps the log out of the data folder, so it lives only where the container runtime or
   journald keeps stdout.
 - Treat Prometheus, Grafana and Varken's logs as personal data. With `stream_details = true` the metrics
@@ -128,11 +128,16 @@ These are inherited from upstream Varken and are already public. Each has a plan
 | Weakness | Effect | Workaround today | Plan |
 | --- | --- | --- | --- |
 | `verify_ssl` defaults to `false`, and the insecure-request warning is silenced | A network attacker can intercept HTTPS traffic to a service without any warning | Set `verify_ssl = true` everywhere you use `ssl = true` | Default `true` (a breaking change, announced in the changelog) |
-| No request timeouts | A service that accepts a connection but never answers ties up a thread per run, which can pile up | Keep services reachable; restart Varken if it stops writing | Add timeouts to every request |
-| Debug logging is on by default | Logs hold every request URL (secrets masked) and more detail than needed | `DEBUG=false` or `-ND` | Default INFO |
 | Masked secrets keep their last five characters | A masked value is logged as `********` plus its last five characters, which narrows a guess for short secrets | Use long, random API keys and passwords; keep logs private | Mask completely |
 | Without `maxmind_account_id`, the MaxMind license key is sent as a URL query parameter | The key can end up in proxy or server logs along the way (the connection itself is HTTPS) | Set `maxmind_account_id` (2.2.0 and later): the download then uses Basic auth | Drop the legacy URL in 3.0.0 |
 | Config rewrite | When keys are missing, Varken rewrites `varken.ini` with values from the example, dropping comments | Keep `varken.ini` complete | |
+
+### Fixed in 2.3.0
+
+| Weakness | Effect | Fix |
+| --- | --- | --- |
+| No request timeouts | A service that accepted a connection but never answered held its job's thread for good, and the scheduler started another every run | Every service request has a 10 s connect and 30 s read timeout; a run that times out is marked down |
+| Debug logging was on by default | Logs held every request URL (secrets masked) and more detail than needed | INFO by default; `DEBUG=true` or `-D` for debug logs |
 
 ### Fixed in 2.0.0
 
