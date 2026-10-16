@@ -119,6 +119,23 @@ reach it. The endpoint has **no authentication and no TLS**, and no rate limit.
 Released images and files are signed keylessly and carry an SBOM and build provenance; tags are signed.
 Check them before you run them: [verifying-releases.md](verifying-releases.md).
 
+## The project's own secrets
+
+What the project itself holds, and how each is kept (the operator's secrets are covered above):
+
+- **No stored CI secrets.** The repository has no Actions or Dependabot secrets. Workflows use the short-lived
+  `GITHUB_TOKEN`, read-only unless a job needs more; releases are signed with Sigstore's keyless signing, using
+  the release job's own GitHub identity, so there is no signing key to leak or rotate.
+- **The tag-signing key** is the maintainer's SSH key, held in a password manager and never on CI; its public
+  half is in [`.github/allowed_signers`](../.github/allowed_signers). If it is lost or exposed, the maintainer
+  removes it from GitHub, publishes the new public key there, and says which tags it signed.
+- **The GitLab mirror token** is a project access token on the maintainer's own GitLab, scoped to writing that
+  one repository, with an expiry, in a masked, protected CI/CD variable; it is rotated before it expires, or at
+  once if it may have leaked.
+- **Never in the repository**: no key, token, password or `.env` file is committed; `.gitignore` covers them,
+  gitleaks scans the whole history in CI, and GitHub secret scanning with push protection is on. A secret that
+  reaches the repository anyway is revoked and replaced first, then removed.
+
 ## Known weaknesses
 
 These are inherited from upstream Varken and are already public. Each has a planned fix on the

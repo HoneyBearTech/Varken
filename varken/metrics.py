@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 """Varken's output: a Prometheus /metrics endpoint built from the points each scheduled job writes.
 
 Every job (Tautulli activity, Sonarr's queue, ...) runs through Metrics.run, which collects the points the job hands

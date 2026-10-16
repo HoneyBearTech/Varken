@@ -15,6 +15,9 @@ are welcome, but there is no service-level agreement, and review may take a whil
   agree on the approach. The [roadmap](docs/roadmap.md) says what's planned and what's out of scope.
 - **Do not report security vulnerabilities in a public issue.** Follow [SECURITY.md](SECURITY.md) and use
   GitHub's private vulnerability reporting instead.
+- **Looking for something small to start with?** Issues labelled
+  [good first issue](https://github.com/HoneyBearTech/Varken/labels/good%20first%20issue) are self-contained
+  and need no knowledge of the whole codebase.
 
 ## Development setup
 
@@ -145,6 +148,23 @@ it with `git rebase --signoff main` and force-push your branch.
 - **This repository is public.** Never commit API keys, passwords, MaxMind license keys, `varken.ini`,
   `.env` files, hostnames, IP addresses, usernames or media titles, including in test fixtures and
   screenshots. CI runs gitleaks over the history.
+
+## Code review
+
+Every pull request is reviewed before it merges, against the same list, whoever wrote it:
+
+- **It does one thing**, described in the pull request, and the required checks pass.
+- **Behaviour is tested**: new behaviour has a test; a fix has a regression test that fails without it.
+- **Security**: input from services, the operator or the network is treated as untrusted (shape checked, never
+  executed, safe in a log line and in `/metrics`); secrets reach only their own service and are masked in logs;
+  no new network access, credential handling or privilege without a note in [docs/security.md](docs/security.md).
+- **Interfaces**: metric names and labels, settings and environment variables don't change without a
+  breaking-change note; docs and `CHANGELOG.md` match the change.
+- **Dependencies** are pinned with hashes, needed, maintained and under an allowed license.
+- **Every new source file** starts with SPDX copyright and license lines (a test checks).
+
+With one maintainer, the maintainer reviews their own pull requests against this list and merges them through
+the ruleset's pull-request bypass ([GOVERNANCE.md](GOVERNANCE.md)); a second maintainer would review instead.
 
 ## Releases
 

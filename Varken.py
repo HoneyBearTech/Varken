@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2018 Boerderij
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 import platform
 import schedule
 from time import sleep

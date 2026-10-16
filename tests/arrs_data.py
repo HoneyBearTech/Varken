@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 """Replies from Sonarr 4 and Radarr 5 (API v3), and stand-ins that write the points the SickChill and Ombi
 modules write. Shared by the tests and the CI sample scrape."""
 from types import SimpleNamespace

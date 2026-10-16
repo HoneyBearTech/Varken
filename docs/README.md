@@ -13,6 +13,7 @@ Start with the [README](../README.md) for what Varken is and how to run it.
 | [Verifying releases](verifying-releases.md) | Checking that images and release files came from this repository, unchanged |
 | [Security requirements](security.md) | What Varken guarantees, how to run it securely, and its known weaknesses |
 | [Assurance case](assurance-case.md) | The threat model, trust boundaries and how common weaknesses are countered |
+| [Security review](security-review.md) | Each security review: scope, method, findings and accepted risks (latest 2026-10-16) |
 | [Dependencies](dependencies.md) | How dependencies are chosen, pinned, tracked and patched |
 | [Roadmap](roadmap.md) | What's planned for the next year, and what Varken will not do |
 

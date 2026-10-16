@@ -1,0 +1,9 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/HoneyBearTech/Varken/blob/main/.vex/varken.openvex.json",
+  "author": "HoneyBearTech",
+  "role": "Maintainer",
+  "timestamp": "2026-10-16T00:00:00Z",
+  "version": 1,
+  "statements": []
+}
