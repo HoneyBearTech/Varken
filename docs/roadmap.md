@@ -40,7 +40,7 @@ license key in the URL, and keeps running when that download fails. **2.2.1** ma
 setting new in a version is added to `varken.ini` with an INFO line, not an ERROR.
 **2.3.0** (2026-10-16) adds a timeout to every request and logs at INFO by default.
 
-**2.3.0** adds request timeouts and logs at INFO by default. **3.0.0** adds a Seerr module and makes three breaking
+**3.0.0** (2026-10-16) adds a Seerr module and makes three breaking
 changes: new configs check TLS certificates, GeoIP needs the MaxMind account ID, and masked secrets keep
 nothing ([upgrading](upgrading.md)).
 

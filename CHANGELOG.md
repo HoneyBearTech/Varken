@@ -7,6 +7,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-10-16
+
 **3.0.0 is a major release**: see the breaking changes below and [upgrading](docs/upgrading.md).
 
 ### Added
