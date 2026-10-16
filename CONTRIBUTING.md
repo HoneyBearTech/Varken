@@ -54,6 +54,14 @@ every commit it receives. Changes go to GitHub only; a commit made on the GitLab
 The tests in [`tests/`](tests/) are offline: they run against recorded API responses and mocks, and never
 reach Tautulli, the \*arr apps or MaxMind.
 
+[`tests/test_properties.py`](tests/test_properties.py) holds property-based tests (Hypothesis) for everything
+that turns untrusted text into behaviour: URLs and environment values, secrets in log lines, the services' JSON
+replies and the label text in `/metrics`. They run with the other tests (100 examples each); for a longer run:
+`pytest --hypothesis-profile=thorough tests/test_properties.py`. The Fuzz workflow
+([`.github/workflows/fuzz.yml`](.github/workflows/fuzz.yml)) drives the same properties with a coverage-guided
+fuzzer (Atheris, [`fuzz/fuzz_properties.py`](fuzz/fuzz_properties.py)) for a minute per target on pull requests
+that change the code, and ten minutes weekly; a finding is uploaded as an artifact you can replay.
+
 ## Before you open a pull request
 
 Run what CI runs and make sure it passes:
@@ -113,6 +121,7 @@ development tools likewise in `requirements-dev.in` and `requirements-dev.txt`. 
 ```sh
 uv pip compile --generate-hashes --python-version 3.14 requirements.in -o requirements.txt
 uv pip compile --generate-hashes --python-version 3.14 requirements-dev.in -o requirements-dev.txt
+uv pip compile --generate-hashes --python-version 3.14 --python-platform x86_64-manylinux_2_28 requirements-fuzz.in -o requirements-fuzz.txt
 ```
 
 Commit the `.in` and `.txt` files together. Dependabot proposes routine updates; see

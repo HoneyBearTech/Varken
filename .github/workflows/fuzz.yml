@@ -1,0 +1,77 @@
+name: Fuzz
+
+# Coverage-guided fuzzing (Atheris) of the Hypothesis properties in tests/test_properties.py: a short run on pull
+# requests that touch the code, a longer one weekly. See fuzz/fuzz_properties.py. Not a required check, since it
+# only runs when the code changes.
+on:
+  pull_request:
+    paths:
+      - "varken/**"
+      - "tests/test_properties.py"
+      - "fuzz/**"
+      - "requirements*.txt"
+      - ".github/workflows/fuzz.yml"
+  schedule:
+    - cron: "41 4 * * 2"
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: "Fuzzing time per target, in seconds (1 to 3600)"
+        type: number
+        default: 600
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: Fuzz ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - url_check
+          - settings
+          - log_masking
+          - replies
+          - labels
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14" # the image's Python; Atheris has x86_64 wheels for it
+
+      - name: Install Varken, the test tools and Atheris
+        run: >-
+          python -m pip install --require-hashes --no-deps
+          -r requirements.txt -r requirements-dev.txt -r requirements-fuzz.txt
+
+      - name: Fuzz
+        env:
+          TARGET: ${{ matrix.target }}
+          SECONDS_PER_TARGET: ${{ inputs.seconds || (github.event_name == 'pull_request' && '60') || '600' }}
+        run: |
+          # A manual run's input: a whole number of seconds within bounds, nothing else.
+          seconds="$SECONDS_PER_TARGET"
+          if ! [[ "$seconds" =~ ^[0-9]+$ ]] || (( 10#$seconds < 1 || 10#$seconds > 3600 )); then
+            echo "seconds must be a whole number from 1 to 3600, got: $seconds"
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/crashes"
+          python fuzz/fuzz_properties.py "$TARGET" \
+            -max_total_time="$seconds" -timeout=10 \
+            -artifact_prefix="$RUNNER_TEMP/crashes/$TARGET-"
+
+      # Replay locally (Linux x86_64): python fuzz/fuzz_properties.py <target> <file>
+      - name: Upload the crashing input
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: crash-${{ matrix.target }}
+          path: ${{ runner.temp }}/crashes/
+          if-no-files-found: ignore

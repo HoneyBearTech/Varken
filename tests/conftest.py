@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+from hypothesis import settings
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -34,3 +35,11 @@ def data_folder(tmp_path):
     """A data folder holding only the example config, as on a first start."""
     shutil.copy(REPO / 'data' / 'varken.example.ini', tmp_path / 'varken.example.ini')
     return tmp_path
+
+
+# The property tests' default: a slow example fails only past 2 s, so a busy CI runner doesn't make them flaky (a
+# runaway regex still fails; the fuzzer has its own 10 s timeout). A longer run:
+#   pytest --hypothesis-profile=thorough tests/test_properties.py
+settings.register_profile('varken', deadline=2000)
+settings.register_profile('thorough', max_examples=3000, deadline=None)
+settings.load_profile('varken')

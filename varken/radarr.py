@@ -38,6 +38,12 @@ class RadarrAPI(object):
             return
 
         for movie in get:
+
+            if not isinstance(movie, dict):
+
+                self.logger.error('Skipping a Radarr entry that is not an object: %s', movie)
+
+                continue
             if not movie.get('monitored') or movie.get('hasFile'):
                 continue
             # Missing_Available: 0 once Radarr considers the movie released (available), 1 before that.
@@ -80,6 +86,12 @@ class RadarrAPI(object):
             return
 
         for item in get['records']:
+
+            if not isinstance(item, dict):
+
+                self.logger.error('Skipping a Radarr entry that is not an object: %s', item)
+
+                continue
             try:
                 movie = item['movie']
                 quality = item['quality']['quality']['name']

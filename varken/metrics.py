@@ -11,7 +11,7 @@ from threading import Lock, local
 from time import time
 
 from prometheus_client import CollectorRegistry, start_http_server
-from prometheus_client.core import GaugeMetricFamily
+from prometheus_client.core import GaugeMetricFamily as _GaugeMetricFamily
 
 from varken import BRANCH, VERSION, helpers
 
@@ -50,8 +50,36 @@ def flag(value):
     return 'true' if str(value) in ('1', 'True', 'true') else 'false'
 
 
+def printable(value):
+    """Text as it can go into the scrape: a lone surrogate (JSON can carry one, "\\ud800") becomes U+FFFD. Left in,
+    it would make the whole scrape fail to encode, every metric with it."""
+    return value.encode('utf-16', 'surrogatepass').decode('utf-16', 'replace') if isinstance(value, str) else value
+
+
+class GaugeMetricFamily(_GaugeMetricFamily):
+    """prometheus_client's gauge family, with every label value made printable."""
+
+    def add_metric(self, labels, value, timestamp=None):
+        super().add_metric([printable(label) for label in labels], value, timestamp)
+
+
+class InfoFamily(GaugeMetricFamily):
+    """A family of info series (one per item, value 1) that leaves out a label set it already has: two items that
+    look the same (two downloads of one episode, say) must not make a duplicate series, which Prometheus drops."""
+
+    def __init__(self, name, documentation, labels):
+        super().__init__(name, documentation, labels=labels)
+        self.seen = set()
+
+    def add_metric(self, labels, value, timestamp=None):
+        key = tuple(labels)
+        if key not in self.seen:
+            self.seen.add(key)
+            super().add_metric(labels, value, timestamp)
+
+
 def info(name, documentation, labels):
-    return GaugeMetricFamily(name, documentation, labels=labels)
+    return InfoFamily(name, documentation, labels)
 
 
 class JobErrors(Handler):

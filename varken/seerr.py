@@ -89,6 +89,9 @@ class SeerrAPI(object):
         now = datetime.now(timezone.utc).astimezone().isoformat()
         points = []
         for request in get['results']:
+            if not isinstance(request, dict):
+                self.logger.error('Skipping a Seerr entry that is not an object: %s', request)
+                continue
             try:
                 media = request['media']
                 status = REQUEST_STATUS.get(request['status'])

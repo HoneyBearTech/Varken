@@ -7,6 +7,19 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+- Property-based tests (Hypothesis) and coverage-guided fuzzing (Atheris, `.github/workflows/fuzz.yml`) of
+  everything that turns untrusted text into behaviour: URLs and environment values, secrets in log lines, the
+  services' JSON replies and the label text in `/metrics`.
+
+### Fixed
+- Two items with the same labels (two downloads of one episode, say) made a duplicate series in one scrape,
+  which Prometheus drops; each info family now emits a label set once.
+- A lone surrogate in a title (JSON can carry `"\ud800"`) made the whole `/metrics` scrape fail to encode, so
+  every metric disappeared; label values now replace it with U+FFFD.
+- A `null` (or any non-object) in a Sonarr, Radarr, Lidarr or Seerr reply list crashed the job with a traceback;
+  such entries are now skipped with an error.
+
 ### Fixed
 - The Device Types and Stream Types pies showed only the sessions playing at that moment, so they were empty whenever
   nobody was watching; they now cover the dashboard's time range (average concurrent sessions), like the original.

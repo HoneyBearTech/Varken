@@ -4,3 +4,4 @@ coverage
 pytest
 ruff
 yamllint
+hypothesis

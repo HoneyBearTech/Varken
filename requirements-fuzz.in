@@ -1,0 +1,5 @@
+# Coverage-guided fuzzing (Atheris), used only by .github/workflows/fuzz.yml on Linux x86_64 (Atheris has no other
+# wheels). Install together with requirements.txt and requirements-dev.txt. Pinned with hashes in
+# requirements-fuzz.txt, regenerated with:
+#   uv pip compile --generate-hashes --python-version 3.14 --python-platform x86_64-manylinux_2_28 requirements-fuzz.in -o requirements-fuzz.txt
+atheris

@@ -28,7 +28,9 @@ class INIParser(object):
         try:
             self.parse_opts(read_file=True)
         except NoSectionError as e:
-            self.logger.error('Missing section in (varken.ini): %s', e)
+            # A section a newer Varken added ([prometheus] for an upstream varken.ini, say): filled in from the example.
+            self.logger.info('varken.ini is missing a section (%s): adding it from varken.example.ini', e)
+            self.rectified = True
             self.rectify_ini()
 
     def read_secret_files(self):
@@ -218,6 +220,13 @@ class INIParser(object):
                     server = None
                     section = f"{service}-{server_id}"
                     envsection = f"{service}_{server_id}".upper()
+                    # A server id with no section: the example can only fill in the ones it has ([tautulli-1]...).
+                    if not self.config.has_section(section) and (
+                            self.rectified or not self.read_file('varken.example.ini').has_section(section)):
+                        self.logger.error('%s_server_ids lists %s, but varken.ini has no [%s] section: add one '
+                                          '(varken.example.ini has an example for each service). Exiting.',
+                                          service, server_id, section)
+                        exit(1)
                     try:
                         url = self.url_check(env.get(f'VRKN_{envsection}_URL', self.config.get(section, 'url')),
                                              section=section)

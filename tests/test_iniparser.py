@@ -254,3 +254,15 @@ def test_plain_http_has_nothing_to_verify_and_no_warning(data_folder, caplog):
 
     assert parser.tautulli_servers[0].verify_ssl is False  # ssl = false in the example
     assert 'without checking the certificate' not in caplog.text
+
+
+def test_a_server_id_with_no_section_stops_varken_with_a_clear_error(data_folder, monkeypatch, caplog):
+    # Regression (found by the fuzzer): tautulli_server_ids = 0 ended in a NoSectionError traceback, since the
+    # example only has [tautulli-1] to fill in from.
+    monkeypatch.setenv('VRKN_GLOBAL_TAUTULLI_SERVER_IDS', '1,3')
+
+    with pytest.raises(SystemExit):
+        INIParser(str(data_folder))
+
+    assert 'tautulli_server_ids lists 3, but varken.ini has no [tautulli-3] section' in caplog.text
+

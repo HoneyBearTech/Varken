@@ -107,7 +107,11 @@ On every push and pull request, CI ([`.github/workflows/ci.yml`](../.github/work
 (including the bandit security rules), yamllint, actionlint with shellcheck, hadolint, gitleaks over the full
 history, pip-audit against the pinned requirements, the offline unit tests with a coverage floor (including the metrics tests in
 [`tests/test_metrics.py`](../tests/test_metrics.py)), Prometheus' `promtool check metrics` on a sample scrape
-with every metric (`python -m tests.sample_metrics`), and an image build. CodeQL analyses the
+with every metric (`python -m tests.sample_metrics`), property-based tests of every untrusted input
+([`tests/test_properties.py`](../tests/test_properties.py)), and an image build. The same properties are fuzzed
+with Atheris on pull requests that change the code and weekly ([`fuzz.yml`](../.github/workflows/fuzz.yml));
+they found and now guard against a duplicate series in one scrape, a lone surrogate in a title breaking the whole
+scrape, and a `null` in a reply list crashing a job. CodeQL analyses the
 Python code and the workflows on every change and weekly; dependency review and a DCO check run on every
 pull request; Trivy scans the image weekly; OpenSSF Scorecard scores the repository weekly. Releases are
 signed and carry an SBOM and provenance.
