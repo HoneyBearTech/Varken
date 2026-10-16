@@ -7,6 +7,11 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+- `dashboard/make_dashboard.py --argus` also writes a classic copy for Argus (`varken-classic.json`) in the original
+  dashboard's look: solid-coloured tiles on the original grid, rows coloured by status, a heat strip for Server
+  Popularity, a dark map of the US and week-long pies.
+
 ## [3.1.0] - 2026-10-16
 
 ### Changed

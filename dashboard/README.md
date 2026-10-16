@@ -47,7 +47,7 @@ The JSON is generated. Edit [`make_dashboard.py`](make_dashboard.py) and run, fr
 
 ```sh
 python dashboard/make_dashboard.py                        # writes dashboard/varken.json
-python dashboard/make_dashboard.py --argus ~/GitHub/Argus # also writes Argus' copy
+python dashboard/make_dashboard.py --argus ~/GitHub/Argus # also writes Argus' copies (and its classic look)
 ```
 
 CI checks that `varken.json` matches the generator, and that every query uses only metrics and labels Varken
