@@ -1398,7 +1398,7 @@
     {
       "type": "piechart",
       "title": "Device Types",
-      "description": "Current sessions by the player's platform.",
+      "description": "Viewing by the player's platform over the dashboard's time range (average concurrent sessions).",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1415,7 +1415,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (platform) (varken_tautulli_sessions)",
+          "expr": "sum by (platform) (avg_over_time(varken_tautulli_sessions[$__range]))",
           "refId": "A",
           "instant": true,
           "range": false,
@@ -1462,7 +1462,7 @@
     {
       "type": "piechart",
       "title": "Stream Types",
-      "description": "Current sessions by video decision (direct play, copy, transcode).",
+      "description": "Viewing by video decision (direct play, copy, transcode) over the dashboard's time range (average concurrent sessions).",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1479,7 +1479,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (video_decision) (varken_tautulli_sessions)",
+          "expr": "sum by (video_decision) (avg_over_time(varken_tautulli_sessions[$__range]))",
           "refId": "A",
           "instant": true,
           "range": false,

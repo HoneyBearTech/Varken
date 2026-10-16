@@ -196,10 +196,15 @@ def panels():
         stat('Episodes Added', 'How many more episodes the TV libraries hold than at their lowest in the '
              "dashboard's time range.", added('tvlibrary', 'episodes'), g(21, 6, 3, 3)),
         # Middle: what's playing, the queues and the map.
-        pie('Device Types', "Current sessions by the player's platform.",
-            'sum by (platform) (varken_tautulli_sessions)', '{{platform}}', g(0, 9, 4, 8)),
-        pie('Stream Types', 'Current sessions by video decision (direct play, copy, transcode).',
-            'sum by (video_decision) (varken_tautulli_sessions)', '{{video_decision}}', g(4, 9, 4, 8)),
+        # Over the dashboard's time range, like the original: sessions exist only while something plays, so pies
+        # of the current sessions were empty whenever nobody was watching.
+        pie('Device Types', "Viewing by the player's platform over the dashboard's time range (average concurrent "
+            'sessions).', 'sum by (platform) (avg_over_time(varken_tautulli_sessions[$__range]))', '{{platform}}',
+            g(0, 9, 4, 8)),
+        pie('Stream Types', 'Viewing by video decision (direct play, copy, transcode) over the dashboard\'s time '
+            'range (average concurrent sessions).',
+            'sum by (video_decision) (avg_over_time(varken_tautulli_sessions[$__range]))', '{{video_decision}}',
+            g(4, 9, 4, 8)),
         table('Movies in Queue', "Movies in Radarr's download queue.", 'varken_radarr_queue_item_info',
               g(8, 9, 8, 4), {'movie': 'Movie', 'quality': 'Quality', 'protocol': 'Protocol'}),
         viewer_map('Viewer Locations', "Where the current viewers are, from the GeoLite2 city of each viewer's "
@@ -438,19 +443,20 @@ def classic_dashboard():
             continue
         panel['gridPos'] = CLASSIC_GRID[title]
         if panel['type'] == 'piechart':
-            # Over the last week, as the original: average concurrent sessions by platform or decision.
-            by = 'platform' if title == 'Device Types' else 'video_decision'
-            panel['targets'][0]['expr'] = f'sum by ({by}) (avg_over_time(varken_tautulli_sessions[$__range]))'
+            # Over the last week, as the original (the query already covers the panel's time range).
             panel['timeFrom'] = '7d'
             panel['options'].update(displayLabels=['name', 'percent'],
                                     legend={'showLegend': False, 'displayMode': 'list', 'placement': 'right'})
-            if by == 'platform':
+            if title == 'Device Types':
                 panel['fieldConfig']['overrides'] = [
                     {'matcher': {'id': 'byName', 'options': name},
                      'properties': [{'id': 'color', 'value': {'mode': 'fixed', 'fixedColor': colour}}]}
                     for name, colour in DEVICE_COLOURS.items()]
         elif panel['type'] == 'timeseries':  # Server Popularity: the original's heat strip
             panel['type'] = 'status-history'
+            # Status history draws one cell per point: about 120 across the panel, each the slot's busiest moment.
+            panel['targets'][0]['expr'] = 'sum(max_over_time(varken_tautulli_streams[$__interval]))'
+            panel['maxDataPoints'] = 120
             panel['interval'] = '1m'
             panel['fieldConfig'] = {'defaults': {'color': {'mode': 'continuous-BlYlRd'}, 'min': 0,
                                                  'custom': {'lineWidth': 0, 'fillOpacity': 90}},

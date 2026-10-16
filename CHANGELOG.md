@@ -7,6 +7,12 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Fixed
+- The Device Types and Stream Types pies showed only the sessions playing at that moment, so they were empty whenever
+  nobody was watching; they now cover the dashboard's time range (average concurrent sessions), like the original.
+- The classic dashboard's Server Popularity strip asked for a point a minute (721 over 12 hours), more than Grafana's
+  status history draws; it now asks for about 120, each the busiest moment of its slot.
+
 ## [3.2.0] - 2026-10-16
 
 ### Added
