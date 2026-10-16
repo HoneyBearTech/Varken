@@ -1,3 +1,4 @@
+import re
 from hashlib import sha256
 from datetime import date, timedelta
 from time import sleep, monotonic
@@ -100,21 +101,35 @@ class GeoIPHandler(object):
         request."""
         self.last_failure = monotonic()  # cleared below once the new database is in place
         tar_dbfile = abspath(join(self.data_folder, 'GeoLite2-City.tar.gz'))
-        url, params, auth = MAXMIND_URL, {'suffix': 'tar.gz'}, (str(self.maxmind_account_id),
-                                                                self.maxmind_license_key)
+        auth = (str(self.maxmind_account_id), self.maxmind_license_key)
         for attempt in range(1, 4):
             self.logger.info('Downloading GeoLite2 DB from MaxMind...')
             try:
-                with requests_get(url, params=params, auth=auth, timeout=MAXMIND_TIMEOUT, stream=True) as reply:
+                # MaxMind publishes each archive's SHA-256 beside it: the archive is installed only if it matches.
+                with requests_get(MAXMIND_URL, params={'suffix': 'tar.gz.sha256'}, auth=auth,
+                                  timeout=MAXMIND_TIMEOUT) as reply:
                     if reply.status_code == 401:
                         self.logger.error('MaxMind refused the account ID and license key (HTTP 401): check '
                                           'maxmind_account_id and maxmind_license_key.')
                         return False
                     reply.raise_for_status()
-                    with open(tar_dbfile, 'wb') as archive:
-                        for chunk in reply.iter_content(chunk_size=1 << 20):
-                            archive.write(chunk)
-                break
+                    published = reply.text.split()[0].lower() if reply.text.split() else ''
+                if not re.fullmatch(r'[0-9a-f]{64}', published):
+                    self.logger.error('MaxMind\'s SHA-256 for the database is unreadable (attempt %s of 3)', attempt)
+                else:
+                    digest = sha256()
+                    with requests_get(MAXMIND_URL, params={'suffix': 'tar.gz'}, auth=auth, timeout=MAXMIND_TIMEOUT,
+                                      stream=True) as reply:
+                        reply.raise_for_status()
+                        with open(tar_dbfile, 'wb') as archive:
+                            for chunk in reply.iter_content(chunk_size=1 << 20):
+                                archive.write(chunk)
+                                digest.update(chunk)
+                    if digest.hexdigest() == published:
+                        break
+                    remove(tar_dbfile)
+                    self.logger.error('The GeoLite2 download doesn\'t match MaxMind\'s SHA-256 (attempt %s of 3)',
+                                      attempt)
             except HTTPError as e:
                 self.logger.error('MaxMind answered HTTP %s (attempt %s of 3)', e.response.status_code, attempt)
             except RequestException as e:

@@ -141,8 +141,8 @@ DATABASE = tar_gz(file_member('GeoLite2-City_20261013/README.txt', b'readme'),
 class FakeDownload:
     """What requests.get returns for the download: a status and a streamed body, or an exception to raise."""
 
-    def __init__(self, status=200, body=b''):
-        self.status_code, self.body = status, body
+    def __init__(self, status=200, body=b'', text=''):
+        self.status_code, self.body, self.text = status, body, text
 
     def __enter__(self):
         return self
@@ -158,19 +158,33 @@ class FakeDownload:
         yield self.body
 
 
-def maxmind_answers(monkeypatch, *replies):
-    """Make requests.get answer each download with the next reply; return the calls made."""
+def maxmind_answers(monkeypatch, *replies, checksum=None):
+    """Make MaxMind answer each download attempt with the next reply; return every request made, as (suffix, url,
+    keyword arguments). An attempt asks for the archive's SHA-256 first: MaxMind answers with the reply's own hash
+    (or `checksum`), and with the reply itself when it is an error, which then ends the attempt."""
     calls, replies = [], list(replies)
 
+    def next_reply():
+        return replies.pop(0) if len(replies) > 1 else replies[0]
+
     def fake_get(url, **kwargs):
-        calls.append((url, kwargs))
-        reply = replies.pop(0) if len(replies) > 1 else replies[0]
+        suffix = kwargs['params']['suffix']
+        calls.append((suffix, url, kwargs))
+        reply = replies[0]
+        if suffix == 'tar.gz.sha256' and not isinstance(reply, Exception) and reply.status_code < 400:
+            published = checksum if checksum is not None else helpers.sha256(reply.body).hexdigest()
+            return FakeDownload(text=f'{published}  GeoLite2-City_20261013.tar.gz\n')
+        reply = next_reply()
         if isinstance(reply, Exception):
             raise reply
         return reply
     monkeypatch.setattr(helpers, 'requests_get', fake_get)
     monkeypatch.setattr(helpers, 'sleep', lambda seconds: None)
     return calls
+
+
+def archives(calls):
+    return [call for call in calls if call[0] == 'tar.gz']
 
 
 def test_download_uses_basic_auth_with_the_account_id(tmp_path, monkeypatch, caplog):
@@ -180,11 +194,12 @@ def test_download_uses_basic_auth_with_the_account_id(tmp_path, monkeypatch, cap
         assert geoip_handler(tmp_path).download() is True
     assert 'Installed a new GeoLite2 DB' in caplog.text
 
-    url, kwargs = calls[0]
-    assert url == 'https://download.maxmind.com/geoip/databases/GeoLite2-City/download'
-    assert kwargs['auth'] == ('123456', 'license')
-    assert kwargs['params'] == {'suffix': 'tar.gz'}  # the key is never in the URL
-    assert kwargs['timeout'] and kwargs['stream']
+    # First the archive's published SHA-256, then the archive, both with Basic auth: the key is never in the URL.
+    assert [suffix for suffix, _, _ in calls] == ['tar.gz.sha256', 'tar.gz']
+    for _, url, kwargs in calls:
+        assert url == 'https://download.maxmind.com/geoip/databases/GeoLite2-City/download'
+        assert kwargs['auth'] == ('123456', 'license') and kwargs['timeout']
+    assert calls[1][2]['stream']
     assert (tmp_path / 'GeoLite2-City.mmdb').read_bytes() == b'database'
     assert sorted(path.name for path in tmp_path.iterdir()) == ['GeoLite2-City.mmdb']
 
@@ -226,6 +241,34 @@ def test_download_refuses_a_link_in_the_archive(tmp_path, monkeypatch):
     assert not (tmp_path / 'GeoLite2-City.tar.gz').exists()
 
 
+def test_a_download_that_does_not_match_maxminds_sha256_is_never_installed(tmp_path, monkeypatch, caplog):
+    calls = maxmind_answers(monkeypatch, FakeDownload(body=DATABASE), checksum='0' * 64)
+
+    assert geoip_handler(tmp_path).download() is False
+
+    assert len(archives(calls)) == 3  # retried, as for any failed attempt
+    assert "doesn't match MaxMind's SHA-256" in caplog.text
+    assert list(tmp_path.iterdir()) == []  # nothing extracted, and the archive is gone
+
+
+def test_an_unreadable_sha256_means_no_install(tmp_path, monkeypatch, caplog):
+    calls = maxmind_answers(monkeypatch, FakeDownload(body=DATABASE), checksum='not a checksum')
+
+    assert geoip_handler(tmp_path).download() is False
+    assert archives(calls) == []
+    assert 'SHA-256 for the database is unreadable' in caplog.text
+
+
+def test_a_corrupt_download_is_retried_and_the_good_one_installed(tmp_path, monkeypatch):
+    corrupt = FakeDownload(body=DATABASE[:-10])
+    calls = maxmind_answers(monkeypatch, corrupt, FakeDownload(body=DATABASE),
+                            checksum=helpers.sha256(DATABASE).hexdigest())
+
+    assert geoip_handler(tmp_path).download() is True
+    assert len(archives(calls)) == 2
+    assert (tmp_path / 'GeoLite2-City.mmdb').read_bytes() == b'database'
+
+
 def test_download_stops_on_wrong_credentials(tmp_path, monkeypatch, caplog):
     calls = maxmind_answers(monkeypatch, FakeDownload(status=401))
 
@@ -245,7 +288,7 @@ def test_download_recovers_from_one_failed_attempt(tmp_path, monkeypatch):
     calls = maxmind_answers(monkeypatch, ConnectionError('reset'), FakeDownload(body=DATABASE))
 
     assert geoip_handler(tmp_path).download() is True
-    assert len(calls) == 2
+    assert len(archives(calls)) == 1  # the first attempt failed before the archive
 
 
 def test_download_errors_never_log_the_url(tmp_path, monkeypatch, caplog):

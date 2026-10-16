@@ -169,7 +169,7 @@ the services it reads.
 | Seerr | `GET /api/v1/request/count`, `GET /api/v1/issue/count`, `GET /api/v1/request?take=100&skip=0&filter=all&sort=added`, and once per title `GET /api/v1/movie/<tmdb id>` or `GET /api/v1/tv/<tmdb id>` | `X-Api-Key` header (an admin key: Seerr has no read-only one) |
 | SickChill | `GET /api/<apikey>/?cmd=future&type=missed\|today\|soon\|later\|snatched` | the key is part of the path (SickChill's API requires it) |
 | UniFi controller | `POST /api/login` (username and password as JSON; keeps the `unifises` cookie), `GET /api/self/sites`, `GET /api/s/<site>/stat/device` | session cookie |
-| MaxMind | `GET https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz`, following its redirect to Cloudflare R2 (60 s timeout), when the database is missing or over 30 days old; only with a license key set (GeoIP on). Without `maxmind_account_id`: `GET https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&suffix=tar.gz&license_key=…` | HTTP Basic auth, account ID and license key (not sent on to R2); without an account ID, the license key as a query parameter ([a known weakness](security.md#known-weaknesses)) |
+| MaxMind | `GET https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz.sha256` (the archive's published SHA-256), then `…?suffix=tar.gz`, following its redirect to Cloudflare R2 (60 s timeout each); the archive is installed only if its SHA-256 matches, when the database is missing or over 30 days old; only with a license key set (GeoIP on). Without `maxmind_account_id`: `GET https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&suffix=tar.gz&license_key=…` | HTTP Basic auth, account ID and license key (not sent on to R2); without an account ID, the license key as a query parameter ([a known weakness](security.md#known-weaknesses)) |
 | ipify | `GET https://api.ipify.org` (10 s timeout) to learn the host's own public address, only with GeoIP on and when neither a viewer's address nor `fallback_ip` is in the GeoLite2 database; the answer is then reused until Varken restarts | none (a separate request; before 2.0.0 this went to `http://ip.42.pl` with the Tautulli API key attached, [now fixed](security.md#fixed-in-200)) |
 
 Supported versions: Sonarr 4 and Radarr 4 or later (their `/api/v3`), and Lidarr 1 or later (`/api/v1`).
@@ -200,5 +200,5 @@ version and digest, the hash-pinned packages from [`requirements.txt`](../requir
 `/app`. It runs as the unprivileged uid/gid 1000:1000 with `DATA_FOLDER=/config`; `/config` is the only
 path it writes to, and belongs to 1000:1000 in the image, so a new named volume there starts out writable.
 Releases are published for linux/amd64 and linux/arm64, tagged with the version
-(`3.0.0`), major.minor (`3.0`) and `latest`, signed and with an SBOM and provenance
+(`3.1.0`), major.minor (`3.1`) and `latest`, signed and with an SBOM and provenance
 ([verifying-releases.md](verifying-releases.md)). It declares `EXPOSE 9180` for `/metrics`.
