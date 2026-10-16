@@ -7,7 +7,7 @@ name: Image scan
 # image and are fixed by Dependabot's base-image bump.
 on:
   push:
-    branches: [main, master] # master only until the default branch is renamed
+    branches: [main]
     paths: ["Dockerfile", "requirements.txt", ".github/workflows/scan.yml"]
   schedule:
     - cron: "30 2 * * 1"
