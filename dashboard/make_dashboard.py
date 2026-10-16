@@ -272,6 +272,26 @@ def pin_datasource(node, uid):
 
 # Services the owner doesn't run: Argus' copy has none of their panels.
 ARGUS_WITHOUT = ('varken_ombi_', 'varken_sickchill_')
+# Argus reads Sonarr and Radarr as server 1 and their 4K instances as server 2 (its compose file), so its copy's
+# Sonarr and Radarr tables say which instance each row is from.
+ARGUS_INSTANCES = {'1': 'HD', '2': '4K'}
+
+
+def with_instance_column(panel):
+    """Add an Instance column, first, naming the server a Sonarr or Radarr table row comes from."""
+    include = panel['transformations'][0]['options']['include']['names']
+    include.insert(0, 'server')
+    organize = panel['transformations'][-1]['options']
+    organize['indexByName'] = {name: i for i, name in enumerate(include)}
+    organize['renameByName'] = {'server': 'Instance', **organize['renameByName']}
+    panel['fieldConfig']['overrides'].append({
+        'matcher': {'id': 'byName', 'options': 'Instance'},
+        'properties': [
+            {'id': 'mappings', 'value': [{'type': 'value', 'options': {
+                server: {'text': name, 'index': i} for i, (server, name) in enumerate(ARGUS_INSTANCES.items())}}]},
+            {'id': 'custom.width', 'value': 80},
+        ],
+    })
 
 
 def uses(panel, prefix):
@@ -284,6 +304,8 @@ def argus_dashboard():
     dash = pin_datasource(copy.deepcopy(dashboard()), 'prometheus')
     dash['panels'] = [panel for panel in dash['panels'] if not any(uses(panel, prefix) for prefix in ARGUS_WITHOUT)]
     for panel in dash['panels']:
+        if panel['type'] == 'table' and (uses(panel, 'varken_sonarr_') or uses(panel, 'varken_radarr_')):
+            with_instance_column(panel)
         if panel['title'] in ('Movies Added', 'Episodes Added'):
             panel['gridPos'] = g(0 if panel['title'] == 'Movies Added' else 12, 6, 12, 3)
     dash.update(uid='argus-varken', tags=['argus', 'media', 'varken'], links=[{

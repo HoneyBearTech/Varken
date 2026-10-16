@@ -72,3 +72,21 @@ def test_the_argus_copy_leaves_ombi_and_sickchill_out():
     assert len(argus) == len(full) - 8
     # Ids stay as in the full dashboard, so links to a panel work in both.
     assert {p['title']: p['id'] for p in argus}.items() <= {p['title']: p['id'] for p in full}.items()
+
+
+def test_the_argus_copy_names_the_instance_of_each_sonarr_and_radarr_row(served):
+    def arr_table(p):
+        return p['type'] == 'table' and any(make_dashboard.uses(p, m) for m in ('varken_sonarr_', 'varken_radarr_'))
+    tables = [p for p in make_dashboard.argus_dashboard()['panels'] if arr_table(p)]
+    assert len(tables) == 5
+    for panel in tables:
+        columns = panel['transformations'][0]['options']['include']['names']
+        assert columns[0] == 'server'
+        assert panel['transformations'][-1]['options']['renameByName']['server'] == 'Instance'
+        mapping = next(o for o in panel['fieldConfig']['overrides'] if o['matcher']['options'] == 'Instance')
+        assert mapping['properties'][0]['value'][0]['options'] == {'1': {'text': 'HD', 'index': 0},
+                                                                  '2': {'text': '4K', 'index': 1}}
+    # Varken's own copy is unchanged: no instance column.
+    for panel in make_dashboard.dashboard()['panels']:
+        if panel['type'] == 'table':
+            assert 'server' not in panel['transformations'][0]['options']['include']['names']

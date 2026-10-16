@@ -7,6 +7,9 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+- The Argus copy of the dashboard has an Instance column (HD or 4K) in its Sonarr and Radarr tables.
+
 ## [2.3.0] - 2026-10-16
 
 ### Changed
