@@ -48,7 +48,7 @@ affiliated with the original authors: please don't take questions about this ver
 | [Tautulli](https://tautulli.com/) | Current streams (player, quality, transcode decision, bandwidth, GeoIP location) and library sizes |
 | [Sonarr](https://sonarr.tv/) 4+ | Queue, missing episodes and upcoming episodes |
 | [Radarr](https://radarr.video/) 4+ | Queue and missing movies |
-| [Lidarr](https://lidarr.audio/) 1+ | Queue, missing albums and upcoming albums (job health only) |
+| [Lidarr](https://lidarr.audio/) 1+ | Queue, missing albums and upcoming albums |
 | [Ombi](https://ombi.io/) | Request and issue counts by status, and each request |
 | [Seerr](https://github.com/seerr-team/seerr) | Request and issue counts by status and type, and each request still waiting (Overseerr and Jellyseerr became Seerr) |
 | [SickChill](https://sickchill.github.io/) | Missed and upcoming episodes |

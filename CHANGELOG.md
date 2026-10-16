@@ -8,6 +8,9 @@ All notable changes to this project are documented in this file. The format is b
 ## [Unreleased]
 
 ### Added
+- **Lidarr item metrics:** `varken_lidarr_queue_item_info` (what's downloading, with the artist and album: the queue
+  request now asks Lidarr for them) and `varken_lidarr_album_info` (missing and upcoming albums, with their release
+  date and track count). Lidarr had only the job metrics before.
 - `dashboard/make_dashboard.py --argus` also writes a classic copy for Argus (`varken-classic.json`) in the original
   dashboard's look: solid-coloured tiles on the original grid, rows coloured by status, a heat strip for Server
   Popularity, a dark map of the US and week-long pies.

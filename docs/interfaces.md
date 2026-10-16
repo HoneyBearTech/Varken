@@ -109,7 +109,7 @@ Tautulli shows; `state` is labelled as in `varken_tautulli_sessions`. That is pe
 session adds series, which is why they are off by default. Viewer IP addresses are never exported, with or
 without `stream_details`.
 
-**Sonarr, Radarr and SickChill** (one series per item, value always `1`; count them in PromQL, for example
+**Sonarr, Radarr, Lidarr and SickChill** (one series per item, value always `1`; count them in PromQL, for example
 `count(varken_radarr_queue_item_info) or vector(0)`). A series exists while the item is in the last
 successful run of its job, so a job that is down shows no items:
 
@@ -120,6 +120,8 @@ successful run of its job, so a job that is down shows no items:
 | `varken_radarr_queue_item_info` | `server`, `movie`, `quality`, `protocol` | A movie in Radarr's download queue (`queue` job). `movie` is `Title (Year)`. |
 | `varken_radarr_missing_info` | `server`, `movie`, `available` | A monitored movie without a file (`missing` job). `available` is `true` once Radarr considers it released, else `false`. |
 | `varken_sickchill_episode_info` | `server`, `show`, `episode`, `title`, `airdate`, `status` | An episode on SickChill's coming-episodes list (`missing` job), `status` `missed`, `today`, `soon` or `later`. |
+| `varken_lidarr_queue_item_info` | `server`, `artist`, `album`, `release`, `quality`, `protocol` | A release in Lidarr's download queue (`queue` job, since 3.2.0). `release` is the download's name; `artist` and `album` are empty for a download Lidarr hasn't matched. |
+| `varken_lidarr_album_info` | `server`, `kind`, `artist`, `album`, `released`, `tracks` | `kind="missing"` (`missing` job): a monitored album released in the last `missing_days` without every track. `kind="future"` (`future` job): an album coming out from today through `future_days`. `released` is the release date (ISO 8601), `tracks` the files Lidarr has over the album's tracks (`5/10`). Since 3.2.0. |
 
 **Ombi**:
 
@@ -139,8 +141,7 @@ successful run of its job, so a job that is down shows no items:
 | `varken_seerr_issues_by_type` | `server`, `type` (`video`, `audio`, `subtitles`, `other`) | Issues by type (`issue_counts` job). |
 | `varken_seerr_request_info` | `server`, `type` (`movie`, `tv`), `title`, `status` (`pending`, `processing`), `is4k` (`true`, `false`), `requested`, `user` | Always `1`, one series per request still waiting, from the 100 newest (`requests` job): pending approval, or approved and not in the library yet (in the 4K library, for a 4K request). `title` is `Title (Year)`, or `TMDB <id>` while Seerr can't look it up. `requested` is the request time (ISO 8601). `user`, the requester's display name, only with `stream_details = true`; their email address is never read. |
 
-**Lidarr and UniFi** have only the job metrics; for Lidarr, `varken_job_points` counts the albums in the queue
-and calendar. Detailed UniFi metrics are on the [roadmap](roadmap.md).
+**UniFi** has only the job metrics. Detailed UniFi metrics are on the [roadmap](roadmap.md).
 
 CI checks a sample scrape with every metric in it (`python -m tests.sample_metrics`) using Prometheus'
 `promtool check metrics`. Metric names and labels are kept stable so dashboards and alerts keep working;
@@ -164,7 +165,7 @@ the services it reads.
 | Tautulli | `GET /api/v2?cmd=get_activity`, `GET /api/v2?cmd=get_libraries` | `apikey` as a query parameter (Tautulli's API requires it) |
 | Sonarr | `GET /api/v3/calendar?start=&end=&includeSeries=true`, `GET /api/v3/queue?includeSeries=true&includeEpisode=true` | `X-Api-Key` header |
 | Radarr | `GET /api/v3/movie`, `GET /api/v3/queue?includeMovie=true` | `X-Api-Key` header |
-| Lidarr | `GET /api/v1/calendar?start=&end=&includeArtist=true`, `GET /api/v1/queue` | `X-Api-Key` header |
+| Lidarr | `GET /api/v1/calendar?start=&end=&includeArtist=true`, `GET /api/v1/queue?pageSize=1000&includeArtist=true&includeAlbum=true` | `X-Api-Key` header |
 | Ombi | `GET /api/v1/Request/count`, `GET /api/v1/Request/movie`, `GET /api/v1/Request/tv`, `GET /api/v1/Issues/count` | `Apikey` header |
 | Seerr | `GET /api/v1/request/count`, `GET /api/v1/issue/count`, `GET /api/v1/request?take=100&skip=0&filter=all&sort=added`, and once per title `GET /api/v1/movie/<tmdb id>` or `GET /api/v1/tv/<tmdb id>` | `X-Api-Key` header (an admin key: Seerr has no read-only one) |
 | SickChill | `GET /api/<apikey>/?cmd=future&type=missed\|today\|soon\|later\|snatched` | the key is part of the path (SickChill's API requires it) |

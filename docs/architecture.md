@@ -127,8 +127,8 @@ Prometheus ──GET /metrics──▶ prometheus_client HTTP server ──▶ M
 
 Tautulli has detailed metrics, because its per-stream detail (transcode decision, quality, player,
 bandwidth) and library counts are what other exporters don't provide. The other modules have the job
-metrics, whose `varken_job_points` counts the items in each queue and calendar, and Sonarr, Radarr, SickChill,
-Ombi and Seerr also have item and count metrics (2.1.0, Seerr 3.0.0). Detailed UniFi metrics are on the
+metrics, whose `varken_job_points` counts the items in each queue and calendar, and Sonarr, Radarr, Lidarr,
+SickChill, Ombi and Seerr also have item and count metrics (2.1.0; Seerr 3.0.0; Lidarr 3.2.0). Detailed UniFi metrics are on the
 [roadmap](roadmap.md); unpoller already covers UniFi well. The
 metric names are in [interfaces.md](interfaces.md#output-prometheus-metrics).
 
