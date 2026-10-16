@@ -47,7 +47,9 @@ mirror:
   script:
     - git init -q --bare mirror && cd mirror
     - git config "credential.$CI_SERVER_URL.helper" '!f() { echo username=oauth2; echo "password=$MIRROR_TOKEN"; }; f'
-    - branch=$(git ls-remote --symref "$MIRROR_SOURCE" HEAD | sed -n 's|^ref: refs/heads/\(.*\)\tHEAD$|\1|p')
+    # A block, not a plain list item: the sed pattern's "ref: " would make YAML read the line as a mapping.
+    - |
+      branch=$(git ls-remote --symref "$MIRROR_SOURCE" HEAD | sed -n 's|^ref: refs/heads/\(.*\)\tHEAD$|\1|p')
     - test -n "$branch" || { echo "Couldn't read GitHub's default branch"; exit 1; }
     - echo "Mirroring $branch"
     - git fetch --no-tags "$MIRROR_SOURCE" "refs/heads/$branch:refs/heads/$branch" "refs/tags/*:refs/tags/*"
