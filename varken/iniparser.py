@@ -8,7 +8,7 @@ from re import match, compile, IGNORECASE
 from configparser import ConfigParser, NoOptionError, NoSectionError
 
 from varken.varkenlogger import BlacklistFilter
-from varken.structures import SickChillServer, UniFiServer, PrometheusServer
+from varken.structures import SickChillServer, UniFiServer, PrometheusServer, SeerrServer
 from varken.helpers import clean_sid_check, rfc1918_ip_check, boolcheck
 from varken.structures import SonarrServer, RadarrServer, OmbiServer, TautulliServer
 
@@ -19,7 +19,7 @@ class INIParser(object):
         self.data_folder = data_folder
         self.filtered_strings = None
         self.rectified = False
-        self.services = ['sonarr', 'radarr', 'lidarr', 'ombi', 'tautulli', 'sickchill', 'unifi']
+        self.services = ['sonarr', 'radarr', 'lidarr', 'ombi', 'seerr', 'tautulli', 'sickchill', 'unifi']
 
         self.logger = getLogger()
         self.prometheus_server = PrometheusServer()
@@ -336,6 +336,17 @@ class INIParser(object):
                                                 request_total_run_seconds=request_total_run_seconds,
                                                 issue_status_counts=issue_status_counts,
                                                 issue_status_run_seconds=issue_status_run_seconds)
+
+                        if service == 'seerr':
+                            jobs = {}
+                            for job in ('get_request_counts', 'get_issue_counts', 'get_requests'):
+                                jobs[job] = boolcheck(env.get(f'VRKN_{envsection}_{job.upper()}',
+                                                              self.config.get(section, job)))
+                                jobs[f'{job}_run_seconds'] = int(env.get(
+                                    f'VRKN_{envsection}_{job.upper()}_RUN_SECONDS',
+                                    self.config.getint(section, f'{job}_run_seconds')))
+                            server = SeerrServer(id=server_id, url=scheme + url, api_key=apikey,
+                                                 verify_ssl=verify_ssl, **jobs)
 
                         if service == 'sickchill':
                             get_missing = boolcheck(env.get(f'VRKN_{envsection}_GET_MISSING',

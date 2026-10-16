@@ -14,6 +14,7 @@ from logging import getLogger, StreamHandler, Formatter, DEBUG
 # Needed to check version of python
 from varken import structures  # noqa
 from varken.ombi import OmbiAPI
+from varken.seerr import SeerrAPI
 from varken.unifi import UniFiAPI
 from varken import VERSION, BRANCH, BUILD_DATE
 from varken.sonarr import SonarrAPI
@@ -161,6 +162,14 @@ if __name__ == "__main__":
                 at_time = schedule.every(server.issue_status_run_seconds).seconds
                 at_time.do(thread, OMBI.get_issue_counts).tag("ombi-{}-get_issue_counts".format(server.id))
 
+    if CONFIG.seerr_enabled:
+        for server in CONFIG.seerr_servers:
+            SEERR = SeerrAPI(server, METRICS)
+            for job in ('get_request_counts', 'get_issue_counts', 'get_requests'):
+                if getattr(server, job):
+                    at_time = schedule.every(getattr(server, f'{job}_run_seconds')).seconds
+                    at_time.do(thread, getattr(SEERR, job)).tag(f"seerr-{server.id}-{job}")
+
     if CONFIG.sickchill_enabled:
         for server in CONFIG.sickchill_servers:
             SICKCHILL = SickChillAPI(server, METRICS)
@@ -176,7 +185,7 @@ if __name__ == "__main__":
 
     # Run all on startup
     SERVICES_ENABLED = [CONFIG.ombi_enabled, CONFIG.radarr_enabled, CONFIG.tautulli_enabled, CONFIG.unifi_enabled,
-                        CONFIG.sonarr_enabled, CONFIG.sickchill_enabled, CONFIG.lidarr_enabled]
+                        CONFIG.sonarr_enabled, CONFIG.sickchill_enabled, CONFIG.lidarr_enabled, CONFIG.seerr_enabled]
     if not [enabled for enabled in SERVICES_ENABLED if enabled]:
         vl.logger.error("All services disabled. Exiting")
         exit(1)

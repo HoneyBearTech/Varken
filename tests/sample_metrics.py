@@ -2,13 +2,17 @@
 
 Run from the repository root:  python -m tests.sample_metrics
 """
+from urllib.parse import urlsplit
+
 from prometheus_client import generate_latest
 
 from tests.arrs_data import CALENDAR, MOVIES, RADARR, RADARR_QUEUE, SONARR, SONARR_QUEUE, OmbiAPI, SickChillAPI
+from tests.seerr_data import SEERR, replies as seerr_replies
 from tests.tautulli_data import ACTIVITY, LIBRARIES, SERVER, FakeGeoIP, place
-from varken import radarr, sonarr, tautulli
+from varken import radarr, seerr, sonarr, tautulli
 from varken.metrics import Metrics
 from varken.radarr import RadarrAPI
+from varken.seerr import SeerrAPI
 from varken.sonarr import SonarrAPI
 from varken.structures import PrometheusServer
 from varken.tautulli import TautulliAPI
@@ -19,7 +23,7 @@ def sample():
     api = TautulliAPI(SERVER, metrics, FakeGeoIP({'203.0.113.5': place()}))
     sonarr_api, radarr_api = SonarrAPI(SONARR, metrics), RadarrAPI(RADARR, metrics)
     ombi = OmbiAPI(metrics)
-    handlers = {module: module.connection_handler for module in (tautulli, sonarr, radarr)}
+    handlers = {module: module.connection_handler for module in (tautulli, sonarr, radarr, seerr)}
     try:
         for module, reply, job, kwargs in (
                 (tautulli, ACTIVITY, api.get_activity, {}),
@@ -31,6 +35,11 @@ def sample():
                 (radarr, MOVIES, radarr_api.get_missing, {})):
             module.connection_handler = lambda session, request, verify, reply=reply: reply
             metrics.run(job, **kwargs)
+        routes = seerr_replies()
+        seerr.connection_handler = lambda session, request, verify: routes[urlsplit(request.url).path]
+        seerr_api = SeerrAPI(SEERR, metrics)
+        for job in (seerr_api.get_request_counts, seerr_api.get_issue_counts, seerr_api.get_requests):
+            metrics.run(job)
     finally:
         for module, handler in handlers.items():
             module.connection_handler = handler
