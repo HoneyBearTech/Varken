@@ -7,6 +7,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-10-16
+
 ### Changed
 - **Varken logs at INFO by default.** Set `DEBUG=true` (or pass `-D`) for debug logs, which record every request
   URL. `-ND` still works and does nothing more. The image no longer sets `DEBUG=True`.

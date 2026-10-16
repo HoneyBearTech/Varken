@@ -38,6 +38,7 @@ original Varken dashboard ported to these metrics ([dashboard/](../dashboard/REA
 **2.2.0** (2026-10-15) downloads the GeoLite2 database with MaxMind's account ID and Basic auth instead of the
 license key in the URL, and keeps running when that download fails. **2.2.1** makes upgrades quieter: a
 setting new in a version is added to `varken.ini` with an INFO line, not an ERROR.
+**2.3.0** (2026-10-16) adds a timeout to every request and logs at INFO by default.
 
 ## Over the following year
 
