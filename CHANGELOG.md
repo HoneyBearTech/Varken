@@ -25,6 +25,7 @@ All notable changes to this project are documented in this file. The format is b
 
 ### Changed
 - The Argus copy of the dashboard has an Instance column (HD or 4K) in its Sonarr and Radarr tables.
+- The Argus copy of the dashboard shows Seerr's requests and issues where the original had Ombi's.
 
 ## [2.3.0] - 2026-10-16
 
