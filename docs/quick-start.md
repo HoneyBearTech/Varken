@@ -127,5 +127,5 @@ watching what, and from where.
 
 - [Installing](installing.md) covers other ways to run Varken (plain `docker run`, Unraid, bare Python with
   systemd) and running it securely.
-- [Configuration](configuration.md) has every setting, for adding Sonarr, Radarr, Lidarr, Ombi, SickChill
+- [Configuration](configuration.md) has every setting, for adding Sonarr, Radarr, Lidarr, Ombi, Seerr, SickChill
   and UniFi, and for reading secrets from files (`VRKN_*_FILE`) or logging to stdout only (`LOG_TO_FILE`).

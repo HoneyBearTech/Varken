@@ -82,6 +82,7 @@ secrets:
 | `lidarr_server_ids` | `VRKN_GLOBAL_LIDARR_SERVER_IDS` | `false` | Lidarr servers to read, or `false`. |
 | `tautulli_server_ids` | `VRKN_GLOBAL_TAUTULLI_SERVER_IDS` | `1` | Tautulli servers to read, or `false`. |
 | `ombi_server_ids` | `VRKN_GLOBAL_OMBI_SERVER_IDS` | `1` | Ombi servers to read, or `false`. |
+| `seerr_server_ids` | `VRKN_GLOBAL_SEERR_SERVER_IDS` | `1` | Seerr servers to read, or `false` (the default). |
 | `sickchill_server_ids` | `VRKN_GLOBAL_SICKCHILL_SERVER_IDS` | `false` | SickChill servers to read, or `false`. |
 | `unifi_server_ids` | `VRKN_GLOBAL_UNIFI_SERVER_IDS` | `false` | UniFi controllers to read, or `false`. |
 | `maxmind_license_key` | `VRKN_GLOBAL_MAXMIND_LICENSE_KEY` | placeholder | Optional. Your MaxMind license key, used to download the GeoLite2-City database that places Tautulli viewers on a map. Free with a [MaxMind account](https://www.maxmind.com/en/geolite2/signup). Empty, or still the example's `xxxx…` placeholder, turns GeoIP off ([below](#tautulli-n)). **Secret.** |
@@ -98,7 +99,7 @@ Varken's output, always on: an HTTP endpoint at `/metrics` that Prometheus scrap
 | --- | --- | --- | --- |
 | `bind` | `VRKN_PROMETHEUS_BIND` | `0.0.0.0` | The address to listen on. Must be an IP address (IPv4 or IPv6), not a host name, or Varken stops. `0.0.0.0` is every IPv4 interface (in a container, the container's own); `127.0.0.1` keeps it to the same host. |
 | `port` | `VRKN_PROMETHEUS_PORT` | `9180` | The port to listen on, from 1 to 65535, or Varken stops. ScyllaDB also uses 9180 by default; pick another port if something on the host already has it. |
-| `stream_details` | `VRKN_PROMETHEUS_STREAM_DETAILS` | `false` | Add the per-viewer Tautulli metrics (who is watching what, on which player, and from which city, with its coordinates) and the requester of each Ombi request. Personal data, so off by default; viewer IP addresses are never exported either way. |
+| `stream_details` | `VRKN_PROMETHEUS_STREAM_DETAILS` | `false` | Add the per-viewer Tautulli metrics (who is watching what, on which player, and from which city, with its coordinates) and the requester of each Ombi and Seerr request. Personal data, so off by default; viewer IP addresses are never exported either way. |
 
 The endpoint has no authentication and no TLS. Keep it on a private network (a Docker network shared with
 Prometheus, for example) or bind it to `127.0.0.1`; see [security.md](security.md#the-metrics-endpoint).
@@ -117,7 +118,7 @@ Each server is a section named `[<service>-<id>]`, for example `[tautulli-1]` or
 | `url` | `VRKN_<SERVICE>_<ID>_URL` | `tautulli.domain.tld:8181` | Host, optional port and optional path, without scheme. |
 | `apikey` | `VRKN_<SERVICE>_<ID>_APIKEY` | placeholder | The service's API key. Not used by UniFi. **Secret.** |
 | `ssl` | `VRKN_<SERVICE>_<ID>_SSL` | `false` | Use HTTPS. |
-| `verify_ssl` | `VRKN_<SERVICE>_<ID>_VERIFY_SSL` | `false` | Check the service's TLS certificate (only with `ssl = true`). |
+| `verify_ssl` | `VRKN_<SERVICE>_<ID>_VERIFY_SSL` | `true` | Check the service's TLS certificate (only with `ssl = true`). `true` in the example since 3.0.0; with `ssl = true` and `verify_ssl = false`, Varken logs a warning at start-up. |
 
 ## `[tautulli-N]`
 
@@ -186,6 +187,20 @@ Lidarr 1 or later; Varken reads its `/api/v1`.
 | `get_issue_status_counts` | `VRKN_OMBI_<ID>_GET_ISSUE_STATUS_COUNTS` | `true` | Record the number of pending, in-progress and resolved issues. |
 | `issue_status_run_seconds` | `VRKN_OMBI_<ID>_ISSUE_STATUS_RUN_SECONDS` | `300` | How often. |
 
+## `[seerr-N]`
+
+[Seerr](https://github.com/seerr-team/seerr), the successor of Overseerr and Jellyseerr. Its API key is on Seerr's
+Settings → General page. It acts as Seerr's admin (Seerr has no read-only key); Varken only reads.
+
+| Key | Environment variable | Example | Meaning |
+| --- | --- | --- | --- |
+| `get_request_counts` | `VRKN_SEERR_<ID>_GET_REQUEST_COUNTS` | `true` | Record requests by status and media type. |
+| `get_request_counts_run_seconds` | `VRKN_SEERR_<ID>_GET_REQUEST_COUNTS_RUN_SECONDS` | `300` | How often. |
+| `get_issue_counts` | `VRKN_SEERR_<ID>_GET_ISSUE_COUNTS` | `true` | Record issues by status and type. |
+| `get_issue_counts_run_seconds` | `VRKN_SEERR_<ID>_GET_ISSUE_COUNTS_RUN_SECONDS` | `300` | How often. |
+| `get_requests` | `VRKN_SEERR_<ID>_GET_REQUESTS` | `true` | Record each request still waiting (pending approval, or approved and not available yet), from the 100 newest. Seerr looks up each title once (Varken keeps them), and asks every Sonarr and Radarr it knows for their quality profiles on each run, so don't run this more often than you need. |
+| `get_requests_run_seconds` | `VRKN_SEERR_<ID>_GET_REQUESTS_RUN_SECONDS` | `300` | How often. |
+
 ## `[sickchill-N]`
 
 | Key | Environment variable | Example | Meaning |
@@ -217,7 +232,8 @@ Varken logs to stdout and to `logs/varken.log` in the data folder (rotated at 5 
   environment, or pass `-D` / `--debug` (which only applies when `DEBUG` isn't set), to log at DEBUG. The debug
   log includes the URL of every request Varken makes (secrets masked as below), so turn it on only while
   troubleshooting.
-- Secrets are masked in log lines as `********` followed by their last five characters: the values of the
+- Secrets are masked in log lines as `********`, with nothing of them kept (before 3.0.0, their last five
+  characters were): the values of the
   `apikey`, `username`, `password`, `url` and `maxmind_license_key` keys in `varken.ini`, and of every
   `VRKN_*` variable whose name ends in `_APIKEY`, `_USERNAME`, `_PASSWORD`, `_URL` or
   `_MAXMIND_LICENSE_KEY`. Before 2.0.0, values from environment variables and the MaxMind key were not
@@ -236,10 +252,11 @@ radarr_server_ids = false
 lidarr_server_ids = false
 tautulli_server_ids = 1
 ombi_server_ids = false
+seerr_server_ids = 1
 sickchill_server_ids = false
 unifi_server_ids = false
 maxmind_license_key = <your MaxMind license key, or empty for no GeoIP>
-maxmind_account_id = <your MaxMind account ID>
+maxmind_account_id = <your MaxMind account ID; GeoIP needs it with the key>
 
 [prometheus]
 bind = 0.0.0.0

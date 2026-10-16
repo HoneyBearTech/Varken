@@ -6,7 +6,7 @@ Suggestions are welcome in [Issues](https://github.com/HoneyBearTech/Varken/issu
 
 ## Where it stands
 
-Varken collects data from Tautulli, Sonarr, Radarr, Lidarr, Ombi, SickChill and UniFi and serves it as
+Varken collects data from Tautulli, Sonarr, Radarr, Lidarr, Ombi, Seerr, SickChill and UniFi and serves it as
 Prometheus metrics, for Prometheus to scrape and Grafana to chart. The original Boerderij
 project stopped at 1.7.7 in December 2020; this fork picked it up in October 2026. The first pass
 modernized the runtime and the project around it: Python 3.14, hash-pinned dependencies, a non-root image
@@ -40,6 +40,10 @@ license key in the URL, and keeps running when that download fails. **2.2.1** ma
 setting new in a version is added to `varken.ini` with an INFO line, not an ERROR.
 **2.3.0** (2026-10-16) adds a timeout to every request and logs at INFO by default.
 
+**2.3.0** adds request timeouts and logs at INFO by default. **3.0.0** adds a Seerr module and makes three breaking
+changes: new configs check TLS certificates, GeoIP needs the MaxMind account ID, and masked secrets keep
+nothing ([upgrading](upgrading.md)).
+
 ## Over the following year
 
 **Next, Phase 3: Argus integration** (**Planned**, in the [Argus](https://github.com/HoneyBearTech/Argus) repository)
@@ -49,7 +53,6 @@ setting new in a version is added to `varken.ini` with an INFO line, not an ERRO
 
 **Phase 1: finish modernizing the runtime**
 
-- `verify_ssl` on by default. This is a breaking change and will be announced in the changelog.
 - Sonarr 5's new API (Sonarr 5 is in beta as of October 2026), once Sonarr 5 is stable, alongside `/api/v3`
   for Sonarr 4.
 - Raise test coverage to 80 %, and adopt `ruff format` and a wider ruff rule set.
@@ -75,7 +78,7 @@ setting new in a version is added to `varken.ini` with an INFO line, not an ERRO
 
 ## Later, if there's interest (icebox)
 
-- An Overseerr/Jellyseerr module, as Ombi's successor.
+- Done in 3.0.0: a Seerr module (Overseerr and Jellyseerr merged into Seerr in 2026), as Ombi's successor.
 - Fuzzing the INI and environment parser.
 - Jellyfin and Emby support.
 

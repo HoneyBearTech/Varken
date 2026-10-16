@@ -14,7 +14,7 @@ on the same private network.
 
 ## What Varken is designed to guarantee
 
-- **It only reads.** Every request to Tautulli, Sonarr, Radarr, Lidarr, Ombi and SickChill is a `GET`, and
+- **It only reads.** Every request to Tautulli, Sonarr, Radarr, Lidarr, Ombi, Seerr and SickChill is a `GET`, and
   the UniFi module only logs in and reads device statistics. No code path changes anything in those
   services ([interfaces.md](interfaces.md#interfaces-varken-uses)).
 - **Credentials go only to the service they belong to.** Each API key, password and the MaxMind license key
@@ -32,7 +32,7 @@ on the same private network.
   executed. The config is read with `ConfigParser` without interpolation.
 - **Viewer IP addresses aren't exported.** The Tautulli module turns a viewer's public address into a city
   and region (or nothing, with GeoIP off); the address itself never reaches the metrics, and the debug log
-  shows only its last octet. Who watches what, the city's coordinates, and who requested what in Ombi are
+  shows only its last octet. Who watches what, the city's coordinates, and who requested what in Ombi or Seerr are
   in the metrics only with `stream_details = true`.
 
 ## Running it securely
@@ -96,9 +96,9 @@ reach it. The endpoint has **no authentication and no TLS**, and no rate limit.
 - Even without per-viewer metrics, it shows how many streams are running, on which platforms and in which
   quality, and what your libraries hold.
 - Leave `stream_details = false` unless everyone who can reach the endpoint or query Prometheus may see who
-  is watching what and from which city (with its coordinates), and who requested what in Ombi. Viewer IP
+  is watching what and from which city (with its coordinates), and who requested what in Ombi or Seerr. Viewer IP
   addresses are never exported.
-- Without `stream_details`, the Sonarr, Radarr, SickChill and Ombi metrics still list titles: what is
+- Without `stream_details`, the Sonarr, Radarr, SickChill, Ombi and Seerr metrics still list titles: what is
   queued, missing, airing soon and requested.
 - Prometheus keeps what it scrapes for its own retention time; treat it as personal data (below).
 
@@ -110,7 +110,7 @@ reach it. The endpoint has **no authentication and no TLS**, and no rate limit.
   journald keeps stdout.
 - Treat Prometheus, Grafana and Varken's logs as personal data. With `stream_details = true` the metrics
   show who watched what, when, on which player and, with GeoIP on, from which city, and who requested what
-  in Ombi; even without it they show when your server is in use. Restrict who can open those dashboards, and think before sharing a viewer
+  in Ombi or Seerr; even without it they show when your server is in use. Restrict who can open those dashboards, and think before sharing a viewer
   account. Prometheus keeps 15 days unless you change its retention. Without a MaxMind license key, no
   locations are recorded at all.
 
@@ -127,10 +127,15 @@ These are inherited from upstream Varken and are already public. Each has a plan
 
 | Weakness | Effect | Workaround today | Plan |
 | --- | --- | --- | --- |
-| `verify_ssl` defaults to `false`, and the insecure-request warning is silenced | A network attacker can intercept HTTPS traffic to a service without any warning | Set `verify_ssl = true` everywhere you use `ssl = true` | Default `true` (a breaking change, announced in the changelog) |
-| Masked secrets keep their last five characters | A masked value is logged as `********` plus its last five characters, which narrows a guess for short secrets | Use long, random API keys and passwords; keep logs private | Mask completely |
-| Without `maxmind_account_id`, the MaxMind license key is sent as a URL query parameter | The key can end up in proxy or server logs along the way (the connection itself is HTTPS) | Set `maxmind_account_id` (2.2.0 and later): the download then uses Basic auth | Drop the legacy URL in 3.0.0 |
 | Config rewrite | When keys are missing, Varken rewrites `varken.ini` with values from the example, dropping comments | Keep `varken.ini` complete | |
+
+### Fixed in 3.0.0
+
+| Weakness | Effect | Fix |
+| --- | --- | --- |
+| `verify_ssl` was off in the example config, and the insecure-request warning was silenced | A network attacker could intercept HTTPS traffic to a service without any warning | The example sets `verify_ssl = true`; a server on HTTPS without certificate checks logs a warning at start-up (existing `varken.ini` files keep their value) |
+| Masked secrets kept their last five characters | A masked value was logged as `********` plus its last five characters, which narrows a guess for short secrets | Nothing of a secret is kept |
+| Without `maxmind_account_id`, the MaxMind license key was sent as a URL query parameter | The key could end up in proxy or server logs along the way | The legacy download is gone: GeoIP needs the account ID and always uses Basic auth |
 
 ### Fixed in 2.3.0
 
