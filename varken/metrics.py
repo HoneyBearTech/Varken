@@ -162,6 +162,7 @@ class Metrics(object):
         yield from self.tautulli(jobs)
         yield from self.arrs(jobs)
         yield from self.ombi(jobs)
+        yield from self.seerr(jobs)
 
     def tautulli(self, jobs):
         streams = GaugeMetricFamily('varken_tautulli_streams', 'Current streams.', labels=['server'])
@@ -324,3 +325,46 @@ class Metrics(object):
         yield issues
         yield request_info
 
+    def seerr(self, jobs):
+        """Seerr's request and issue counts, and each request still waiting."""
+        requests = info('varken_seerr_requests', 'Seerr requests by status, as Seerr counts them: approved includes '
+                        'processing (approved, not available yet) and available.', ['server', 'status'])
+        requests_by_type = info('varken_seerr_requests_by_type', 'Seerr requests by media type.',
+                                ['server', 'type'])
+        issues = info('varken_seerr_issues', 'Seerr issues by status.', ['server', 'status'])
+        issues_by_type = info('varken_seerr_issues_by_type', 'Seerr issues by type.', ['server', 'type'])
+        request_info = info('varken_seerr_request_info',
+                            'One series per Seerr request still waiting (pending approval, or approved and not '
+                            'available yet); user (the requester) only with stream_details = true.',
+                            ['server', 'type', 'title', 'status', 'is4k', 'requested', 'user'])
+        details = self.server.stream_details
+        for (service, server, job), (ok, _, written) in sorted(jobs.items()):
+            if service != 'seerr' or not ok:
+                continue
+            for point in written:
+                tags, fields = point.get('tags', {}), point.get('fields', {})
+                if job == 'request_counts':
+                    for status in ('pending', 'approved', 'declined', 'processing', 'available', 'completed'):
+                        if status in fields:
+                            requests.add_metric([server, status], fields[status])
+                    for kind in ('movie', 'tv'):
+                        if kind in fields:
+                            requests_by_type.add_metric([server, kind], fields[kind])
+                elif job == 'issue_counts':
+                    for status in ('open', 'closed'):
+                        if status in fields:
+                            issues.add_metric([server, status], fields[status])
+                    for kind, field in (('video', 'video'), ('audio', 'audio'), ('subtitles', 'subtitles'),
+                                        ('other', 'others')):
+                        if field in fields:
+                            issues_by_type.add_metric([server, kind], fields[field])
+                elif job == 'requests' and tags.get('type') == 'Requests':
+                    request_info.add_metric(
+                        [server, text(tags.get('request_type')), text(tags.get('title')), text(tags.get('status')),
+                         flag(tags.get('is4k')), text(tags.get('requested_date')),
+                         text(tags.get('requested_user')) if details else ''], 1)
+        yield requests
+        yield requests_by_type
+        yield issues
+        yield issues_by_type
+        yield request_info

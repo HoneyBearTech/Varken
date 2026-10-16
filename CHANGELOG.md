@@ -7,8 +7,27 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-10-16
+
+**3.0.0 is a major release**: see the breaking changes below and [upgrading](docs/upgrading.md).
+
+### Added
+- **A Seerr module** (`[seerr-N]`, `seerr_server_ids`, off by default). Seerr is the successor of Overseerr and
+  Jellyseerr. It reads Seerr's request and issue counts (`varken_seerr_requests`, `_requests_by_type`, `_issues`,
+  `_issues_by_type`) and each request still waiting, from the 100 newest (`varken_seerr_request_info`, with
+  `Title (Year)` and whether it's 4K). The requester's display name is included only with `stream_details = true`,
+  and their email address is never read. Seerr's API key acts as its admin; Varken only reads.
+
+### Changed (breaking)
+- **New configs check TLS certificates.** `varken.example.ini` sets `verify_ssl = true` for every service, and a
+  server on HTTPS with `verify_ssl = false` logs a warning at start-up. An existing `varken.ini` keeps its value.
+- **GeoIP needs `maxmind_account_id`.** The legacy MaxMind download, with the license key in the URL, is gone.
+  With only a license key, GeoIP is off and an error says what's missing.
+- **Masked secrets keep nothing:** `********`, without the last five characters.
+
 ### Changed
 - The Argus copy of the dashboard has an Instance column (HD or 4K) in its Sonarr and Radarr tables.
+- The Argus copy of the dashboard shows Seerr's requests and issues where the original had Ombi's.
 
 ## [2.3.0] - 2026-10-16
 

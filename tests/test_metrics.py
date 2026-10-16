@@ -230,13 +230,14 @@ def test_the_ci_sample_has_every_metric():
                  'varken_tautulli_session_progress_ratio', 'varken_sonarr_queue_item_info',
                  'varken_sonarr_episode_info', 'varken_radarr_queue_item_info', 'varken_radarr_missing_info',
                  'varken_sickchill_episode_info', 'varken_ombi_requests', 'varken_ombi_issues',
-                 'varken_ombi_request_info'):
+                 'varken_ombi_request_info', 'varken_seerr_requests', 'varken_seerr_requests_by_type',
+                 'varken_seerr_issues', 'varken_seerr_issues_by_type', 'varken_seerr_request_info'):
         assert f'\n{name}{{' in text, name
     for job in ('activity', 'stats', 'queue', 'missing', 'future', 'request_counts', 'issue_counts',
-                'all_requests'):
+                'all_requests', 'requests'):
         assert f'job="{job}"' in text, job
     up = [line for line in text.splitlines() if line.startswith('varken_job_up{')]
-    assert len(up) == 11 and all(line.endswith(' 1.0') for line in up), up
+    assert len(up) == 14 and all(line.endswith(' 1.0') for line in up), up
 
 
 def test_a_port_in_use_exits_cleanly():

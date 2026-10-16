@@ -13,6 +13,7 @@ Sonarr ───┤
 Radarr ───┤  HTTP(S) GET,  ┌──────────────────┐
 Lidarr ───┼─ API key ─────▶│      Varken      │─┬─▶ GET /metrics (:9180) ◀── Prometheus scrape ◀── Grafana
 Ombi ─────┤                │ scheduled jobs   │ │
+Seerr ────┤                │                  │ │
 SickChill ┤                └──────────────────┘ │
 UniFi ────┘                  │            ▲     └─▶ logs (stdout; data/logs/varken.log unless LOG_TO_FILE=false)
                              │ lookup     │ download every ~30 days
@@ -25,7 +26,7 @@ UniFi ────┘                  │            ▲     └─▶ logs (st
 | Actor | Does |
 | --- | --- |
 | Operator | Installs Varken, writes `varken.ini` or the environment, supplies API keys and, optionally, the MaxMind license key, runs Prometheus and Grafana, and reads the dashboards. |
-| Media services (Tautulli, Sonarr, Radarr, Lidarr, Ombi, SickChill) | Answer Varken's read-only API requests with their current activity, queues, calendars, requests and library counts. |
+| Media services (Tautulli, Sonarr, Radarr, Lidarr, Ombi, Seerr, SickChill) | Answer Varken's read-only API requests with their current activity, queues, calendars, requests and library counts. |
 | UniFi controller | Answers a login and device-statistics requests for one gateway. |
 | Viewers | Don't interact with Varken, but their streams (username, title, device and, with GeoIP on, approximate location) are what Tautulli reports and Varken records. |
 | MaxMind | Serves the GeoLite2-City database to the operator's license key. Not contacted when no key is set (GeoIP off). |
@@ -39,7 +40,7 @@ UniFi ────┘                  │            ▲     └─▶ logs (st
 | Entry point | [`Varken.py`](../Varken.py) | Parses the command line, finds the data folder, sets up logging, loads the config, starts the metrics server, registers one job per enabled server and feature, then runs the scheduler loop. `thread()` starts each job in its own thread, through the metrics collector. |
 | Config | [`varken/iniparser.py`](../varken/iniparser.py) | Reads `VRKN_*_FILE` secrets, reads `varken.ini`, applies `VRKN_*` overrides, validates URLs, `fallback_ip` and the `[prometheus]` address and port, fills missing keys from the example, and builds the `[prometheus]` settings and one server record per section ([configuration.md](configuration.md)). |
 | Data shapes | [`varken/structures.py`](../varken/structures.py) | Named tuples for the metrics endpoint's settings (`PrometheusServer`), each server's settings and the API responses Varken understands. |
-| Modules | [`varken/tautulli.py`](../varken/tautulli.py), [`sonarr.py`](../varken/sonarr.py), [`radarr.py`](../varken/radarr.py), [`lidarr.py`](../varken/lidarr.py), [`ombi.py`](../varken/ombi.py), [`sickchill.py`](../varken/sickchill.py), [`unifi.py`](../varken/unifi.py) | One class per service. Each job makes its requests, maps the answer onto the data shapes, builds points and hands them to the metrics collector (`Metrics.write_points`). |
+| Modules | [`varken/tautulli.py`](../varken/tautulli.py), [`sonarr.py`](../varken/sonarr.py), [`radarr.py`](../varken/radarr.py), [`lidarr.py`](../varken/lidarr.py), [`ombi.py`](../varken/ombi.py), [`seerr.py`](../varken/seerr.py), [`sickchill.py`](../varken/sickchill.py), [`unifi.py`](../varken/unifi.py) | One class per service. Each job makes its requests, maps the answer onto the data shapes, builds points and hands them to the metrics collector (`Metrics.write_points`). |
 | Metrics collector | [`varken/metrics.py`](../varken/metrics.py) | Varken's output. Runs each job, records whether it succeeded and the points it wrote, and builds the metrics from those snapshots on every scrape; serves them with prometheus_client's HTTP server. |
 | Helpers | [`varken/helpers.py`](../varken/helpers.py) | `connection_handler()` sends every service request, handles its errors and flags a failed request for the metrics (`request_state`); `geoip_handler()` returns a `GeoIPHandler`, which downloads, extracts and reads the GeoLite2 database, or `NoGeoIP` when there's no license key; config value checks. |
 | Logging | [`varken/varkenlogger.py`](../varken/varkenlogger.py) | Console and (unless `LOG_TO_FILE=false`) rotating file logs, with a filter that masks configured secrets. |
@@ -125,8 +126,9 @@ Prometheus ──GET /metrics──▶ prometheus_client HTTP server ──▶ M
 
 Tautulli has detailed metrics, because its per-stream detail (transcode decision, quality, player,
 bandwidth) and library counts are what other exporters don't provide. The other modules have the job
-metrics, whose `varken_job_points` counts the items in each queue and calendar. Detailed Ombi and UniFi
-metrics are on the [roadmap](roadmap.md); the \*arr apps already have good Prometheus exporters. The
+metrics, whose `varken_job_points` counts the items in each queue and calendar, and Sonarr, Radarr, SickChill,
+Ombi and Seerr also have item and count metrics (2.1.0, Seerr 3.0.0). Detailed UniFi metrics are on the
+[roadmap](roadmap.md); unpoller already covers UniFi well. The
 metric names are in [interfaces.md](interfaces.md#output-prometheus-metrics).
 
 ## Technology

@@ -54,6 +54,19 @@ class OmbiServer(NamedTuple):
     verify_ssl: bool = False
 
 
+class SeerrServer(NamedTuple):
+    api_key: str = None
+    get_issue_counts: bool = False
+    get_issue_counts_run_seconds: int = 300
+    get_request_counts: bool = False
+    get_request_counts_run_seconds: int = 300
+    get_requests: bool = False
+    get_requests_run_seconds: int = 300
+    id: int = None
+    url: str = None
+    verify_ssl: bool = False
+
+
 class TautulliServer(NamedTuple):
     api_key: str = None
     fallback_ip: str = None

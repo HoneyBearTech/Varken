@@ -107,6 +107,18 @@ docker compose logs -f varken
 For a bare install: `git fetch --tags && git checkout vX.Y.Z`, reinstall `requirements.txt` with
 `--require-hashes --no-deps` (it may have changed), and restart the service.
 
+### 2.x to 3.0.0
+
+- **GeoIP: set `maxmind_account_id`** (or `VRKN_GLOBAL_MAXMIND_ACCOUNT_ID`) if you haven't: with only the
+  license key, 3.0.0 turns GeoIP off and logs `GeoIP needs your MaxMind account ID`.
+- **TLS:** new configs check certificates. Your `varken.ini` keeps its `verify_ssl` values; Varken now logs a
+  warning at start-up for every server on HTTPS without certificate checks. Turn them on where you can.
+- **Logs:** masked secrets are `********`, with nothing of them kept. Anything that matched the old
+  `********abcde` form needs changing.
+- **Seerr** is new and off by default: set `seerr_server_ids` and the `[seerr-N]` section to use it. Your
+  `varken.ini` gets the keys on the first start.
+- 3.0.0 includes 2.3.0 (request timeouts, INFO logging by default): see below.
+
 ### 2.2.x to 2.3.0
 
 - **The log is quieter:** Varken logs at INFO unless you set `DEBUG=true` (or pass `-D`). If you set

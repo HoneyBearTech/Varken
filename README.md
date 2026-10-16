@@ -10,7 +10,7 @@
 <img width="800" src="assets/varken_full_banner.jpg" alt="Varken logo banner">
 </p>
 
-Varken collects data from the Plex ecosystem (Tautulli, Sonarr, Radarr, Lidarr, Ombi, SickChill) and UniFi and
+Varken collects data from the Plex ecosystem (Tautulli, Sonarr, Radarr, Lidarr, Ombi, Seerr, SickChill) and UniFi and
 serves it as Prometheus metrics at `/metrics`, for Prometheus to scrape and Grafana to chart.
 
 Varken is Dutch for PIG; PIG stood for Plex/InfluxDB/Grafana, the stack it was first written for (it no longer
@@ -50,6 +50,7 @@ affiliated with the original authors: please don't take questions about this ver
 | [Radarr](https://radarr.video/) 4+ | Queue and missing movies |
 | [Lidarr](https://lidarr.audio/) 1+ | Queue, missing albums and upcoming albums (job health only) |
 | [Ombi](https://ombi.io/) | Request and issue counts by status, and each request |
+| [Seerr](https://github.com/seerr-team/seerr) | Request and issue counts by status and type, and each request still waiting (Overseerr and Jellyseerr became Seerr) |
 | [SickChill](https://sickchill.github.io/) | Missed and upcoming episodes |
 | [UniFi](https://ui.com/) | Gateway (USG) statistics |
 
@@ -94,7 +95,7 @@ lists every setting and its default.
 - `[global]`: which server ids each module collects from (`false` turns a module off), and the MaxMind license
   key and account ID.
 - `[prometheus]`: the `/metrics` endpoint, which is always on: `bind` (`0.0.0.0`), `port` (`9180`) and
-  `stream_details` (per-viewer metrics and Ombi requesters, off by default). An `[influxdb]` section left over from upstream is
+  `stream_details` (per-viewer metrics and Ombi and Seerr requesters, off by default). An `[influxdb]` section left over from upstream is
   ignored.
 - `[<module>-<id>]`, such as `[tautulli-1]` or `[sonarr-2]`: the server's address, API key, TLS settings, which
   data to collect and how often.
@@ -110,8 +111,8 @@ Any `VRKN_*` value can also be read from a file, for Docker and compose secrets:
   filesystem, no Linux capabilities and `no-new-privileges`.
 - Varken holds API keys for every service it reads, so keep `varken.ini` and `.env` readable only by you. It
   redacts known secrets from its logs, but check the logs before sharing them.
-- Use HTTPS with `verify_ssl = true` wherever a service supports it. Verification is off by default, for
-  compatibility with upstream configs.
+- Use HTTPS with `verify_ssl = true` wherever a service supports it. New configs check certificates (since
+  3.0.0); Varken warns at start-up about any server on HTTPS that doesn't.
 - The `/metrics` endpoint has no authentication or TLS: keep it on a private network. The example compose file
   publishes it on `127.0.0.1` only (`VARKEN_METRICS_BIND`). Leave `stream_details` off unless everyone who can
   read the metrics may see who watches what.

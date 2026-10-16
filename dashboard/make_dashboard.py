@@ -272,6 +272,29 @@ def pin_datasource(node, uid):
 
 # Services the owner doesn't run: Argus' copy has none of their panels.
 ARGUS_WITHOUT = ('varken_ombi_', 'varken_sickchill_')
+def seerr(metric, status):
+    return f'sum(varken_seerr_{metric}{{status="{status}"}})'
+
+
+def seerr_panels():
+    """Seerr in the Ombi panels' places, for Argus (which runs Seerr, not Ombi)."""
+    return [
+        stat('Req. Pending', 'Seerr requests waiting for approval.', seerr('requests', 'pending'), g(0, 6, 3, 3)),
+        stat('Req. Processing', 'Seerr requests approved and not in the library yet.',
+             seerr('requests', 'processing'), g(3, 6, 3, 3)),
+        stat('Req. Available', 'Seerr requests now in the library.', seerr('requests', 'available'),
+             g(6, 6, 3, 3)),
+        stat('Req. Declined', 'Seerr requests declined.', seerr('requests', 'declined'), g(9, 6, 3, 3)),
+        stat('Issues Open', 'Seerr issues still open.', seerr('issues', 'open'), g(12, 6, 3, 3)),
+        stat('Issues Closed', 'Seerr issues resolved.', seerr('issues', 'closed'), g(15, 6, 3, 3)),
+        table('Requests Waiting (Seerr)', 'Seerr requests pending approval, or approved and not in the library yet '
+              '(the 100 newest). The requester is shown only with `stream_details = true` in Varken.',
+              'varken_seerr_request_info', g(0, 29, 16, 9),
+              {'requested': 'Requested', 'title': 'Title', 'type': 'Type', 'is4k': '4K', 'status': 'Status',
+               'user': 'Requested by'}, sort='requested', times=['requested']),
+    ]
+
+
 # Argus reads Sonarr and Radarr as server 1 and their 4K instances as server 2 (its compose file), so its copy's
 # Sonarr and Radarr tables say which instance each row is from.
 ARGUS_INSTANCES = {'1': 'HD', '2': '4K'}
@@ -300,14 +323,16 @@ def uses(panel, prefix):
 
 def argus_dashboard():
     """Argus' copy: its provisioned data source, uid and tags, and the link to its other dashboards. The owner runs
-    neither Ombi nor SickChill, so their panels are left out and the growth tiles take the rest of their row."""
+    neither Ombi nor SickChill, so their panels are left out; Seerr's take Ombi's places."""
     dash = pin_datasource(copy.deepcopy(dashboard()), 'prometheus')
     dash['panels'] = [panel for panel in dash['panels'] if not any(uses(panel, prefix) for prefix in ARGUS_WITHOUT)]
     for panel in dash['panels']:
         if panel['type'] == 'table' and (uses(panel, 'varken_sonarr_') or uses(panel, 'varken_radarr_')):
             with_instance_column(panel)
-        if panel['title'] in ('Movies Added', 'Episodes Added'):
-            panel['gridPos'] = g(0 if panel['title'] == 'Movies Added' else 12, 6, 12, 3)
+    # Seerr where Ombi was, numbered after the original 35 panels.
+    for number, panel in enumerate(pin_datasource(seerr_panels(), 'prometheus'), len(dashboard()['panels']) + 1):
+        panel['id'] = number
+        dash['panels'].append(panel)
     dash.update(uid='argus-varken', tags=['argus', 'media', 'varken'], links=[{
         'title': 'Argus dashboards', 'type': 'dashboards', 'tags': ['argus'], 'asDropdown': True,
         'includeVars': False, 'keepTime': True, 'targetBlank': False, 'icon': 'external link'}])

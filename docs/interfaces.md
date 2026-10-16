@@ -70,6 +70,7 @@ without its `get_` prefix, or, for the Sonarr and Lidarr calendar jobs, the cale
 | `radarr` | `queue`, `missing` |
 | `lidarr` | `queue`, `missing`, `future` |
 | `ombi` | `request_counts`, `all_requests`, `issue_counts` |
+| `seerr` | `request_counts`, `issue_counts`, `requests` |
 | `sickchill` | `missing` |
 | `unifi` | `usg_stats` |
 
@@ -128,6 +129,16 @@ successful run of its job, so a job that is down shows no items:
 | `varken_ombi_issues` | `server`, `status` (`pending`, `in_progress`, `resolved`) | Issues by status (`issue_counts` job). |
 | `varken_ombi_request_info` | `server`, `type` (`movie`, `tv`), `title`, `status` (`pending`, `approved`, `available`, `denied`), `requested`, `user` | Always `1`, one series per request (`all_requests` job). `requested` is the request date as Ombi gives it. `user`, the requester, is filled in only with `stream_details = true` and empty otherwise. |
 
+**Seerr** (since 3.0.0):
+
+| Metric | Labels | Value |
+| --- | --- | --- |
+| `varken_seerr_requests` | `server`, `status` (`pending`, `approved`, `declined`, `processing`, `available`, `completed`) | Requests by status, as Seerr counts them (`request_counts` job): `approved` includes `processing` (approved, not available yet) and `available`. |
+| `varken_seerr_requests_by_type` | `server`, `type` (`movie`, `tv`) | Requests by media type (`request_counts` job). |
+| `varken_seerr_issues` | `server`, `status` (`open`, `closed`) | Issues by status (`issue_counts` job). |
+| `varken_seerr_issues_by_type` | `server`, `type` (`video`, `audio`, `subtitles`, `other`) | Issues by type (`issue_counts` job). |
+| `varken_seerr_request_info` | `server`, `type` (`movie`, `tv`), `title`, `status` (`pending`, `processing`), `is4k` (`true`, `false`), `requested`, `user` | Always `1`, one series per request still waiting, from the 100 newest (`requests` job): pending approval, or approved and not in the library yet (in the 4K library, for a 4K request). `title` is `Title (Year)`, or `TMDB <id>` while Seerr can't look it up. `requested` is the request time (ISO 8601). `user`, the requester's display name, only with `stream_details = true`; their email address is never read. |
+
 **Lidarr and UniFi** have only the job metrics; for Lidarr, `varken_job_points` counts the albums in the queue
 and calendar. Detailed UniFi metrics are on the [roadmap](roadmap.md).
 
@@ -155,6 +166,7 @@ the services it reads.
 | Radarr | `GET /api/v3/movie`, `GET /api/v3/queue?includeMovie=true` | `X-Api-Key` header |
 | Lidarr | `GET /api/v1/calendar?start=&end=&includeArtist=true`, `GET /api/v1/queue` | `X-Api-Key` header |
 | Ombi | `GET /api/v1/Request/count`, `GET /api/v1/Request/movie`, `GET /api/v1/Request/tv`, `GET /api/v1/Issues/count` | `Apikey` header |
+| Seerr | `GET /api/v1/request/count`, `GET /api/v1/issue/count`, `GET /api/v1/request?take=100&skip=0&filter=all&sort=added`, and once per title `GET /api/v1/movie/<tmdb id>` or `GET /api/v1/tv/<tmdb id>` | `X-Api-Key` header (an admin key: Seerr has no read-only one) |
 | SickChill | `GET /api/<apikey>/?cmd=future&type=missed\|today\|soon\|later\|snatched` | the key is part of the path (SickChill's API requires it) |
 | UniFi controller | `POST /api/login` (username and password as JSON; keeps the `unifises` cookie), `GET /api/self/sites`, `GET /api/s/<site>/stat/device` | session cookie |
 | MaxMind | `GET https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz`, following its redirect to Cloudflare R2 (60 s timeout), when the database is missing or over 30 days old; only with a license key set (GeoIP on). Without `maxmind_account_id`: `GET https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&suffix=tar.gz&license_key=…` | HTTP Basic auth, account ID and license key (not sent on to R2); without an account ID, the license key as a query parameter ([a known weakness](security.md#known-weaknesses)) |
@@ -188,5 +200,5 @@ version and digest, the hash-pinned packages from [`requirements.txt`](../requir
 `/app`. It runs as the unprivileged uid/gid 1000:1000 with `DATA_FOLDER=/config`; `/config` is the only
 path it writes to, and belongs to 1000:1000 in the image, so a new named volume there starts out writable.
 Releases are published for linux/amd64 and linux/arm64, tagged with the version
-(`2.3.0`), major.minor (`2.3`) and `latest`, signed and with an SBOM and provenance
+(`3.0.0`), major.minor (`3.0`) and `latest`, signed and with an SBOM and provenance
 ([verifying-releases.md](verifying-releases.md)). It declares `EXPOSE 9180` for `/metrics`.

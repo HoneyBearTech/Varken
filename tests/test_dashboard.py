@@ -34,8 +34,9 @@ def test_it_has_the_original_dashboards_35_panels():
     assert len({panel['id'] for panel in panels}) == 35
 
 
-def test_every_query_uses_metrics_and_labels_varken_serves(served):
-    for panel in make_dashboard.dashboard()['panels']:
+@pytest.mark.parametrize('build', ['dashboard', 'argus_dashboard'])
+def test_every_query_uses_metrics_and_labels_varken_serves(served, build):
+    for panel in getattr(make_dashboard, build)()['panels']:
         for target in panel['targets']:
             names = set(re.findall(r'\bvarken_\w+', target['expr']))
             assert names, panel['title']
@@ -48,8 +49,9 @@ def test_every_query_uses_metrics_and_labels_varken_serves(served):
                 assert any(label in served[name] for name in names), (panel['title'], label)
 
 
-def test_every_table_column_is_a_label_of_its_metric(served):
-    for panel in make_dashboard.dashboard()['panels']:
+@pytest.mark.parametrize('build', ['dashboard', 'argus_dashboard'])
+def test_every_table_column_is_a_label_of_its_metric(served, build):
+    for panel in getattr(make_dashboard, build)()['panels']:
         if panel['type'] != 'table':
             continue
         name = re.match(r'(\w+)', panel['targets'][0]['expr']).group(1)
@@ -69,9 +71,12 @@ def test_the_argus_copy_leaves_ombi_and_sickchill_out():
     full, argus = make_dashboard.dashboard()['panels'], make_dashboard.argus_dashboard()['panels']
     assert not [p['title'] for p in argus if make_dashboard.uses(p, 'varken_ombi_')]
     assert not [p['title'] for p in argus if make_dashboard.uses(p, 'varken_sickchill_')]
-    assert len(argus) == len(full) - 8
-    # Ids stay as in the full dashboard, so links to a panel work in both.
-    assert {p['title']: p['id'] for p in argus}.items() <= {p['title']: p['id'] for p in full}.items()
+    assert len(argus) == len(full) - 8 + 7  # Seerr's 6 tiles and table in Ombi's places
+    assert len({p['id'] for p in argus}) == len(argus)
+    # The original panels keep their ids, so links to a panel work in both; Seerr's are numbered after them.
+    original = {p['id']: p['title'] for p in full}
+    assert all(original[p['id']] == p['title'] for p in argus if p['id'] in original)
+    assert sorted(p['id'] for p in argus if p['id'] not in original) == list(range(len(full) + 1, len(full) + 8))
 
 
 def test_the_argus_copy_names_the_instance_of_each_sonarr_and_radarr_row(served):

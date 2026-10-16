@@ -29,9 +29,9 @@ REQUEST_TIMEOUT = (10, 30)
 
 
 # MaxMind's documented download: Basic auth with the account ID and license key; it redirects to a presigned URL on
-# Cloudflare R2, where requests drops the Authorization header. The legacy URL takes the key as a query parameter.
+# Cloudflare R2, where requests drops the Authorization header. (The legacy URL, with the key as a query parameter,
+# was dropped in 3.0.0.)
 MAXMIND_URL = 'https://download.maxmind.com/geoip/databases/GeoLite2-City/download'
-MAXMIND_LEGACY_URL = 'https://download.maxmind.com/app/geoip_download'
 MAXMIND_TIMEOUT = 60
 # After a failed download, wait this long before the update job tries again (MaxMind rate-limits failures).
 MAXMIND_RETRY_AFTER = 3600
@@ -42,7 +42,7 @@ class GeoIPHandler(object):
     missing or over 30 days old. A failed download leaves Varken running: until a later update succeeds, streams
     have no location."""
 
-    def __init__(self, data_folder, maxmind_license_key, maxmind_account_id=None):
+    def __init__(self, data_folder, maxmind_license_key, maxmind_account_id):
         self.data_folder = data_folder
         self.maxmind_license_key = maxmind_license_key
         self.maxmind_account_id = maxmind_account_id
@@ -95,21 +95,13 @@ class GeoIPHandler(object):
                 self.reader_manager(action='close')
                 self.reader = Reader(self.dbfile)
 
-    def request(self):
-        """The URL, query and credentials to download with: Basic auth with the account ID, or the legacy URL."""
-        if self.maxmind_account_id:
-            return MAXMIND_URL, {'suffix': 'tar.gz'}, (str(self.maxmind_account_id), self.maxmind_license_key)
-        self.logger.warning('No MaxMind account ID (maxmind_account_id): downloading with the license key in the '
-                            'URL, which MaxMind no longer documents. Add your account ID to use its Basic auth.')
-        return (MAXMIND_LEGACY_URL,
-                {'edition_id': 'GeoLite2-City', 'suffix': 'tar.gz', 'license_key': self.maxmind_license_key}, None)
-
     def download(self):
-        """Download and install the database; True if it worked. Errors are logged without the URL, which can
-        hold the license key."""
+        """Download and install the database; True if it worked. Errors are logged by type, never with the
+        request."""
         self.last_failure = monotonic()  # cleared below once the new database is in place
         tar_dbfile = abspath(join(self.data_folder, 'GeoLite2-City.tar.gz'))
-        url, params, auth = self.request()
+        url, params, auth = MAXMIND_URL, {'suffix': 'tar.gz'}, (str(self.maxmind_account_id),
+                                                                self.maxmind_license_key)
         for attempt in range(1, 4):
             self.logger.info('Downloading GeoLite2 DB from MaxMind...')
             try:
@@ -172,11 +164,16 @@ class NoGeoIP(object):
 
 
 def geoip_handler(data_folder, license_key, account_id=None):
-    """GeoIP for Tautulli's streams, or none when no license key is set (empty, or the example's xxxx placeholder)."""
-    if license_key and license_key.strip('x'):
-        return GeoIPHandler(data_folder, license_key, account_id or None)
-    logger.info('No MaxMind license key: GeoIP is off and Tautulli streams have no location.')
-    return NoGeoIP()
+    """GeoIP for Tautulli's streams, or none when no license key is set (empty, or the example's xxxx placeholder)
+    or the account ID is missing."""
+    if not (license_key and license_key.strip('x')):
+        logger.info('No MaxMind license key: GeoIP is off and Tautulli streams have no location.')
+        return NoGeoIP()
+    if not account_id:
+        logger.error('GeoIP needs your MaxMind account ID as well as the license key (maxmind_account_id or '
+                     'VRKN_GLOBAL_MAXMIND_ACCOUNT_ID, since 3.0.0): GeoIP is off until it is set.')
+        return NoGeoIP()
+    return GeoIPHandler(data_folder, license_key, account_id)
 
 
 def hashit(string):
