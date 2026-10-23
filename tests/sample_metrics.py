@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 """Print a /metrics scrape with every Varken metric in it, for CI's `promtool check metrics`.
 
 Run from the repository root:  python -m tests.sample_metrics

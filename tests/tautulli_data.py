@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 """Tautulli API replies and fakes shared by the Tautulli and Prometheus tests."""
 from types import SimpleNamespace
 

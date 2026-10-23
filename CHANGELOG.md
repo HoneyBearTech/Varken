@@ -7,11 +7,26 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+- [docs/security-review.md](docs/security-review.md): a dated security review of 3.2.0 (scope, method, findings,
+  accepted risks); the next is due by October 2027.
+- Policies for the project's own secrets (docs/security.md), static-analysis findings and a code-scanning merge
+  gate, and an OpenVEX document for vulnerabilities that don't affect Varken, which the weekly image scan reads
+  (docs/dependencies.md); code-review standards and good first issues (CONTRIBUTING.md); two-factor
+  authentication and how access is granted (GOVERNANCE.md).
+- Every source file starts with SPDX copyright and license lines; a test checks.
+
 ### Fixed
 - The Device Types and Stream Types pies showed only the sessions playing at that moment, so they were empty whenever
   nobody was watching; they now cover the dashboard's time range (average concurrent sessions), like the original.
 - The classic dashboard's Server Popularity strip asked for a point a minute (721 over 12 hours), more than Grafana's
   status history draws; it now asks for about 120, each the busiest moment of its slot.
+
+### Security
+- certifi 2026.10.23, the CA bundle `requests` checks every service's certificate against, no longer trusts the
+  emSign ECC Root CA - G3, whose intermediates had their keys compromised
+  ([GHSA-6q48-6c7w-9gw2](https://github.com/advisories/GHSA-6q48-6c7w-9gw2)). With `verify_ssl = true`, someone
+  holding one of those keys and on the network path could otherwise have posed as a service and read its API key.
 
 ## [3.2.0] - 2026-10-16
 

@@ -81,10 +81,32 @@ Each finding is triaged within 14 days:
    list. Either way, it's fixed by a bump when upstream ships one.
 3. **If a dependency is abandoned**, replace it before it accumulates vulnerabilities.
 
+### Vulnerabilities that don't affect Varken (VEX)
+
+A vulnerability reported in a dependency that Varken doesn't use in an affected way (the vulnerable function is
+never called, say) is recorded, with the reasoning, as an [OpenVEX](https://openvex.dev/) statement in
+[`.vex/varken.openvex.json`](../.vex/varken.openvex.json): `not_affected` with a justification, or `affected`
+until it's fixed. The weekly image scan reads that file, so a finding with a `not_affected` statement doesn't
+reopen. The file is part of every source release.
+
 ### Current findings
 
-None recorded yet: the scans start with the 2.0.0 work. Findings that need an explanation (for example a
-vulnerability judged unreachable) will be listed here with the date and the reasoning.
+None: the document has no statements, because no finding has needed one. Each future entry gets a line here
+with the date and the reasoning.
+
+## Policy for findings from static analysis
+
+CodeQL (security and quality queries, Python and the workflows) runs on every pull request, every change to
+`main` and weekly; ruff's bandit (`S`) rules run in "Checks + tests".
+
+- **Merges are gated.** A pull request can't merge while CodeQL reports a security alert of high or critical
+  severity, or an error, in the code it changes (a code scanning rule in the branch ruleset), nor while ruff
+  reports any `S` finding (the required "Checks + tests" job). Lower-severity CodeQL alerts are triaged as below.
+- **Thresholds.** Each finding is triaged within 14 days. A critical or high-severity finding that's
+  exploitable is fixed before the next release and within 30 days; medium within 90 days; low and notes with
+  the next change to that code.
+- **False positives** are dismissed in code scanning (or, for ruff, suppressed on the line with
+  `# noqa: Sxxx -- <reason>`), always with the reason written down.
 
 ## Licenses
 

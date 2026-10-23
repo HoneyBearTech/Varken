@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 HoneyBearTech
+# SPDX-License-Identifier: MIT
 """The Grafana dashboard in dashboard/: generated, and built only from metrics and labels Varken serves."""
 import importlib.util
 import re
