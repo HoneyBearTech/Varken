@@ -22,6 +22,12 @@ All notable changes to this project are documented in this file. The format is b
 - The classic dashboard's Server Popularity strip asked for a point a minute (721 over 12 hours), more than Grafana's
   status history draws; it now asks for about 120, each the busiest moment of its slot.
 
+### Security
+- certifi 2026.10.23, the CA bundle `requests` checks every service's certificate against, no longer trusts the
+  emSign ECC Root CA - G3, whose intermediates had their keys compromised
+  ([GHSA-6q48-6c7w-9gw2](https://github.com/advisories/GHSA-6q48-6c7w-9gw2)). With `verify_ssl = true`, someone
+  holding one of those keys and on the network path could otherwise have posed as a service and read its API key.
+
 ## [3.2.0] - 2026-10-16
 
 ### Added
