@@ -7,6 +7,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Security
+- certifi 2026.10.23 (was 2026.7.22): drops the `emSign ECC Root CA - G3` root, whose revoked intermediates had
+  compromised keys (GHSA-6q48-6c7w-9gw2, PYSEC-2026-4320).
+
 ### Fixed
 - The Device Types and Stream Types pies showed only the sessions playing at that moment, so they were empty whenever
   nobody was watching; they now cover the dashboard's time range (average concurrent sessions), like the original.
