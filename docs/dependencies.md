@@ -55,6 +55,8 @@ it from MaxMind with its own license key, under MaxMind's GeoLite2 license.
   blocks a pull request that adds or changes a dependency with a known vulnerability of moderate severity or
   higher, or with a license outside the allowlist.
 - The images in `.gitlab-ci.yml` aren't seen by Dependabot; they're bumped by hand at least every quarter.
+  Its `checks` job uses the full Python image, not the slim one, because the tests need git; that git is
+  Debian's package, so it's brought up to date by the same bump.
 - A merged update reaches users only in the next release.
 
 ## Policy for vulnerabilities in dependencies

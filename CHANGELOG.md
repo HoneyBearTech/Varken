@@ -17,6 +17,8 @@ All notable changes to this project are documented in this file. The format is b
 - Every source file starts with SPDX copyright and license lines; a test checks.
 
 ### Fixed
+- The GitLab copy's `checks` job failed the licensing test: its slim Python image has no git, which the test
+  uses to list the tracked files. It now runs on the full Python image, which has git.
 - The Device Types and Stream Types pies showed only the sessions playing at that moment, so they were empty whenever
   nobody was watching; they now cover the dashboard's time range (average concurrent sessions), like the original.
 - The classic dashboard's Server Popularity strip asked for a point a minute (721 over 12 hours), more than Grafana's

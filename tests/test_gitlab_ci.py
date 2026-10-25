@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
 """The GitLab copy's pipeline (.gitlab-ci.yml): GitLab rejects the whole file when a script line isn't a string."""
+import re
 from pathlib import Path
 
 import yaml
@@ -24,3 +25,10 @@ def test_the_mirror_reads_githubs_default_branch():
     script = '\n'.join(CONFIG['mirror']['script'])
     assert 'ls-remote --symref "$MIRROR_SOURCE" HEAD' in script
     assert 'refs/heads/master' not in script
+
+
+def test_the_checks_image_has_git():
+    # Regression: the slim Python image has no git, so on GitLab the licensing test's "git ls-files" failed with
+    # "FileNotFoundError: 'git'" (GitHub's runner has git). The image stays pinned by tag and digest.
+    image = CONFIG['checks']['image']
+    assert re.fullmatch(r'python:3\.14\.\d+-trixie@sha256:[0-9a-f]{64}', image), image

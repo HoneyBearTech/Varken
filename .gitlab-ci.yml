@@ -55,12 +55,14 @@ mirror:
     - git fetch --no-tags "$MIRROR_SOURCE" "refs/heads/$branch:refs/heads/$branch" "refs/tags/*:refs/tags/*"
     - git push "$CI_SERVER_URL/$CI_PROJECT_PATH.git" "refs/heads/$branch:refs/heads/$branch" "refs/tags/*:refs/tags/*"
 
-# The tests import Varken's modules, so they need its runtime dependencies too. The sample scrape goes to promtool.
+# The tests import Varken's modules, so they need its runtime dependencies too. They also need git (the licensing
+# test lists the tracked files), so this is the full Python image: the slim one has no git. The full image's git is
+# Debian's package, updated whenever the image is bumped. The sample scrape goes to promtool.
 checks:
   extends: .checks
   stage: checks
   needs: []
-  image: python:3.14.8-slim-trixie@sha256:f85c5697265c178cc6887276c55fe16cf3d14ca35c3df6a5eab3b360534a55d2
+  image: python:3.14.8-trixie@sha256:484d69f37ccf7dfa527c4ce7db8894f543a6455123dc873765f629f970795326
   variables:
     PIP_DISABLE_PIP_VERSION_CHECK: "1"
   script:
