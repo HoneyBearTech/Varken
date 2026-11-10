@@ -15,7 +15,8 @@ class BlacklistFilter(Filter):
     """
     Log filter for blacklisted tokens and passwords
     """
-    filename = "varken.log"
+
+    filename = 'varken.log'
     max_size = 5000000  # 5 MB
     max_files = 5
     log_folder = 'logs'
@@ -34,9 +35,10 @@ class BlacklistFilter(Filter):
                 if any(item in str(arg) for arg in record.args):
                     # Anything but a number is redacted through its text, so an exception or a request whose
                     # text contains a secret (an API key in a URL, say) doesn't carry it into the log.
-                    record.args = tuple(str(arg).replace(item, MASK)
-                                        if not isinstance(arg, (int, float)) and item in str(arg) else arg
-                                        for arg in record.args)
+                    record.args = tuple(
+                        str(arg).replace(item, MASK) if not isinstance(arg, (int, float)) and item in str(arg) else arg
+                        for arg in record.args
+                    )
             except TypeError:
                 pass
         return True
@@ -67,8 +69,13 @@ class VarkenLogger(object):
 
             # Create the Handler for logging data to a file
             file_logger = RotatingFileHandler(
-                f'{self.data_folder}/{BlacklistFilter.log_folder}/{BlacklistFilter.filename}', mode='a',
-                maxBytes=BlacklistFilter.max_size, encoding=None, delay=0, backupCount=BlacklistFilter.max_files)
+                f'{self.data_folder}/{BlacklistFilter.log_folder}/{BlacklistFilter.filename}',
+                mode='a',
+                maxBytes=BlacklistFilter.max_size,
+                encoding=None,
+                delay=0,
+                backupCount=BlacklistFilter.max_files,
+            )
             file_logger.setLevel(self.log_level)
             file_logger.setFormatter(logger_formatter)
             self.logger.addHandler(file_logger)

@@ -25,15 +25,15 @@ class SonarrAPI(object):
         self.logger = getLogger()
 
     def __repr__(self):
-        return f"<sonarr-{self.server.id}>"
+        return f'<sonarr-{self.server.id}>'
 
-    def get_calendar(self, query="Missing"):
+    def get_calendar(self, query='Missing'):
         endpoint = '/api/v3/calendar'
         today = str(date.today())
         last_days = str(date.today() - timedelta(days=self.server.missing_days))
         future = str(date.today() + timedelta(days=self.server.future_days))
         now = datetime.now(timezone.utc).astimezone().isoformat()
-        if query == "Missing":
+        if query == 'Missing':
             params = {'start': last_days, 'end': today, 'includeSeries': 'true'}
         else:
             params = {'start': today, 'end': future, 'includeSeries': 'true'}
@@ -45,7 +45,7 @@ class SonarrAPI(object):
         if get is False:
             return
         if not isinstance(get, list):
-            self.logger.error('Unexpected reply from Sonarr\'s calendar (is it Sonarr 3 or later?): %s', get)
+            self.logger.error("Unexpected reply from Sonarr's calendar (is it Sonarr 3 or later?): %s", get)
             return
 
         for show in get:
@@ -53,30 +53,29 @@ class SonarrAPI(object):
                 series_title = show['series']['title']
                 sxe = episode_code(show['seasonNumber'], show['episodeNumber'])
             except (KeyError, TypeError) as e:
-                self.logger.error('Skipping a Sonarr calendar entry without series or episode numbers (%s): %s', e,
-                                  show)
+                self.logger.error(
+                    'Skipping a Sonarr calendar entry without series or episode numbers (%s): %s', e, show
+                )
                 continue
             downloaded = 1 if show.get('hasFile') else 0
-            if query == "Missing" and (not show.get('monitored') or downloaded):
+            if query == 'Missing' and (not show.get('monitored') or downloaded):
                 continue
             hash_id = hashit(f'{self.server.id}{series_title}{sxe}')
             points.append(
                 {
-                    "measurement": "Sonarr",
-                    "tags": {
-                        "type": query,
-                        "sonarrId": show.get('id'),
-                        "server": self.server.id,
-                        "name": series_title,
-                        "epname": show.get('title', ''),
-                        "sxe": sxe,
-                        "airsUTC": show.get('airDateUtc', ''),
-                        "downloaded": downloaded
+                    'measurement': 'Sonarr',
+                    'tags': {
+                        'type': query,
+                        'sonarrId': show.get('id'),
+                        'server': self.server.id,
+                        'name': series_title,
+                        'epname': show.get('title', ''),
+                        'sxe': sxe,
+                        'airsUTC': show.get('airDateUtc', ''),
+                        'downloaded': downloaded,
                     },
-                    "time": now,
-                    "fields": {
-                        "hash": hash_id
-                    }
+                    'time': now,
+                    'fields': {'hash': hash_id},
                 }
             )
 
@@ -94,7 +93,7 @@ class SonarrAPI(object):
         if get is False:
             return
         if not isinstance(get, dict) or not isinstance(get.get('records'), list):
-            self.logger.error('Unexpected reply from Sonarr\'s queue (is it Sonarr 3 or later?): %s', get)
+            self.logger.error("Unexpected reply from Sonarr's queue (is it Sonarr 3 or later?): %s", get)
             return
 
         for item in get['records']:
@@ -111,24 +110,22 @@ class SonarrAPI(object):
             hash_id = hashit(f'{self.server.id}{series_title}{sxe}')
             points.append(
                 {
-                    "measurement": "Sonarr",
-                    "tags": {
-                        "type": "Queue",
-                        "sonarrId": item.get('id'),
-                        "server": self.server.id,
-                        "name": series_title,
-                        "epname": episode.get('title', ''),
-                        "sxe": sxe,
-                        "protocol": protocol,
-                        "protocol_id": 1 if protocol == 'USENET' else 0,
-                        "quality": quality
+                    'measurement': 'Sonarr',
+                    'tags': {
+                        'type': 'Queue',
+                        'sonarrId': item.get('id'),
+                        'server': self.server.id,
+                        'name': series_title,
+                        'epname': episode.get('title', ''),
+                        'sxe': sxe,
+                        'protocol': protocol,
+                        'protocol_id': 1 if protocol == 'USENET' else 0,
+                        'quality': quality,
                     },
-                    "time": now,
-                    "fields": {
-                        "hash": hash_id
-                    }
+                    'time': now,
+                    'fields': {'hash': hash_id},
                 }
             )
         if not points:
-            self.logger.debug("No queue items for sonarr instance.")
+            self.logger.debug('No queue items for sonarr instance.')
         self.output.write_points(points)

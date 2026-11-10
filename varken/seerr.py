@@ -28,7 +28,7 @@ class SeerrAPI(object):
         self.titles = {}
 
     def __repr__(self):
-        return f"<seerr-{self.server.id}>"
+        return f'<seerr-{self.server.id}>'
 
     def get(self, endpoint, params=None):
         request = self.session.prepare_request(Request('GET', self.server.url + endpoint, params=params))
@@ -40,13 +40,13 @@ class SeerrAPI(object):
         if get is False:
             return None
         if not isinstance(get, dict) or not all(isinstance(value, int) for value in get.values()):
-            self.logger.error('Unexpected reply from Seerr\'s %s: %s', endpoint, get)
+            self.logger.error("Unexpected reply from Seerr's %s: %s", endpoint, get)
             return None
         return {
-            "measurement": "Seerr",
-            "tags": {"type": kind, "server": self.server.id},
-            "time": datetime.now(timezone.utc).astimezone().isoformat(),
-            "fields": get,
+            'measurement': 'Seerr',
+            'tags': {'type': kind, 'server': self.server.id},
+            'time': datetime.now(timezone.utc).astimezone().isoformat(),
+            'fields': get,
         }
 
     def get_request_counts(self):
@@ -85,7 +85,7 @@ class SeerrAPI(object):
         if get is False:
             return
         if not isinstance(get, dict) or not isinstance(get.get('results'), list):
-            self.logger.error('Unexpected reply from Seerr\'s request list: %s', get)
+            self.logger.error("Unexpected reply from Seerr's request list: %s", get)
             return
 
         now = datetime.now(timezone.utc).astimezone().isoformat()
@@ -110,21 +110,25 @@ class SeerrAPI(object):
             requested_by = request.get('requestedBy') or {}
             points.append(
                 {
-                    "measurement": "Seerr",
-                    "tags": {
-                        "type": "Requests",
-                        "server": self.server.id,
-                        "request_type": media_type,
-                        "title": self.title(media_type, tmdb_id),
-                        "status": state,
-                        "is4k": is4k,
-                        "requested_date": request.get('createdAt', ''),
+                    'measurement': 'Seerr',
+                    'tags': {
+                        'type': 'Requests',
+                        'server': self.server.id,
+                        'request_type': media_type,
+                        'title': self.title(media_type, tmdb_id),
+                        'status': state,
+                        'is4k': is4k,
+                        'requested_date': request.get('createdAt', ''),
                         # A display name only: the user object also holds the requester's email address.
-                        "requested_user": (requested_by.get('displayName') or requested_by.get('plexUsername')
-                                           or requested_by.get('username') or ''),
+                        'requested_user': (
+                            requested_by.get('displayName')
+                            or requested_by.get('plexUsername')
+                            or requested_by.get('username')
+                            or ''
+                        ),
                     },
-                    "time": now,
-                    "fields": {"tmdb_id": tmdb_id},
+                    'time': now,
+                    'fields': {'tmdb_id': tmdb_id},
                 }
             )
         self.output.write_points(points)

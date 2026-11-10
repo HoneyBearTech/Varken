@@ -25,7 +25,7 @@ class TautulliAPI(object):
         self.my_ip = None
 
     def __repr__(self):
-        return f"<tautulli-{self.server.id}>"
+        return f'<tautulli-{self.server.id}>'
 
     def get_activity(self):
         now = datetime.now(timezone.utc).astimezone().isoformat()
@@ -55,7 +55,7 @@ class TautulliAPI(object):
 
             try:
                 geodata = self.geoiphandler.lookup(session.ip_address_public)
-            except (ValueError, AddressNotFoundError):
+            except ValueError, AddressNotFoundError:
                 self.logger.debug('Public IP missing for Tautulli session...')
                 if not self.my_ip:
                     # Try the fallback ip in the config file
@@ -129,63 +129,59 @@ class TautulliAPI(object):
             hash_id = hashit(f'{session.session_id}{session.session_key}{session.username}{session.full_title}')
             points.append(
                 {
-                    "measurement": "Tautulli",
-                    "tags": {
-                        "type": "Session",
-                        "session_id": session.session_id,
-                        "friendly_name": session.friendly_name,
-                        "username": session.username,
-                        "title": session.full_title,
-                        "product": session.product,
-                        "platform": platform_name,
-                        "product_version": product_version,
-                        "quality": quality,
-                        "video_decision": video_decision.title(),
-                        "transcode_decision": decision.title(),
-                        "transcode_hw_decoding": session.transcode_hw_decoding,
-                        "transcode_hw_encoding": session.transcode_hw_encoding,
-                        "media_type": session.media_type.title(),
-                        "audio_codec": session.audio_codec.upper(),
-                        "audio_profile": session.audio_profile.upper(),
-                        "stream_audio_codec": session.stream_audio_codec.upper(),
-                        "quality_profile": session.quality_profile,
-                        "progress_percent": session.progress_percent,
-                        "region_code": geodata.subdivisions.most_specific.iso_code,
-                        "location": location,
-                        "full_location": ' - '.join(filter(None, (geodata.subdivisions.most_specific.name,
-                                                                   geodata.city.name))),
-                        "latitude": latitude,
-                        "longitude": longitude,
-                        "player_state": player_state,
-                        "device_type": platform_name,
-                        "relayed": session.relayed,
-                        "secure": session.secure,
-                        "server": self.server.id
+                    'measurement': 'Tautulli',
+                    'tags': {
+                        'type': 'Session',
+                        'session_id': session.session_id,
+                        'friendly_name': session.friendly_name,
+                        'username': session.username,
+                        'title': session.full_title,
+                        'product': session.product,
+                        'platform': platform_name,
+                        'product_version': product_version,
+                        'quality': quality,
+                        'video_decision': video_decision.title(),
+                        'transcode_decision': decision.title(),
+                        'transcode_hw_decoding': session.transcode_hw_decoding,
+                        'transcode_hw_encoding': session.transcode_hw_encoding,
+                        'media_type': session.media_type.title(),
+                        'audio_codec': session.audio_codec.upper(),
+                        'audio_profile': session.audio_profile.upper(),
+                        'stream_audio_codec': session.stream_audio_codec.upper(),
+                        'quality_profile': session.quality_profile,
+                        'progress_percent': session.progress_percent,
+                        'region_code': geodata.subdivisions.most_specific.iso_code,
+                        'location': location,
+                        'full_location': ' - '.join(
+                            filter(None, (geodata.subdivisions.most_specific.name, geodata.city.name))
+                        ),
+                        'latitude': latitude,
+                        'longitude': longitude,
+                        'player_state': player_state,
+                        'device_type': platform_name,
+                        'relayed': session.relayed,
+                        'secure': session.secure,
+                        'server': self.server.id,
                     },
-                    "time": now,
-                    "fields": {
-                        "hash": hash_id
-                    }
+                    'time': now,
+                    'fields': {'hash': hash_id},
                 }
             )
 
         points.append(
             {
-                "measurement": "Tautulli",
-                "tags": {
-                    "type": "current_stream_stats",
-                    "server": self.server.id
+                'measurement': 'Tautulli',
+                'tags': {'type': 'current_stream_stats', 'server': self.server.id},
+                'time': now,
+                'fields': {
+                    'stream_count': int(get['stream_count']),
+                    'total_bandwidth': int(get['total_bandwidth']),
+                    'wan_bandwidth': int(get['wan_bandwidth']),
+                    'lan_bandwidth': int(get['lan_bandwidth']),
+                    'transcode_streams': int(get['stream_count_transcode']),
+                    'direct_play_streams': int(get['stream_count_direct_play']),
+                    'direct_streams': int(get['stream_count_direct_stream']),
                 },
-                "time": now,
-                "fields": {
-                    "stream_count": int(get['stream_count']),
-                    "total_bandwidth": int(get['total_bandwidth']),
-                    "wan_bandwidth": int(get['wan_bandwidth']),
-                    "lan_bandwidth": int(get['lan_bandwidth']),
-                    "transcode_streams": int(get['stream_count_transcode']),
-                    "direct_play_streams": int(get['stream_count_direct_play']),
-                    "direct_streams": int(get['stream_count_direct_stream'])
-                }
             }
         )
 
@@ -206,17 +202,15 @@ class TautulliAPI(object):
 
         for library in get:
             data = {
-                    "measurement": "Tautulli",
-                    "tags": {
-                        "type": "library_stats",
-                        "server": self.server.id,
-                        "section_name": library['section_name'],
-                        "section_type": library['section_type']
-                    },
-                    "time": now,
-                    "fields": {
-                        "total": int(library['count'])
-                    }
+                'measurement': 'Tautulli',
+                'tags': {
+                    'type': 'library_stats',
+                    'server': self.server.id,
+                    'section_name': library['section_name'],
+                    'section_type': library['section_type'],
+                },
+                'time': now,
+                'fields': {'total': int(library['count'])},
             }
             if library['section_type'] == 'show':
                 data['fields']['seasons'] = int(library['parent_count'])

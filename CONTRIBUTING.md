@@ -62,7 +62,7 @@ reach Tautulli, the \*arr apps or MaxMind.
 Run what CI runs and make sure it passes:
 
 ```sh
-.venv/bin/ruff check .
+.venv/bin/ruff check . && .venv/bin/ruff format --check .
 .venv/bin/yamllint --strict .
 .venv/bin/coverage run -m pytest && .venv/bin/coverage report
 docker build -t varken:dev .
@@ -75,9 +75,9 @@ actionlint, hadolint, gitleaks and pip-audit run in CI; the exact commands are i
 
 - **Python** (`Varken.py`, `varken/`, `tests/`): [PEP 8](https://peps.python.org/pep-0008/),
   enforced by [ruff](https://docs.astral.sh/ruff/) with a line length of 120 and the rule families in
-  [`pyproject.toml`](pyproject.toml): pycodestyle, Pyflakes, bugbear and the bandit security rules. Most of
-  the code predates this fork, so `ruff format` isn't applied yet (it would rewrite every file; it's on the
-  [roadmap](docs/roadmap.md)): match the style of the surrounding code. New code gets type hints and docstrings.
+  [`pyproject.toml`](pyproject.toml): pycodestyle, Pyflakes, bugbear and the bandit security rules. Code is
+  formatted with `ruff format` (single quotes, line length 120); CI fails on unformatted files, so run
+  `.venv/bin/ruff format .` before you commit. New code gets type hints and docstrings.
 - **Network calls** go through `connection_handler()` in [`varken/helpers.py`](varken/helpers.py), so error
   handling stays in one place. Varken only reads from the services it collects from: no request may change
   data there.

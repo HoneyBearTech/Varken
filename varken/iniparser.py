@@ -51,12 +51,17 @@ class INIParser(object):
                 exit(1)
 
     def config_blacklist(self):
-        filtered_strings = [section.get(k) for key, section in self.config.items()
-                            for k in section if k in BlacklistFilter.blacklisted_strings]
+        filtered_strings = [
+            section.get(k)
+            for key, section in self.config.items()
+            for k in section
+            if k in BlacklistFilter.blacklisted_strings
+        ]
         # VRKN_* environment variables override the file, so their values are just as secret.
         secret_suffixes = tuple(f'_{key}' for key in BlacklistFilter.blacklisted_strings)
-        filtered_strings.extend(value for name, value in env.items()
-                                if name.startswith('VRKN_') and name.lower().endswith(secret_suffixes))
+        filtered_strings.extend(
+            value for name, value in env.items() if name.startswith('VRKN_') and name.lower().endswith(secret_suffixes)
+        )
         self.filtered_strings = list(filter(None, filtered_strings))
         # Added matching for domains that use /locations. ConnectionPool ignores the location in logs
         domains_only = [string.split('/')[0] for string in filtered_strings if '/' in string]
@@ -89,8 +94,9 @@ class INIParser(object):
                 try:
                     copyfile(join(self.data_folder, 'varken.example.ini'), file_path)
                 except IOError as e:
-                    self.logger.error("Varken does not have permission to write to %s. Error: %s - Exiting.",
-                                      self.data_folder, e)
+                    self.logger.error(
+                        'Varken does not have permission to write to %s. Error: %s - Exiting.', self.data_folder, e
+                    )
                     exit(1)
             else:
                 self.logger.error('File missing (%s) in %s', ini, self.data_folder)
@@ -107,7 +113,7 @@ class INIParser(object):
         if exists(file_path):
             self.logger.debug('Writing to %s', inifile)
             if not access(file_path, W_OK):
-                self.logger.error("Config file is incomplete and read-only. Exiting.")
+                self.logger.error('Config file is incomplete and read-only. Exiting.')
                 exit(1)
             with open(file_path, 'w') as config_ini:
                 self.config.write(config_ini)
@@ -120,25 +126,28 @@ class INIParser(object):
         module = section
         inc_port = include_port
 
-        search = (r'(?:([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}|'  # domain...
-                  r'localhost|'  # localhost...
-                  r'^[a-zA-Z0-9_-]*|'  # hostname only. My soul dies a little every time this is used...
-                  r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
-                  )
+        search = (
+            r'(?:([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}|'  # domain...
+            r'localhost|'  # localhost...
+            r'^[a-zA-Z0-9_-]*|'  # hostname only. My soul dies a little every time this is used...
+            r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
+        )
         # Include search for port if it is needed.
         if inc_port:
-            search = (search + r'(?::\d+)?' + r'(?:/?|[/?]\S+)$')
+            search = search + r'(?::\d+)?' + r'(?:/?|[/?]\S+)$'
         else:
-            search = (search + r'(?:/?|[/?]\S+)$')
+            search = search + r'(?:/?|[/?]\S+)$'
 
         regex = compile('{}'.format(search), IGNORECASE)
 
         valid = match(regex, url_check) is not None
         if not valid:
             if inc_port:
-                self.logger.error('%s is invalid in module [%s]! URL must host/IP and '
-                                  'port if not 80 or 443. ie. localhost:8080',
-                                  url_check, module)
+                self.logger.error(
+                    '%s is invalid in module [%s]! URL must host/IP and port if not 80 or 443. ie. localhost:8080',
+                    url_check,
+                    module,
+                )
                 exit(1)
             else:
                 self.logger.error('%s is invalid in module [%s]! URL must host/IP. ie. localhost', url_check, module)
@@ -153,8 +162,11 @@ class INIParser(object):
         if self.rectified:
             self.logger.error('[%s] %s is missing from varken.example.ini too. Exiting.', error.section, error.option)
             exit(1)
-        self.logger.info('varken.ini has no %s in [%s] (new in this version?): adding it from varken.example.ini',
-                         error.option, error.section)
+        self.logger.info(
+            'varken.ini has no %s in [%s] (new in this version?): adding it from varken.example.ini',
+            error.option,
+            error.section,
+        )
         self.rectified = True
         self.rectify_ini()
 
@@ -188,8 +200,9 @@ class INIParser(object):
         try:
             bind = env.get('VRKN_PROMETHEUS_BIND', self.config.get('prometheus', 'bind'))
             prometheus_port = int(env.get('VRKN_PROMETHEUS_PORT', self.config.get('prometheus', 'port')))
-            stream_details = boolcheck(env.get('VRKN_PROMETHEUS_STREAM_DETAILS',
-                                               self.config.get('prometheus', 'stream_details')))
+            stream_details = boolcheck(
+                env.get('VRKN_PROMETHEUS_STREAM_DETAILS', self.config.get('prometheus', 'stream_details'))
+            )
         except NoOptionError as e:
             self.missing_key(e)
             return
@@ -219,170 +232,269 @@ class INIParser(object):
             if service_enabled:
                 for server_id in service_enabled:
                     server = None
-                    section = f"{service}-{server_id}"
-                    envsection = f"{service}_{server_id}".upper()
+                    section = f'{service}-{server_id}'
+                    envsection = f'{service}_{server_id}'.upper()
                     try:
-                        url = self.url_check(env.get(f'VRKN_{envsection}_URL', self.config.get(section, 'url')),
-                                             section=section)
+                        url = self.url_check(
+                            env.get(f'VRKN_{envsection}_URL', self.config.get(section, 'url')), section=section
+                        )
 
                         apikey = None
                         if service != 'unifi':
                             apikey = env.get(f'VRKN_{envsection}_APIKEY', self.config.get(section, 'apikey'))
                         ssl_scheme = boolcheck(env.get(f'VRKN_{envsection}_SSL', self.config.get(section, 'ssl')))
                         scheme = 'https://' if ssl_scheme else 'http://'
-                        verify_ssl = boolcheck(env.get(f'VRKN_{envsection}_VERIFY_SSL',
-                                                       self.config.get(section, 'verify_ssl')))
+                        verify_ssl = boolcheck(
+                            env.get(f'VRKN_{envsection}_VERIFY_SSL', self.config.get(section, 'verify_ssl'))
+                        )
 
                         if scheme != 'https://':
                             verify_ssl = False
                         elif not verify_ssl:
                             # The insecure-request warning is silenced per request, so say it once here.
-                            self.logger.warning('[%s] uses HTTPS without checking the certificate (verify_ssl = '
-                                                'false): anyone on the network path can read and change the '
-                                                'traffic, API key included', section)
+                            self.logger.warning(
+                                '[%s] uses HTTPS without checking the certificate (verify_ssl = '
+                                'false): anyone on the network path can read and change the '
+                                'traffic, API key included',
+                                section,
+                            )
 
                         if service in ['sonarr', 'radarr', 'lidarr']:
-                            queue = boolcheck(env.get(f'VRKN_{envsection}_QUEUE',
-                                                      self.config.get(section, 'queue')))
-                            queue_run_seconds = int(env.get(f'VRKN_{envsection}_QUEUE_RUN_SECONDS',
-                                                    self.config.getint(section, 'queue_run_seconds')))
+                            queue = boolcheck(env.get(f'VRKN_{envsection}_QUEUE', self.config.get(section, 'queue')))
+                            queue_run_seconds = int(
+                                env.get(
+                                    f'VRKN_{envsection}_QUEUE_RUN_SECONDS',
+                                    self.config.getint(section, 'queue_run_seconds'),
+                                )
+                            )
 
                         if service in ['sonarr', 'lidarr']:
-                            missing_days = int(env.get(f'VRKN_{envsection}_MISSING_DAYS',
-                                                       self.config.getint(section, 'missing_days')))
-                            future_days = int(env.get(f'VRKN_{envsection}_FUTURE_DAYS',
-                                                      self.config.getint(section, 'future_days')))
+                            missing_days = int(
+                                env.get(f'VRKN_{envsection}_MISSING_DAYS', self.config.getint(section, 'missing_days'))
+                            )
+                            future_days = int(
+                                env.get(f'VRKN_{envsection}_FUTURE_DAYS', self.config.getint(section, 'future_days'))
+                            )
 
-                            missing_days_run_seconds = int(env.get(
-                                f'VRKN_{envsection}_MISSING_DAYS_RUN_SECONDS',
-                                self.config.getint(section, 'missing_days_run_seconds')))
+                            missing_days_run_seconds = int(
+                                env.get(
+                                    f'VRKN_{envsection}_MISSING_DAYS_RUN_SECONDS',
+                                    self.config.getint(section, 'missing_days_run_seconds'),
+                                )
+                            )
 
-                            future_days_run_seconds = int(env.get(
-                                f'VRKN_{envsection}_FUTURE_DAYS_RUN_SECONDS',
-                                self.config.getint(section, 'future_days_run_seconds')))
+                            future_days_run_seconds = int(
+                                env.get(
+                                    f'VRKN_{envsection}_FUTURE_DAYS_RUN_SECONDS',
+                                    self.config.getint(section, 'future_days_run_seconds'),
+                                )
+                            )
 
-                            server = SonarrServer(id=server_id, url=scheme + url, api_key=apikey, verify_ssl=verify_ssl,
-                                                  missing_days=missing_days, future_days=future_days,
-                                                  missing_days_run_seconds=missing_days_run_seconds,
-                                                  future_days_run_seconds=future_days_run_seconds,
-                                                  queue=queue, queue_run_seconds=queue_run_seconds)
+                            server = SonarrServer(
+                                id=server_id,
+                                url=scheme + url,
+                                api_key=apikey,
+                                verify_ssl=verify_ssl,
+                                missing_days=missing_days,
+                                future_days=future_days,
+                                missing_days_run_seconds=missing_days_run_seconds,
+                                future_days_run_seconds=future_days_run_seconds,
+                                queue=queue,
+                                queue_run_seconds=queue_run_seconds,
+                            )
 
                         if service == 'radarr':
-                            get_missing = boolcheck(env.get(f'VRKN_{envsection}_GET_MISSING',
-                                                            self.config.get(section, 'get_missing')))
-                            get_missing_run_seconds = int(env.get(
-                                f'VRKN_{envsection}_GET_MISSING_RUN_SECONDS',
-                                self.config.getint(section, 'get_missing_run_seconds')))
+                            get_missing = boolcheck(
+                                env.get(f'VRKN_{envsection}_GET_MISSING', self.config.get(section, 'get_missing'))
+                            )
+                            get_missing_run_seconds = int(
+                                env.get(
+                                    f'VRKN_{envsection}_GET_MISSING_RUN_SECONDS',
+                                    self.config.getint(section, 'get_missing_run_seconds'),
+                                )
+                            )
 
-                            server = RadarrServer(id=server_id, url=scheme + url, api_key=apikey, verify_ssl=verify_ssl,
-                                                  queue_run_seconds=queue_run_seconds, get_missing=get_missing,
-                                                  queue=queue, get_missing_run_seconds=get_missing_run_seconds)
+                            server = RadarrServer(
+                                id=server_id,
+                                url=scheme + url,
+                                api_key=apikey,
+                                verify_ssl=verify_ssl,
+                                queue_run_seconds=queue_run_seconds,
+                                get_missing=get_missing,
+                                queue=queue,
+                                get_missing_run_seconds=get_missing_run_seconds,
+                            )
 
                         if service == 'tautulli':
-                            fallback_ip = env.get(f'VRKN_{envsection}_FALLBACK_IP',
-                                                  self.config.get(section, 'fallback_ip'))
+                            fallback_ip = env.get(
+                                f'VRKN_{envsection}_FALLBACK_IP', self.config.get(section, 'fallback_ip')
+                            )
 
-                            get_stats = boolcheck(env.get(f'VRKN_{envsection}_GET_STATS',
-                                                          self.config.get(section, 'get_stats')))
+                            get_stats = boolcheck(
+                                env.get(f'VRKN_{envsection}_GET_STATS', self.config.get(section, 'get_stats'))
+                            )
 
-                            get_activity = boolcheck(env.get(f'VRKN_{envsection}_GET_ACTIVITY',
-                                                             self.config.get(section, 'get_activity')))
+                            get_activity = boolcheck(
+                                env.get(f'VRKN_{envsection}_GET_ACTIVITY', self.config.get(section, 'get_activity'))
+                            )
 
-                            get_activity_run_seconds = int(env.get(
-                                f'VRKN_{envsection}_GET_ACTIVITY_RUN_SECONDS',
-                                self.config.getint(section, 'get_activity_run_seconds')))
+                            get_activity_run_seconds = int(
+                                env.get(
+                                    f'VRKN_{envsection}_GET_ACTIVITY_RUN_SECONDS',
+                                    self.config.getint(section, 'get_activity_run_seconds'),
+                                )
+                            )
 
-                            get_stats_run_seconds = int(env.get(
-                                f'VRKN_{envsection}_GET_STATS_RUN_SECONDS',
-                                self.config.getint(section, 'get_stats_run_seconds')))
+                            get_stats_run_seconds = int(
+                                env.get(
+                                    f'VRKN_{envsection}_GET_STATS_RUN_SECONDS',
+                                    self.config.getint(section, 'get_stats_run_seconds'),
+                                )
+                            )
 
                             invalid_wan_ip = rfc1918_ip_check(fallback_ip)
 
                             if invalid_wan_ip:
-                                self.logger.error('Invalid fallback_ip [%s] set for %s-%s!', fallback_ip, service,
-                                                  server_id)
+                                self.logger.error(
+                                    'Invalid fallback_ip [%s] set for %s-%s!', fallback_ip, service, server_id
+                                )
                                 exit(1)
 
-                            maxmind_license_key = env.get('VRKN_GLOBAL_MAXMIND_LICENSE_KEY',
-                                                          self.config.get('global', 'maxmind_license_key'))
-                            maxmind_account_id = env.get('VRKN_GLOBAL_MAXMIND_ACCOUNT_ID',
-                                                         self.config.get('global', 'maxmind_account_id'))
+                            maxmind_license_key = env.get(
+                                'VRKN_GLOBAL_MAXMIND_LICENSE_KEY', self.config.get('global', 'maxmind_license_key')
+                            )
+                            maxmind_account_id = env.get(
+                                'VRKN_GLOBAL_MAXMIND_ACCOUNT_ID', self.config.get('global', 'maxmind_account_id')
+                            )
 
-                            server = TautulliServer(id=server_id, url=scheme + url, api_key=apikey,
-                                                    verify_ssl=verify_ssl, get_activity=get_activity,
-                                                    fallback_ip=fallback_ip, get_stats=get_stats,
-                                                    get_activity_run_seconds=get_activity_run_seconds,
-                                                    get_stats_run_seconds=get_stats_run_seconds,
-                                                    maxmind_license_key=maxmind_license_key,
-                                                    maxmind_account_id=maxmind_account_id.strip() or None)
+                            server = TautulliServer(
+                                id=server_id,
+                                url=scheme + url,
+                                api_key=apikey,
+                                verify_ssl=verify_ssl,
+                                get_activity=get_activity,
+                                fallback_ip=fallback_ip,
+                                get_stats=get_stats,
+                                get_activity_run_seconds=get_activity_run_seconds,
+                                get_stats_run_seconds=get_stats_run_seconds,
+                                maxmind_license_key=maxmind_license_key,
+                                maxmind_account_id=maxmind_account_id.strip() or None,
+                            )
 
                         if service == 'ombi':
-                            issue_status_counts = boolcheck(env.get(
-                                f'VRKN_{envsection}_GET_ISSUE_STATUS_COUNTS',
-                                self.config.get(section, 'get_issue_status_counts')))
-                            request_type_counts = boolcheck(env.get(
-                                f'VRKN_{envsection}_GET_REQUEST_TYPE_COUNTS',
-                                self.config.get(section, 'get_request_type_counts')))
-                            request_total_counts = boolcheck(env.get(
-                                f'VRKN_{envsection}_GET_REQUEST_TOTAL_COUNTS',
-                                self.config.get(section, 'get_request_total_counts')))
+                            issue_status_counts = boolcheck(
+                                env.get(
+                                    f'VRKN_{envsection}_GET_ISSUE_STATUS_COUNTS',
+                                    self.config.get(section, 'get_issue_status_counts'),
+                                )
+                            )
+                            request_type_counts = boolcheck(
+                                env.get(
+                                    f'VRKN_{envsection}_GET_REQUEST_TYPE_COUNTS',
+                                    self.config.get(section, 'get_request_type_counts'),
+                                )
+                            )
+                            request_total_counts = boolcheck(
+                                env.get(
+                                    f'VRKN_{envsection}_GET_REQUEST_TOTAL_COUNTS',
+                                    self.config.get(section, 'get_request_total_counts'),
+                                )
+                            )
 
-                            issue_status_run_seconds = int(env.get(
-                                f'VRKN_{envsection}_ISSUE_STATUS_RUN_SECONDS',
-                                self.config.getint(section, 'issue_status_run_seconds')))
-                            request_type_run_seconds = int(env.get(
-                                f'VRKN_{envsection}_REQUEST_TYPE_RUN_SECONDS',
-                                self.config.getint(section, 'request_type_run_seconds')))
-                            request_total_run_seconds = int(env.get(
-                                f'VRKN_{envsection}_REQUEST_TOTAL_RUN_SECONDS',
-                                self.config.getint(section, 'request_total_run_seconds')))
+                            issue_status_run_seconds = int(
+                                env.get(
+                                    f'VRKN_{envsection}_ISSUE_STATUS_RUN_SECONDS',
+                                    self.config.getint(section, 'issue_status_run_seconds'),
+                                )
+                            )
+                            request_type_run_seconds = int(
+                                env.get(
+                                    f'VRKN_{envsection}_REQUEST_TYPE_RUN_SECONDS',
+                                    self.config.getint(section, 'request_type_run_seconds'),
+                                )
+                            )
+                            request_total_run_seconds = int(
+                                env.get(
+                                    f'VRKN_{envsection}_REQUEST_TOTAL_RUN_SECONDS',
+                                    self.config.getint(section, 'request_total_run_seconds'),
+                                )
+                            )
 
-                            server = OmbiServer(id=server_id, url=scheme + url, api_key=apikey, verify_ssl=verify_ssl,
-                                                request_type_counts=request_type_counts,
-                                                request_type_run_seconds=request_type_run_seconds,
-                                                request_total_counts=request_total_counts,
-                                                request_total_run_seconds=request_total_run_seconds,
-                                                issue_status_counts=issue_status_counts,
-                                                issue_status_run_seconds=issue_status_run_seconds)
+                            server = OmbiServer(
+                                id=server_id,
+                                url=scheme + url,
+                                api_key=apikey,
+                                verify_ssl=verify_ssl,
+                                request_type_counts=request_type_counts,
+                                request_type_run_seconds=request_type_run_seconds,
+                                request_total_counts=request_total_counts,
+                                request_total_run_seconds=request_total_run_seconds,
+                                issue_status_counts=issue_status_counts,
+                                issue_status_run_seconds=issue_status_run_seconds,
+                            )
 
                         if service == 'seerr':
                             jobs = {}
                             for job in ('get_request_counts', 'get_issue_counts', 'get_requests'):
-                                jobs[job] = boolcheck(env.get(f'VRKN_{envsection}_{job.upper()}',
-                                                              self.config.get(section, job)))
-                                jobs[f'{job}_run_seconds'] = int(env.get(
-                                    f'VRKN_{envsection}_{job.upper()}_RUN_SECONDS',
-                                    self.config.getint(section, f'{job}_run_seconds')))
-                            server = SeerrServer(id=server_id, url=scheme + url, api_key=apikey,
-                                                 verify_ssl=verify_ssl, **jobs)
+                                jobs[job] = boolcheck(
+                                    env.get(f'VRKN_{envsection}_{job.upper()}', self.config.get(section, job))
+                                )
+                                jobs[f'{job}_run_seconds'] = int(
+                                    env.get(
+                                        f'VRKN_{envsection}_{job.upper()}_RUN_SECONDS',
+                                        self.config.getint(section, f'{job}_run_seconds'),
+                                    )
+                                )
+                            server = SeerrServer(
+                                id=server_id, url=scheme + url, api_key=apikey, verify_ssl=verify_ssl, **jobs
+                            )
 
                         if service == 'sickchill':
-                            get_missing = boolcheck(env.get(f'VRKN_{envsection}_GET_MISSING',
-                                                            self.config.get(section, 'get_missing')))
-                            get_missing_run_seconds = int(env.get(
-                                f'VRKN_{envsection}_GET_MISSING_RUN_SECONDS',
-                                self.config.getint(section, 'get_missing_run_seconds')))
+                            get_missing = boolcheck(
+                                env.get(f'VRKN_{envsection}_GET_MISSING', self.config.get(section, 'get_missing'))
+                            )
+                            get_missing_run_seconds = int(
+                                env.get(
+                                    f'VRKN_{envsection}_GET_MISSING_RUN_SECONDS',
+                                    self.config.getint(section, 'get_missing_run_seconds'),
+                                )
+                            )
 
-                            server = SickChillServer(id=server_id, url=scheme + url, api_key=apikey,
-                                                     verify_ssl=verify_ssl, get_missing=get_missing,
-                                                     get_missing_run_seconds=get_missing_run_seconds)
+                            server = SickChillServer(
+                                id=server_id,
+                                url=scheme + url,
+                                api_key=apikey,
+                                verify_ssl=verify_ssl,
+                                get_missing=get_missing,
+                                get_missing_run_seconds=get_missing_run_seconds,
+                            )
 
                         if service == 'unifi':
                             username = env.get(f'VRKN_{envsection}_USERNAME', self.config.get(section, 'username'))
                             password = env.get(f'VRKN_{envsection}_PASSWORD', self.config.get(section, 'password'))
                             site = env.get(f'VRKN_{envsection}_SITE', self.config.get(section, 'site')).lower()
                             usg_name = env.get(f'VRKN_{envsection}_USG_NAME', self.config.get(section, 'usg_name'))
-                            get_usg_stats_run_seconds = int(env.get(
-                                f'VRKN_{envsection}_GET_USG_STATS_RUN_SECONDS',
-                                self.config.getint(section, 'get_usg_stats_run_seconds')))
+                            get_usg_stats_run_seconds = int(
+                                env.get(
+                                    f'VRKN_{envsection}_GET_USG_STATS_RUN_SECONDS',
+                                    self.config.getint(section, 'get_usg_stats_run_seconds'),
+                                )
+                            )
 
-                            server = UniFiServer(id=server_id, url=scheme + url, verify_ssl=verify_ssl, site=site,
-                                                 username=username, password=password, usg_name=usg_name,
-                                                 get_usg_stats_run_seconds=get_usg_stats_run_seconds)
+                            server = UniFiServer(
+                                id=server_id,
+                                url=scheme + url,
+                                verify_ssl=verify_ssl,
+                                site=site,
+                                username=username,
+                                password=password,
+                                usg_name=usg_name,
+                                get_usg_stats_run_seconds=get_usg_stats_run_seconds,
+                            )
 
                         getattr(self, f'{service}_servers').append(server)
                     except NoOptionError as e:
                         self.missing_key(e)
                         return
                     except ValueError as e:
-                        self.logger.error("Invalid configuration value in %s. Error: %s", section, e)
+                        self.logger.error('Invalid configuration value in %s. Error: %s', section, e)

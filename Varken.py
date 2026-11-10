@@ -42,15 +42,21 @@ def thread(job, **kwargs):
     worker.start()
 
 
-if __name__ == "__main__":
-    parser = ArgumentParser(prog='varken',
-                            description='Collects data from the Plex ecosystem and serves it as Prometheus metrics',
-                            formatter_class=RawTextHelpFormatter)
+if __name__ == '__main__':
+    parser = ArgumentParser(
+        prog='varken',
+        description='Collects data from the Plex ecosystem and serves it as Prometheus metrics',
+        formatter_class=RawTextHelpFormatter,
+    )
 
-    parser.add_argument("-d", "--data-folder", help='Define an alternate data folder location')
-    parser.add_argument("-D", "--debug", action='store_true', help='Log at DEBUG instead of INFO')
-    parser.add_argument("-ND", "--no_debug", action='store_true',
-                        help='Log at INFO (the default since 2.3.0; kept so existing scripts still work)')
+    parser.add_argument('-d', '--data-folder', help='Define an alternate data folder location')
+    parser.add_argument('-D', '--debug', action='store_true', help='Log at DEBUG instead of INFO')
+    parser.add_argument(
+        '-ND',
+        '--no_debug',
+        action='store_true',
+        help='Log at INFO (the default since 2.3.0; kept so existing scripts still work)',
+    )
 
     opts = parser.parse_args()
 
@@ -65,10 +71,10 @@ if __name__ == "__main__":
 
     if isdir(DATA_FOLDER):
         if not access(DATA_FOLDER, R_OK):
-            templogger.error("Read permission error for %s", DATA_FOLDER)
+            templogger.error('Read permission error for %s', DATA_FOLDER)
             exit(1)
     else:
-        templogger.error("%s does not exist", DATA_FOLDER)
+        templogger.error('%s does not exist', DATA_FOLDER)
         exit(1)
 
     # INFO by default; DEBUG with -D, or with DEBUG=true in the environment (which wins over the flags).
@@ -78,8 +84,18 @@ if __name__ == "__main__":
     opts.debug = opts.debug and not opts.no_debug
 
     if getenv('DEBUG') is not None:
-        opts.debug = True if any([getenv(string, False) for true in enable_opts
-                                  for string in debug_opts if getenv(string, False) == true]) else False
+        opts.debug = (
+            True
+            if any(
+                [
+                    getenv(string, False)
+                    for true in enable_opts
+                    for string in debug_opts
+                    if getenv(string, False) == true
+                ]
+            )
+            else False
+        )
 
     # Initiate the logger
     # LOG_TO_FILE=false logs to stdout only, for containers whose logs are collected anyway.
@@ -89,12 +105,17 @@ if __name__ == "__main__":
 
     vl.logger.info('Data folder is "%s"', DATA_FOLDER)
 
-    vl.logger.info(u"%s %s (%s%s)", platform.system(), platform.release(), platform.version(),
-                   ' - ' + PLATFORM_LINUX_DISTRO if PLATFORM_LINUX_DISTRO else '')
+    vl.logger.info(
+        '%s %s (%s%s)',
+        platform.system(),
+        platform.release(),
+        platform.version(),
+        ' - ' + PLATFORM_LINUX_DISTRO if PLATFORM_LINUX_DISTRO else '',
+    )
 
-    vl.logger.info(u"Python %s", version)
+    vl.logger.info('Python %s', version)
 
-    vl.logger.info("Varken v%s-%s %s", VERSION, BRANCH, BUILD_DATE)
+    vl.logger.info('Varken v%s-%s %s', VERSION, BRANCH, BUILD_DATE)
 
     CONFIG = INIParser(DATA_FOLDER)
     METRICS = Metrics(CONFIG.prometheus_server)
@@ -106,64 +127,63 @@ if __name__ == "__main__":
             SONARR = SonarrAPI(server, METRICS)
             if server.queue:
                 at_time = schedule.every(server.queue_run_seconds).seconds
-                at_time.do(thread, SONARR.get_queue).tag("sonarr-{}-get_queue".format(server.id))
+                at_time.do(thread, SONARR.get_queue).tag('sonarr-{}-get_queue'.format(server.id))
             if server.missing_days > 0:
                 at_time = schedule.every(server.missing_days_run_seconds).seconds
-                at_time.do(thread, SONARR.get_calendar, query="Missing").tag("sonarr-{}-get_missing".format(server.id))
+                at_time.do(thread, SONARR.get_calendar, query='Missing').tag('sonarr-{}-get_missing'.format(server.id))
             if server.future_days > 0:
                 at_time = schedule.every(server.future_days_run_seconds).seconds
-                at_time.do(thread, SONARR.get_calendar, query="Future").tag("sonarr-{}-get_future".format(server.id))
+                at_time.do(thread, SONARR.get_calendar, query='Future').tag('sonarr-{}-get_future'.format(server.id))
 
     if CONFIG.tautulli_enabled:
-        GEOIPHANDLER = geoip_handler(DATA_FOLDER, CONFIG.tautulli_servers[0].maxmind_license_key,
-                                     CONFIG.tautulli_servers[0].maxmind_account_id)
+        GEOIPHANDLER = geoip_handler(
+            DATA_FOLDER, CONFIG.tautulli_servers[0].maxmind_license_key, CONFIG.tautulli_servers[0].maxmind_account_id
+        )
         schedule.every(12).to(24).hours.do(thread, GEOIPHANDLER.update)
         for server in CONFIG.tautulli_servers:
             TAUTULLI = TautulliAPI(server, METRICS, GEOIPHANDLER)
             if server.get_activity:
                 at_time = schedule.every(server.get_activity_run_seconds).seconds
-                at_time.do(thread, TAUTULLI.get_activity).tag("tautulli-{}-get_activity".format(server.id))
+                at_time.do(thread, TAUTULLI.get_activity).tag('tautulli-{}-get_activity'.format(server.id))
             if server.get_stats:
                 at_time = schedule.every(server.get_stats_run_seconds).seconds
-                at_time.do(thread, TAUTULLI.get_stats).tag("tautulli-{}-get_stats".format(server.id))
+                at_time.do(thread, TAUTULLI.get_stats).tag('tautulli-{}-get_stats'.format(server.id))
 
     if CONFIG.radarr_enabled:
         for server in CONFIG.radarr_servers:
             RADARR = RadarrAPI(server, METRICS)
             if server.get_missing:
                 at_time = schedule.every(server.get_missing_run_seconds).seconds
-                at_time.do(thread, RADARR.get_missing).tag("radarr-{}-get_missing".format(server.id))
+                at_time.do(thread, RADARR.get_missing).tag('radarr-{}-get_missing'.format(server.id))
             if server.queue:
                 at_time = schedule.every(server.queue_run_seconds).seconds
-                at_time.do(thread, RADARR.get_queue).tag("radarr-{}-get_queue".format(server.id))
+                at_time.do(thread, RADARR.get_queue).tag('radarr-{}-get_queue'.format(server.id))
 
     if CONFIG.lidarr_enabled:
         for server in CONFIG.lidarr_servers:
             LIDARR = LidarrAPI(server, METRICS)
             if server.queue:
                 at_time = schedule.every(server.queue_run_seconds).seconds
-                at_time.do(thread, LIDARR.get_queue).tag("lidarr-{}-get_queue".format(server.id))
+                at_time.do(thread, LIDARR.get_queue).tag('lidarr-{}-get_queue'.format(server.id))
             if server.missing_days > 0:
                 at_time = schedule.every(server.missing_days_run_seconds).seconds
-                at_time.do(thread, LIDARR.get_calendar, query="Missing").tag(
-                    "lidarr-{}-get_missing".format(server.id))
+                at_time.do(thread, LIDARR.get_calendar, query='Missing').tag('lidarr-{}-get_missing'.format(server.id))
             if server.future_days > 0:
                 at_time = schedule.every(server.future_days_run_seconds).seconds
-                at_time.do(thread, LIDARR.get_calendar, query="Future").tag("lidarr-{}-get_future".format(
-                    server.id))
+                at_time.do(thread, LIDARR.get_calendar, query='Future').tag('lidarr-{}-get_future'.format(server.id))
 
     if CONFIG.ombi_enabled:
         for server in CONFIG.ombi_servers:
             OMBI = OmbiAPI(server, METRICS)
             if server.request_type_counts:
                 at_time = schedule.every(server.request_type_run_seconds).seconds
-                at_time.do(thread, OMBI.get_request_counts).tag("ombi-{}-get_request_counts".format(server.id))
+                at_time.do(thread, OMBI.get_request_counts).tag('ombi-{}-get_request_counts'.format(server.id))
             if server.request_total_counts:
                 at_time = schedule.every(server.request_total_run_seconds).seconds
-                at_time.do(thread, OMBI.get_all_requests).tag("ombi-{}-get_all_requests".format(server.id))
+                at_time.do(thread, OMBI.get_all_requests).tag('ombi-{}-get_all_requests'.format(server.id))
             if server.issue_status_counts:
                 at_time = schedule.every(server.issue_status_run_seconds).seconds
-                at_time.do(thread, OMBI.get_issue_counts).tag("ombi-{}-get_issue_counts".format(server.id))
+                at_time.do(thread, OMBI.get_issue_counts).tag('ombi-{}-get_issue_counts'.format(server.id))
 
     if CONFIG.seerr_enabled:
         for server in CONFIG.seerr_servers:
@@ -171,26 +191,34 @@ if __name__ == "__main__":
             for job in ('get_request_counts', 'get_issue_counts', 'get_requests'):
                 if getattr(server, job):
                     at_time = schedule.every(getattr(server, f'{job}_run_seconds')).seconds
-                    at_time.do(thread, getattr(SEERR, job)).tag(f"seerr-{server.id}-{job}")
+                    at_time.do(thread, getattr(SEERR, job)).tag(f'seerr-{server.id}-{job}')
 
     if CONFIG.sickchill_enabled:
         for server in CONFIG.sickchill_servers:
             SICKCHILL = SickChillAPI(server, METRICS)
             if server.get_missing:
                 at_time = schedule.every(server.get_missing_run_seconds).seconds
-                at_time.do(thread, SICKCHILL.get_missing).tag("sickchill-{}-get_missing".format(server.id))
+                at_time.do(thread, SICKCHILL.get_missing).tag('sickchill-{}-get_missing'.format(server.id))
 
     if CONFIG.unifi_enabled:
         for server in CONFIG.unifi_servers:
             UNIFI = UniFiAPI(server, METRICS)
             at_time = schedule.every(server.get_usg_stats_run_seconds).seconds
-            at_time.do(thread, UNIFI.get_usg_stats).tag("unifi-{}-get_usg_stats".format(server.id))
+            at_time.do(thread, UNIFI.get_usg_stats).tag('unifi-{}-get_usg_stats'.format(server.id))
 
     # Run all on startup
-    SERVICES_ENABLED = [CONFIG.ombi_enabled, CONFIG.radarr_enabled, CONFIG.tautulli_enabled, CONFIG.unifi_enabled,
-                        CONFIG.sonarr_enabled, CONFIG.sickchill_enabled, CONFIG.lidarr_enabled, CONFIG.seerr_enabled]
+    SERVICES_ENABLED = [
+        CONFIG.ombi_enabled,
+        CONFIG.radarr_enabled,
+        CONFIG.tautulli_enabled,
+        CONFIG.unifi_enabled,
+        CONFIG.sonarr_enabled,
+        CONFIG.sickchill_enabled,
+        CONFIG.lidarr_enabled,
+        CONFIG.seerr_enabled,
+    ]
     if not [enabled for enabled in SERVICES_ENABLED if enabled]:
-        vl.logger.error("All services disabled. Exiting")
+        vl.logger.error('All services disabled. Exiting')
         exit(1)
 
     schedule.run_all()

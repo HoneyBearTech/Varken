@@ -19,12 +19,12 @@ class OmbiAPI(object):
         self.logger = getLogger()
 
     def __repr__(self):
-        return f"<ombi-{self.server.id}>"
+        return f'<ombi-{self.server.id}>'
 
     def get_all_requests(self):
         now = datetime.now(timezone.utc).astimezone().isoformat()
         tv_endpoint = '/api/v1/Request/tv'
-        movie_endpoint = "/api/v1/Request/movie"
+        movie_endpoint = '/api/v1/Request/movie'
 
         tv_req = self.session.prepare_request(Request('GET', self.server.url + tv_endpoint))
         movie_req = self.session.prepare_request(Request('GET', self.server.url + movie_endpoint))
@@ -50,30 +50,35 @@ class OmbiAPI(object):
             try:
                 tv_show_requests.append(OmbiTVRequest(**show))
             except TypeError as e:
-                self.logger.error('TypeError has occurred : %s while creating OmbiTVRequest structure for show. '
-                                  'data attempted is: %s', e, show)
+                self.logger.error(
+                    'TypeError has occurred : %s while creating OmbiTVRequest structure for show. '
+                    'data attempted is: %s',
+                    e,
+                    show,
+                )
 
         movie_requests = []
         for movie in get_movie:
             try:
                 movie_requests.append(OmbiMovieRequest(**movie))
             except TypeError as e:
-                self.logger.error('TypeError has occurred : %s while creating OmbiMovieRequest structure for movie. '
-                                  'data attempted is: %s', e, movie)
+                self.logger.error(
+                    'TypeError has occurred : %s while creating OmbiMovieRequest structure for movie. '
+                    'data attempted is: %s',
+                    e,
+                    movie,
+                )
 
         points = [
             {
-                "measurement": "Ombi",
-                "tags": {
-                    "type": "Request_Total",
-                    "server": self.server.id
+                'measurement': 'Ombi',
+                'tags': {'type': 'Request_Total', 'server': self.server.id},
+                'time': now,
+                'fields': {
+                    'total': movie_request_count + tv_request_count,
+                    'movies': movie_request_count,
+                    'tv_shows': tv_request_count,
                 },
-                "time": now,
-                "fields": {
-                    "total": movie_request_count + tv_request_count,
-                    "movies": movie_request_count,
-                    "tv_shows": tv_request_count
-                }
             }
         ]
         # Request Type: Movie = 1, TV Show = 0
@@ -95,20 +100,18 @@ class OmbiAPI(object):
 
             points.append(
                 {
-                    "measurement": "Ombi",
-                    "tags": {
-                        "type": "Requests",
-                        "server": self.server.id,
-                        "request_type": 1,
-                        "status": status,
-                        "title": movie.title,
-                        "requested_user": movie.requestedUser['userAlias'],
-                        "requested_date": movie.requestedDate
+                    'measurement': 'Ombi',
+                    'tags': {
+                        'type': 'Requests',
+                        'server': self.server.id,
+                        'request_type': 1,
+                        'status': status,
+                        'title': movie.title,
+                        'requested_user': movie.requestedUser['userAlias'],
+                        'requested_date': movie.requestedDate,
                     },
-                    "time": now,
-                    "fields": {
-                        "hash": hash_id
-                    }
+                    'time': now,
+                    'fields': {'hash': hash_id},
                 }
             )
 
@@ -130,27 +133,25 @@ class OmbiAPI(object):
 
             points.append(
                 {
-                    "measurement": "Ombi",
-                    "tags": {
-                        "type": "Requests",
-                        "server": self.server.id,
-                        "request_type": 0,
-                        "status": status,
-                        "title": show.title,
-                        "requested_user": show.childRequests[0]['requestedUser']['userAlias'],
-                        "requested_date": show.childRequests[0]['requestedDate']
+                    'measurement': 'Ombi',
+                    'tags': {
+                        'type': 'Requests',
+                        'server': self.server.id,
+                        'request_type': 0,
+                        'status': status,
+                        'title': show.title,
+                        'requested_user': show.childRequests[0]['requestedUser']['userAlias'],
+                        'requested_date': show.childRequests[0]['requestedDate'],
                     },
-                    "time": now,
-                    "fields": {
-                        "hash": hash_id
-                    }
+                    'time': now,
+                    'fields': {'hash': hash_id},
                 }
             )
 
         if points:
             self.output.write_points(points)
         else:
-            self.logger.debug("Empty dataset for ombi module. Discarding...")
+            self.logger.debug('Empty dataset for ombi module. Discarding...')
 
     def get_request_counts(self):
         now = datetime.now(timezone.utc).astimezone().isoformat()
@@ -165,16 +166,10 @@ class OmbiAPI(object):
         requests = OmbiRequestCounts(**get)
         points = [
             {
-                "measurement": "Ombi",
-                "tags": {
-                    "type": "Request_Counts"
-                },
-                "time": now,
-                "fields": {
-                    "pending": requests.pending,
-                    "approved": requests.approved,
-                    "available": requests.available
-                }
+                'measurement': 'Ombi',
+                'tags': {'type': 'Request_Counts'},
+                'time': now,
+                'fields': {'pending': requests.pending, 'approved': requests.approved, 'available': requests.available},
             }
         ]
 
@@ -193,16 +188,14 @@ class OmbiAPI(object):
         requests = OmbiIssuesCounts(**get)
         points = [
             {
-                "measurement": "Ombi",
-                "tags": {
-                    "type": "Issues_Counts"
+                'measurement': 'Ombi',
+                'tags': {'type': 'Issues_Counts'},
+                'time': now,
+                'fields': {
+                    'pending': requests.pending,
+                    'in_progress': requests.inProgress,
+                    'resolved': requests.resolved,
                 },
-                "time": now,
-                "fields": {
-                    "pending": requests.pending,
-                    "in_progress": requests.inProgress,
-                    "resolved": requests.resolved
-                }
             }
         ]
 

@@ -16,11 +16,11 @@ class SickChillAPI(object):
         # Create session to reduce server web thread load, and globally define pageSize for all requests
         self.session = Session()
         self.session.params = {'limit': 1000}
-        self.endpoint = f"/api/{self.server.api_key}"
+        self.endpoint = f'/api/{self.server.api_key}'
         self.logger = getLogger()
 
     def __repr__(self):
-        return f"<sickchill-{self.server.id}>"
+        return f'<sickchill-{self.server.id}>'
 
     def get_missing(self):
         now = datetime.now(timezone.utc).astimezone().isoformat()
@@ -48,20 +48,18 @@ class SickChillAPI(object):
                 try:
                     points.append(
                         {
-                            "measurement": "SickChill",
-                            "tags": {
-                                "type": [item[0] for item in missing_types if key in item][0],
-                                "indexerid": show.indexerid,
-                                "server": self.server.id,
-                                "name": show.show_name,
-                                "epname": show.ep_name,
-                                "sxe": sxe,
-                                "airdate": show.airdate,
+                            'measurement': 'SickChill',
+                            'tags': {
+                                'type': [item[0] for item in missing_types if key in item][0],
+                                'indexerid': show.indexerid,
+                                'server': self.server.id,
+                                'name': show.show_name,
+                                'epname': show.ep_name,
+                                'sxe': sxe,
+                                'airdate': show.airdate,
                             },
-                            "time": now,
-                            "fields": {
-                                "hash": hash_id
-                            }
+                            'time': now,
+                            'fields': {'hash': hash_id},
                         }
                     )
                 except IndexError as e:

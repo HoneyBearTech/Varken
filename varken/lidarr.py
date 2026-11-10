@@ -20,15 +20,15 @@ class LidarrAPI(object):
         self.logger = getLogger()
 
     def __repr__(self):
-        return f"<lidarr-{self.server.id}>"
+        return f'<lidarr-{self.server.id}>'
 
-    def get_calendar(self, query="Missing"):
+    def get_calendar(self, query='Missing'):
         endpoint = '/api/v1/calendar'
         today = str(date.today())
         last_days = str(date.today() - timedelta(days=self.server.missing_days))
         future = str(date.today() + timedelta(days=self.server.future_days))
         now = datetime.now(timezone.utc).astimezone().isoformat()
-        if query == "Missing":
+        if query == 'Missing':
             params = {'start': last_days, 'end': today, 'includeArtist': 'true'}
         else:
             params = {'start': today, 'end': future, 'includeArtist': 'true'}
@@ -40,7 +40,7 @@ class LidarrAPI(object):
         if get is False:
             return
         if not isinstance(get, list):
-            self.logger.error('Unexpected reply from Lidarr\'s calendar: %s', get)
+            self.logger.error("Unexpected reply from Lidarr's calendar: %s", get)
             return
 
         for album in get:
@@ -53,26 +53,24 @@ class LidarrAPI(object):
             statistics = album.get('statistics') or {}
             percent_of_tracks = statistics.get('percentOfTracks', 0)
             # Missing: monitored albums that came out in the last missing_days without every track.
-            if query == "Missing" and (not album.get('monitored') or percent_of_tracks == 100):
+            if query == 'Missing' and (not album.get('monitored') or percent_of_tracks == 100):
                 continue
             hash_id = hashit(f'{self.server.id}{title}{album.get("id")}')
             points.append(
                 {
-                    "measurement": "Lidarr",
-                    "tags": {
-                        "type": query,
-                        "sonarrId": album.get('id'),
-                        "server": self.server.id,
-                        "albumName": title,
-                        "artistName": artist_name,
-                        "percentComplete": percent_of_tracks,
-                        "completeCount": f"{statistics.get('trackFileCount', 0)}/{statistics.get('trackCount', 0)}",
-                        "releaseDate": album.get('releaseDate', '')
+                    'measurement': 'Lidarr',
+                    'tags': {
+                        'type': query,
+                        'sonarrId': album.get('id'),
+                        'server': self.server.id,
+                        'albumName': title,
+                        'artistName': artist_name,
+                        'percentComplete': percent_of_tracks,
+                        'completeCount': f'{statistics.get("trackFileCount", 0)}/{statistics.get("trackCount", 0)}',
+                        'releaseDate': album.get('releaseDate', ''),
                     },
-                    "time": now,
-                    "fields": {
-                        "hash": hash_id
-                    }
+                    'time': now,
+                    'fields': {'hash': hash_id},
                 }
             )
 
@@ -90,13 +88,13 @@ class LidarrAPI(object):
         if get is False:
             return
         if not isinstance(get, dict) or not isinstance(get.get('records'), list):
-            self.logger.error('Unexpected reply from Lidarr\'s queue: %s', get)
+            self.logger.error("Unexpected reply from Lidarr's queue: %s", get)
             return
 
         for item in get['records']:
             try:
                 quality = item['quality']['quality']['name']
-            except (KeyError, TypeError):
+            except KeyError, TypeError:
                 quality = ''
             protocol = str(item.get('protocol', ''))
             title = item.get('title', '')
@@ -106,23 +104,21 @@ class LidarrAPI(object):
             hash_id = hashit(f'{self.server.id}{title}{item.get("artistId")}')
             points.append(
                 {
-                    "measurement": "Lidarr",
-                    "tags": {
-                        "type": "Queue",
-                        "id": item.get('id'),
-                        "server": self.server.id,
-                        "title": title,
-                        "artistName": artist,
-                        "albumName": album,
-                        "quality": quality,
-                        "protocol": protocol,
-                        "protocol_id": 1 if protocol.upper() == 'USENET' else 0,
-                        "indexer": item.get('indexer', '')
+                    'measurement': 'Lidarr',
+                    'tags': {
+                        'type': 'Queue',
+                        'id': item.get('id'),
+                        'server': self.server.id,
+                        'title': title,
+                        'artistName': artist,
+                        'albumName': album,
+                        'quality': quality,
+                        'protocol': protocol,
+                        'protocol_id': 1 if protocol.upper() == 'USENET' else 0,
+                        'indexer': item.get('indexer', ''),
                     },
-                    "time": now,
-                    "fields": {
-                        "hash": hash_id
-                    }
+                    'time': now,
+                    'fields': {'hash': hash_id},
                 }
             )
 

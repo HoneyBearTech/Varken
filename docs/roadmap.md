@@ -59,7 +59,7 @@ the Argus dashboard in the original Varken look.
 
 - Sonarr 5's new API (Sonarr 5 is in beta as of October 2026), once Sonarr 5 is stable, alongside `/api/v3`
   for Sonarr 4.
-- Raise test coverage to 80 %, and adopt `ruff format` and a wider ruff rule set.
+- Raise test coverage to 80 %, and adopt `ruff format` (done) and a wider ruff rule set.
 
 **Phase 2: Prometheus output** (built, see above; [how it works](architecture.md#the-prometheus-output))
 

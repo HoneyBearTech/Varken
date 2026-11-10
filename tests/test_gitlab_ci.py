@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
 """The GitLab copy's pipeline (.gitlab-ci.yml): GitLab rejects the whole file when a script line isn't a string."""
+
 import re
 from pathlib import Path
 

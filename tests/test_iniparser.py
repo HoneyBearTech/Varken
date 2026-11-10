@@ -14,7 +14,10 @@ def test_first_start_creates_varken_ini_from_the_example(data_folder):
     assert (data_folder / 'varken.ini').exists()
     assert parser.prometheus_server == PrometheusServer()
     assert parser.sonarr_enabled == [1, 2]
-    assert [s.url for s in parser.sonarr_servers] == ['http://sonarr1.domain.tld:8989', 'http://sonarr2.domain.tld:8989']
+    assert [s.url for s in parser.sonarr_servers] == [
+        'http://sonarr1.domain.tld:8989',
+        'http://sonarr2.domain.tld:8989',
+    ]
     assert parser.lidarr_enabled is None
     tautulli = parser.tautulli_servers[0]
     assert tautulli.fallback_ip == '1.1.1.1'
@@ -94,11 +97,14 @@ def test_prometheus_settings_from_the_environment(data_folder, monkeypatch):
     assert parser.prometheus_server == PrometheusServer(bind='127.0.0.1', port=9999, stream_details=True)
 
 
-@pytest.mark.parametrize(('name', 'value'), [
-    ('VRKN_PROMETHEUS_BIND', 'localhost'),
-    ('VRKN_PROMETHEUS_PORT', '70000'),
-    ('VRKN_PROMETHEUS_PORT', 'many'),
-])
+@pytest.mark.parametrize(
+    ('name', 'value'),
+    [
+        ('VRKN_PROMETHEUS_BIND', 'localhost'),
+        ('VRKN_PROMETHEUS_PORT', '70000'),
+        ('VRKN_PROMETHEUS_PORT', 'many'),
+    ],
+)
 def test_invalid_prometheus_settings_exit(data_folder, monkeypatch, name, value):
     monkeypatch.setenv(name, value)
 
@@ -108,8 +114,11 @@ def test_invalid_prometheus_settings_exit(data_folder, monkeypatch, name, value)
 
 def test_an_upstream_ini_gets_the_prometheus_settings_and_keeps_its_influxdb_section(data_folder):
     example = (data_folder / 'varken.example.ini').read_text()
-    upstream = example[:example.index('[prometheus]')] + (
-        '[influxdb]\nurl = influxdb.example.com\nport = 8086\n\n') + example[example.index('[tautulli-1]'):]
+    upstream = (
+        example[: example.index('[prometheus]')]
+        + ('[influxdb]\nurl = influxdb.example.com\nport = 8086\n\n')
+        + example[example.index('[tautulli-1]') :]
+    )
     (data_folder / 'varken.ini').write_text(upstream)
 
     parser = INIParser(str(data_folder))
