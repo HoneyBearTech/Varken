@@ -8,6 +8,7 @@ from tests.tautulli_data import ACTIVITY, LIBRARIES, SERVER, FakeOutput, FakeGeo
 from varken import tautulli
 from varken.tautulli import PUBLIC_IP_URL, TautulliAPI
 
+
 @pytest.fixture
 def api_with(monkeypatch):
     def make(reply, known=None):
@@ -15,6 +16,7 @@ def api_with(monkeypatch):
         db = FakeOutput()
         geoip = FakeGeoIP(known if known is not None else {'203.0.113.5': place()})
         return TautulliAPI(SERVER, db, geoip), db, geoip
+
     return make
 
 
@@ -34,8 +36,15 @@ def test_activity_writes_each_session_and_the_totals(api_with):
     assert session['tags']['location'] == 'Springfield'
     assert session['tags']['full_location'] == 'Illinois - Springfield'
     assert totals['tags']['type'] == 'current_stream_stats'
-    assert totals['fields'] == {'stream_count': 1, 'total_bandwidth': 8000, 'wan_bandwidth': 0, 'lan_bandwidth': 8000,
-                                'transcode_streams': 0, 'direct_play_streams': 0, 'direct_streams': 1}
+    assert totals['fields'] == {
+        'stream_count': 1,
+        'total_bandwidth': 8000,
+        'wan_bandwidth': 0,
+        'lan_bandwidth': 8000,
+        'transcode_streams': 0,
+        'direct_play_streams': 0,
+        'direct_streams': 1,
+    }
 
 
 def test_activity_uses_the_fallback_ip_for_unknown_addresses(api_with):
@@ -90,6 +99,7 @@ def test_stats_write_one_point_per_library(api_with):
 
 def test_activity_without_geoip_has_no_location(monkeypatch):
     from varken.helpers import NoGeoIP
+
     monkeypatch.setattr(tautulli, 'connection_handler', lambda session, request, verify: ACTIVITY)
     monkeypatch.setattr(tautulli, 'requests_get', lambda *args, **kwargs: pytest.fail('looked up the public IP'))
     db = FakeOutput()

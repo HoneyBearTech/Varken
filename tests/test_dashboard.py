@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
 """The Grafana dashboard in dashboard/: generated, and built only from metrics and labels Varken serves."""
+
 import importlib.util
 import re
 from pathlib import Path
@@ -45,8 +46,11 @@ def test_every_query_uses_metrics_and_labels_varken_serves(served, build):
             for name in names:
                 assert name in served, (panel['title'], name)
             used = set(re.findall(r'(\w+)\s*(?:=~|!=|=)\s*"', target['expr']))
-            used |= set(re.findall(r'by \(([\w, ]+)\)', target['expr'])[0].replace(' ', '').split(',')
-                        if 'by (' in target['expr'] else [])
+            used |= set(
+                re.findall(r'by \(([\w, ]+)\)', target['expr'])[0].replace(' ', '').split(',')
+                if 'by (' in target['expr']
+                else []
+            )
             for label in used:
                 assert any(label in served[name] for name in names), (panel['title'], label)
 
@@ -84,6 +88,7 @@ def test_the_argus_copy_leaves_ombi_and_sickchill_out():
 def test_the_argus_copy_names_the_instance_of_each_sonarr_and_radarr_row(served):
     def arr_table(p):
         return p['type'] == 'table' and any(make_dashboard.uses(p, m) for m in ('varken_sonarr_', 'varken_radarr_'))
+
     tables = [p for p in make_dashboard.argus_dashboard()['panels'] if arr_table(p)]
     assert len(tables) == 5
     for panel in tables:
@@ -91,8 +96,10 @@ def test_the_argus_copy_names_the_instance_of_each_sonarr_and_radarr_row(served)
         assert columns[0] == 'server'
         assert panel['transformations'][-1]['options']['renameByName']['server'] == 'Instance'
         mapping = next(o for o in panel['fieldConfig']['overrides'] if o['matcher']['options'] == 'Instance')
-        assert mapping['properties'][0]['value'][0]['options'] == {'1': {'text': 'HD', 'index': 0},
-                                                                  '2': {'text': '4K', 'index': 1}}
+        assert mapping['properties'][0]['value'][0]['options'] == {
+            '1': {'text': 'HD', 'index': 0},
+            '2': {'text': '4K', 'index': 1},
+        }
     # Varken's own copy is unchanged: no instance column.
     for panel in make_dashboard.dashboard()['panels']:
         if panel['type'] == 'table':
@@ -109,8 +116,9 @@ def test_the_classic_copy_has_the_original_look():
         assert tile['options']['colorMode'] == 'background_solid' and tile['title'] == ''
         assert tile['gridPos']['w'] == 2 and tile['gridPos']['h'] == 2
     bandwidth = [t for t in tiles if t['fieldConfig']['defaults']['displayName'].endswith('BW')]
-    assert all(t['targets'][0]['expr'].endswith(' * 8') and t['fieldConfig']['defaults']['unit'] == 'bps'
-               for t in bandwidth)
+    assert all(
+        t['targets'][0]['expr'].endswith(' * 8') and t['fieldConfig']['defaults']['unit'] == 'bps' for t in bandwidth
+    )
     types = {p['title']: p['type'] for p in classic['panels'] if p['title']}
     assert types['Server Popularity'] == 'status-history'
     assert {p['timeFrom'] for p in classic['panels'] if p['type'] == 'piechart'} == {'7d'}
@@ -136,4 +144,3 @@ def test_the_heat_strip_asks_for_few_enough_points():
     strip = next(p for p in make_dashboard.classic_dashboard()['panels'] if p['type'] == 'status-history')
     assert strip['maxDataPoints'] <= 200
     assert '$__interval' in strip['targets'][0]['expr']
-

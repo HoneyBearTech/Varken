@@ -37,8 +37,11 @@ class SonarrAPI:
 def samples(metrics):
     """{(name, frozenset(labels)): value} from a scrape, the way Prometheus would parse it."""
     text = generate_latest(metrics.registry).decode()
-    return {(sample.name, frozenset(sample.labels.items())): sample.value
-            for family in text_string_to_metric_families(text) for sample in family.samples}
+    return {
+        (sample.name, frozenset(sample.labels.items())): sample.value
+        for family in text_string_to_metric_families(text)
+        for sample in family.samples
+    }
 
 
 def value(metrics, name, **labels):
@@ -80,8 +83,9 @@ def test_a_job_that_finds_nothing_reports_zero_items(metrics):
 
 def test_a_failed_request_marks_the_job_down_and_drops_its_data(metrics):
     metrics.run(SonarrAPI(metrics, points=[{}]).get_calendar, query='Missing')
-    last_success = value(metrics, 'varken_job_last_success_timestamp_seconds', service='sonarr', server='2',
-                         job='missing')
+    last_success = value(
+        metrics, 'varken_job_last_success_timestamp_seconds', service='sonarr', server='2', job='missing'
+    )
 
     metrics.run(SonarrAPI(metrics, fail=True).get_calendar, query='Missing')
 
@@ -130,9 +134,20 @@ def test_tautulli_activity(metrics, monkeypatch):
     assert value(metrics, 'varken_tautulli_streams_by_decision', server='1', decision='transcode') == 0
     assert value(metrics, 'varken_tautulli_bandwidth_bytes_per_second', server='1', network='total') == 1_000_000
     assert value(metrics, 'varken_tautulli_bandwidth_bytes_per_second', server='1', network='wan') == 0
-    assert value(metrics, 'varken_tautulli_sessions', server='1', state='paused', media_type='episode',
-                 transcode_decision='direct_stream', video_decision='transcode', quality='1080p',
-                 platform='Windows') == 1
+    assert (
+        value(
+            metrics,
+            'varken_tautulli_sessions',
+            server='1',
+            state='paused',
+            media_type='episode',
+            transcode_decision='direct_stream',
+            video_decision='transcode',
+            quality='1080p',
+            platform='Windows',
+        )
+        == 1
+    )
     assert value(metrics, 'varken_job_points', service='tautulli', server='1', job='activity') == 2
 
 
@@ -151,12 +166,31 @@ def test_tautulli_stream_details_when_enabled(monkeypatch):
 
     run_tautulli(metrics, monkeypatch, ACTIVITY, 'get_activity')
 
-    assert value(metrics, 'varken_tautulli_session_info', server='1', session_id='abc', user='viewer',
-                 friendly_name='Viewer', title='Some Show - Pilot', product='Plex Web', product_version='4.1',
-                 platform='Windows', quality='1080p', quality_profile='Original',
-                 transcode_decision='direct_stream', video_decision='transcode', state='paused',
-                 location='Springfield', full_location='Illinois - Springfield', region_code='IL',
-                 latitude='39.8', longitude='-89.6') == 1
+    assert (
+        value(
+            metrics,
+            'varken_tautulli_session_info',
+            server='1',
+            session_id='abc',
+            user='viewer',
+            friendly_name='Viewer',
+            title='Some Show - Pilot',
+            product='Plex Web',
+            product_version='4.1',
+            platform='Windows',
+            quality='1080p',
+            quality_profile='Original',
+            transcode_decision='direct_stream',
+            video_decision='transcode',
+            state='paused',
+            location='Springfield',
+            full_location='Illinois - Springfield',
+            region_code='IL',
+            latitude='39.8',
+            longitude='-89.6',
+        )
+        == 1
+    )
     assert value(metrics, 'varken_tautulli_session_progress_ratio', server='1', session_id='abc') == 0.42
     assert '203.0.113.5' not in generate_latest(metrics.registry).decode()
 
@@ -167,6 +201,7 @@ def test_tautulli_streams_disappear_when_tautulli_is_unreachable(metrics, monkey
     def unreachable(session, request, verify):
         helpers.request_state.failed = True
         return False
+
     monkeypatch.setattr(tautulli, 'connection_handler', unreachable)
     api = TautulliAPI(SERVER, metrics, FakeGeoIP({}))
     metrics.run(api.get_activity)
@@ -178,12 +213,13 @@ def test_tautulli_streams_disappear_when_tautulli_is_unreachable(metrics, monkey
 def test_tautulli_libraries(metrics, monkeypatch):
     run_tautulli(metrics, monkeypatch, LIBRARIES, 'get_stats')
 
-    assert value(metrics, 'varken_tautulli_library_items', server='1', library='Movies', type='movie',
-                 item='total') == 10
-    assert value(metrics, 'varken_tautulli_library_items', server='1', library='TV', type='show',
-                 item='episodes') == 40
-    assert value(metrics, 'varken_tautulli_library_items', server='1', library='Music', type='artist',
-                 item='tracks') == 30
+    assert (
+        value(metrics, 'varken_tautulli_library_items', server='1', library='Movies', type='movie', item='total') == 10
+    )
+    assert value(metrics, 'varken_tautulli_library_items', server='1', library='TV', type='show', item='episodes') == 40
+    assert (
+        value(metrics, 'varken_tautulli_library_items', server='1', library='Music', type='artist', item='tracks') == 30
+    )
 
 
 def free_port():
@@ -225,20 +261,46 @@ def test_the_ci_sample_has_every_metric():
     from tests.sample_metrics import sample
 
     text = sample()
-    for name in ('varken_build_info', 'varken_job_up', 'varken_job_last_success_timestamp_seconds',
-                 'varken_job_points', 'varken_tautulli_streams', 'varken_tautulli_streams_by_decision',
-                 'varken_tautulli_bandwidth_bytes_per_second', 'varken_tautulli_sessions',
-                 'varken_tautulli_library_items', 'varken_tautulli_session_info',
-                 'varken_tautulli_session_progress_ratio', 'varken_sonarr_queue_item_info',
-                 'varken_sonarr_episode_info', 'varken_radarr_queue_item_info', 'varken_radarr_missing_info',
-                 'varken_sickchill_episode_info',
-                 'varken_lidarr_queue_item_info', 'varken_lidarr_album_info', 'varken_ombi_requests',
-                 'varken_ombi_issues',
-                 'varken_ombi_request_info', 'varken_seerr_requests', 'varken_seerr_requests_by_type',
-                 'varken_seerr_issues', 'varken_seerr_issues_by_type', 'varken_seerr_request_info'):
+    for name in (
+        'varken_build_info',
+        'varken_job_up',
+        'varken_job_last_success_timestamp_seconds',
+        'varken_job_points',
+        'varken_tautulli_streams',
+        'varken_tautulli_streams_by_decision',
+        'varken_tautulli_bandwidth_bytes_per_second',
+        'varken_tautulli_sessions',
+        'varken_tautulli_library_items',
+        'varken_tautulli_session_info',
+        'varken_tautulli_session_progress_ratio',
+        'varken_sonarr_queue_item_info',
+        'varken_sonarr_episode_info',
+        'varken_radarr_queue_item_info',
+        'varken_radarr_missing_info',
+        'varken_sickchill_episode_info',
+        'varken_lidarr_queue_item_info',
+        'varken_lidarr_album_info',
+        'varken_ombi_requests',
+        'varken_ombi_issues',
+        'varken_ombi_request_info',
+        'varken_seerr_requests',
+        'varken_seerr_requests_by_type',
+        'varken_seerr_issues',
+        'varken_seerr_issues_by_type',
+        'varken_seerr_request_info',
+    ):
         assert f'\n{name}{{' in text, name
-    for job in ('activity', 'stats', 'queue', 'missing', 'future', 'request_counts', 'issue_counts',
-                'all_requests', 'requests'):
+    for job in (
+        'activity',
+        'stats',
+        'queue',
+        'missing',
+        'future',
+        'request_counts',
+        'issue_counts',
+        'all_requests',
+        'requests',
+    ):
         assert f'job="{job}"' in text, job
     up = [line for line in text.splitlines() if line.startswith('varken_job_up{')]
     assert len(up) == 17 and all(line.endswith(' 1.0') for line in up), up
@@ -256,10 +318,10 @@ def test_a_port_in_use_exits_cleanly():
 def test_an_unlocated_viewer_has_no_place_on_the_map(monkeypatch):
     # The Tautulli module records an alien and Area 51 for viewers it can't place; the metrics leave them empty.
     from varken.helpers import NoGeoIP
+
     metrics = Metrics(PrometheusServer(stream_details=True))
     monkeypatch.setattr(tautulli, 'connection_handler', lambda session, request, verify: ACTIVITY)
     metrics.run(TautulliAPI(SERVER, metrics, NoGeoIP()).get_activity)
 
     (labels,) = [dict(labels) for name, labels in samples(metrics) if name == 'varken_tautulli_session_info']
     assert (labels['location'], labels['latitude'], labels['longitude'], labels['full_location']) == ('', '', '', '')
-

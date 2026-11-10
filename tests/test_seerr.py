@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
 """Seerr: request and issue counts, and the requests still waiting."""
+
 from urllib.parse import urlsplit
 
 import pytest
@@ -28,6 +29,7 @@ def answer(monkeypatch, routes):
         if reply is False:
             seerr.request_state.failed = True
         return reply
+
     monkeypatch.setattr(seerr, 'connection_handler', fake)
     return made
 
@@ -57,8 +59,10 @@ def test_issue_counts(metrics, monkeypatch):
 
 
 def waiting(metrics):
-    return sorted((dict(labels) for name, labels in samples(metrics) if name == 'varken_seerr_request_info'),
-                  key=lambda labels: labels['title'])
+    return sorted(
+        (dict(labels) for name, labels in samples(metrics) if name == 'varken_seerr_request_info'),
+        key=lambda labels: labels['title'],
+    )
 
 
 def test_requests_lists_the_ones_still_waiting_without_the_requester(metrics, monkeypatch):
@@ -69,10 +73,24 @@ def test_requests_lists_the_ones_still_waiting_without_the_requester(metrics, mo
     assert made[0].url.startswith('http://seerr.example.com:5055/api/v1/request?')
     assert 'take=100' in made[0].url
     assert waiting(metrics) == [
-        {'server': '1', 'type': 'tv', 'title': 'Game of Thrones (2011)', 'status': 'processing', 'is4k': 'true',
-         'requested': '2026-10-14T08:00:00.000Z', 'user': ''},
-        {'server': '1', 'type': 'movie', 'title': 'The Matrix (1999)', 'status': 'pending', 'is4k': 'false',
-         'requested': '2026-10-15T20:00:00.000Z', 'user': ''},
+        {
+            'server': '1',
+            'type': 'tv',
+            'title': 'Game of Thrones (2011)',
+            'status': 'processing',
+            'is4k': 'true',
+            'requested': '2026-10-14T08:00:00.000Z',
+            'user': '',
+        },
+        {
+            'server': '1',
+            'type': 'movie',
+            'title': 'The Matrix (1999)',
+            'status': 'pending',
+            'is4k': 'false',
+            'requested': '2026-10-15T20:00:00.000Z',
+            'user': '',
+        },
     ]
     assert value(metrics, 'varken_job_up', service='seerr', server='1', job='requests') == 1
 
@@ -95,8 +113,10 @@ def test_titles_are_looked_up_once(metrics, monkeypatch):
     metrics.run(api.get_requests)
 
     lookups = [r.url for r in made if '/movie/' in r.url or '/tv/' in r.url]
-    assert sorted(lookups) == ['http://seerr.example.com:5055/api/v1/movie/603',
-                               'http://seerr.example.com:5055/api/v1/tv/1399']
+    assert sorted(lookups) == [
+        'http://seerr.example.com:5055/api/v1/movie/603',
+        'http://seerr.example.com:5055/api/v1/tv/1399',
+    ]
 
 
 def test_a_failed_title_lookup_lists_the_tmdb_id_and_keeps_the_run_up(metrics, monkeypatch):
@@ -110,11 +130,14 @@ def test_a_failed_title_lookup_lists_the_tmdb_id_and_keeps_the_run_up(metrics, m
     assert value(metrics, 'varken_job_up', service='seerr', server='1', job='requests') == 1
 
 
-@pytest.mark.parametrize(('job', 'path', 'reply'), [
-    ('get_request_counts', '/api/v1/request/count', ['not', 'counts']),
-    ('get_issue_counts', '/api/v1/issue/count', {'open': 'three'}),
-    ('get_requests', '/api/v1/request', {'results': 'none'}),
-])
+@pytest.mark.parametrize(
+    ('job', 'path', 'reply'),
+    [
+        ('get_request_counts', '/api/v1/request/count', ['not', 'counts']),
+        ('get_issue_counts', '/api/v1/issue/count', {'open': 'three'}),
+        ('get_requests', '/api/v1/request', {'results': 'none'}),
+    ],
+)
 def test_an_unexpected_reply_marks_the_job_down(metrics, monkeypatch, job, path, reply):
     answer(monkeypatch, replies({path: reply}))
 

@@ -4,12 +4,24 @@
 
 Run from the repository root:  python -m tests.sample_metrics
 """
+
 from urllib.parse import urlsplit
 
 from prometheus_client import generate_latest
 
-from tests.arrs_data import (ALBUMS, CALENDAR, LIDARR, LIDARR_QUEUE, MOVIES, RADARR, RADARR_QUEUE, SONARR,
-                             SONARR_QUEUE, OmbiAPI, SickChillAPI)
+from tests.arrs_data import (
+    ALBUMS,
+    CALENDAR,
+    LIDARR,
+    LIDARR_QUEUE,
+    MOVIES,
+    RADARR,
+    RADARR_QUEUE,
+    SONARR,
+    SONARR_QUEUE,
+    OmbiAPI,
+    SickChillAPI,
+)
 from tests.seerr_data import SEERR, replies as seerr_replies
 from tests.tautulli_data import ACTIVITY, LIBRARIES, SERVER, FakeGeoIP, place
 from varken import lidarr, radarr, seerr, sonarr, tautulli
@@ -31,16 +43,17 @@ def sample():
     handlers = {module: module.connection_handler for module in (tautulli, sonarr, radarr, lidarr, seerr)}
     try:
         for module, reply, job, kwargs in (
-                (tautulli, ACTIVITY, api.get_activity, {}),
-                (tautulli, LIBRARIES, api.get_stats, {}),
-                (sonarr, SONARR_QUEUE, sonarr_api.get_queue, {}),
-                (sonarr, CALENDAR, sonarr_api.get_calendar, {'query': 'Missing'}),
-                (sonarr, CALENDAR, sonarr_api.get_calendar, {'query': 'Future'}),
-                (radarr, RADARR_QUEUE, radarr_api.get_queue, {}),
-                (radarr, MOVIES, radarr_api.get_missing, {}),
-                (lidarr, LIDARR_QUEUE, lidarr_api.get_queue, {}),
-                (lidarr, ALBUMS, lidarr_api.get_calendar, {'query': 'Missing'}),
-                (lidarr, ALBUMS, lidarr_api.get_calendar, {'query': 'Future'})):
+            (tautulli, ACTIVITY, api.get_activity, {}),
+            (tautulli, LIBRARIES, api.get_stats, {}),
+            (sonarr, SONARR_QUEUE, sonarr_api.get_queue, {}),
+            (sonarr, CALENDAR, sonarr_api.get_calendar, {'query': 'Missing'}),
+            (sonarr, CALENDAR, sonarr_api.get_calendar, {'query': 'Future'}),
+            (radarr, RADARR_QUEUE, radarr_api.get_queue, {}),
+            (radarr, MOVIES, radarr_api.get_missing, {}),
+            (lidarr, LIDARR_QUEUE, lidarr_api.get_queue, {}),
+            (lidarr, ALBUMS, lidarr_api.get_calendar, {'query': 'Missing'}),
+            (lidarr, ALBUMS, lidarr_api.get_calendar, {'query': 'Future'}),
+        ):
             module.connection_handler = lambda session, request, verify, reply=reply: reply
             metrics.run(job, **kwargs)
         routes = seerr_replies()
@@ -51,8 +64,12 @@ def sample():
     finally:
         for module, handler in handlers.items():
             module.connection_handler = handler
-    for job in (SickChillAPI(metrics).get_missing, ombi.get_request_counts, ombi.get_issue_counts,
-                ombi.get_all_requests):
+    for job in (
+        SickChillAPI(metrics).get_missing,
+        ombi.get_request_counts,
+        ombi.get_issue_counts,
+        ombi.get_all_requests,
+    ):
         metrics.run(job)
     return generate_latest(metrics.registry).decode()
 

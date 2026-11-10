@@ -9,7 +9,7 @@ from varken.helpers import hashit, connection_handler
 
 
 def movie_name(movie):
-    return f"{movie.get('title', '')} ({movie.get('year', '')})"
+    return f'{movie.get("title", "")} ({movie.get("year", "")})'
 
 
 class RadarrAPI(object):
@@ -24,7 +24,7 @@ class RadarrAPI(object):
         self.logger = getLogger()
 
     def __repr__(self):
-        return f"<radarr-{self.server.id}>"
+        return f'<radarr-{self.server.id}>'
 
     def get_missing(self):
         endpoint = '/api/v3/movie'
@@ -37,7 +37,7 @@ class RadarrAPI(object):
         if get is False:
             return
         if not isinstance(get, list):
-            self.logger.error('Unexpected reply from Radarr\'s movie list (is it Radarr 3 or later?): %s', get)
+            self.logger.error("Unexpected reply from Radarr's movie list (is it Radarr 3 or later?): %s", get)
             return
 
         for movie in get:
@@ -46,22 +46,20 @@ class RadarrAPI(object):
             # Missing_Available: 0 once Radarr considers the movie released (available), 1 before that.
             ma = 0 if movie.get('isAvailable') else 1
             name = movie_name(movie)
-            hash_id = hashit(f"{self.server.id}{name}{movie.get('tmdbId')}")
+            hash_id = hashit(f'{self.server.id}{name}{movie.get("tmdbId")}')
             points.append(
                 {
-                    "measurement": "Radarr",
-                    "tags": {
-                        "Missing": True,
-                        "Missing_Available": ma,
-                        "tmdbId": movie.get('tmdbId'),
-                        "server": self.server.id,
-                        "name": name,
-                        "titleSlug": movie.get('titleSlug', '')
+                    'measurement': 'Radarr',
+                    'tags': {
+                        'Missing': True,
+                        'Missing_Available': ma,
+                        'tmdbId': movie.get('tmdbId'),
+                        'server': self.server.id,
+                        'name': name,
+                        'titleSlug': movie.get('titleSlug', ''),
                     },
-                    "time": now,
-                    "fields": {
-                        "hash": hash_id
-                    }
+                    'time': now,
+                    'fields': {'hash': hash_id},
                 }
             )
 
@@ -79,7 +77,7 @@ class RadarrAPI(object):
         if get is False:
             return
         if not isinstance(get, dict) or not isinstance(get.get('records'), list):
-            self.logger.error('Unexpected reply from Radarr\'s queue (is it Radarr 3 or later?): %s', get)
+            self.logger.error("Unexpected reply from Radarr's queue (is it Radarr 3 or later?): %s", get)
             return
 
         for item in get['records']:
@@ -95,21 +93,19 @@ class RadarrAPI(object):
             hash_id = hashit(f'{self.server.id}{name}{quality}')
             points.append(
                 {
-                    "measurement": "Radarr",
-                    "tags": {
-                        "type": "Queue",
-                        "tmdbId": item.get('id'),
-                        "server": self.server.id,
-                        "name": name,
-                        "quality": quality,
-                        "protocol": protocol,
-                        "protocol_id": 1 if protocol == 'USENET' else 0,
-                        "titleSlug": movie.get('titleSlug', '')
+                    'measurement': 'Radarr',
+                    'tags': {
+                        'type': 'Queue',
+                        'tmdbId': item.get('id'),
+                        'server': self.server.id,
+                        'name': name,
+                        'quality': quality,
+                        'protocol': protocol,
+                        'protocol_id': 1 if protocol == 'USENET' else 0,
+                        'titleSlug': movie.get('titleSlug', ''),
                     },
-                    "time": now,
-                    "fields": {
-                        "hash": hash_id
-                    }
+                    'time': now,
+                    'fields': {'hash': hash_id},
                 }
             )
 

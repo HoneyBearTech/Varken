@@ -6,9 +6,13 @@
 line-length = 120
 target-version = "py314"
 
+[tool.ruff.format]
+# The code base uses single quotes; keep them so the formatting commit stays small.
+quote-style = "single"
+
 [tool.ruff.lint]
 # pycodestyle, Pyflakes, bugbear and the bandit security rules. The upstream code predates most other rule
-# families; widening the set (and adopting ruff format) is on the roadmap. Exceptions are made per line,
+# families; widening the set is on the roadmap. Exceptions are made per line,
 # with a reason.
 select = ["E", "F", "W", "B", "S"]
 

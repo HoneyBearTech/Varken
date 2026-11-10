@@ -32,6 +32,7 @@ jobs:
       - name: Lint Python (ruff)
         run: |
           ruff check --output-format github .
+          ruff format --check .
 
       - name: Lint YAML (yamllint)
         run: yamllint --strict --format github .

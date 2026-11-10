@@ -17,8 +17,15 @@ from json.decoder import JSONDecodeError
 from os.path import abspath, join, basename, isdir
 from urllib3.exceptions import InsecureRequestWarning
 from requests import get as requests_get
-from requests.exceptions import (InvalidSchema, SSLError, ConnectionError, ChunkedEncodingError, HTTPError,
-                                 RequestException, Timeout)
+from requests.exceptions import (
+    InvalidSchema,
+    SSLError,
+    ConnectionError,
+    ChunkedEncodingError,
+    HTTPError,
+    RequestException,
+    Timeout,
+)
 from urllib.parse import urlsplit
 
 logger = getLogger()
@@ -66,8 +73,10 @@ class GeoIPHandler(object):
             if self.download():
                 self.reader = Reader(self.dbfile)
             else:
-                self.logger.error('Could not download the MaxMind DB: streams have no location until the next '
-                                  'update (every 12 to 24 hours) succeeds.')
+                self.logger.error(
+                    'Could not download the MaxMind DB: streams have no location until the next '
+                    'update (every 12 to 24 hours) succeeds.'
+                )
         elif self.reader is not None:
             self.reader.close()
             self.reader = None
@@ -75,8 +84,9 @@ class GeoIPHandler(object):
     def lookup(self, ipaddress):
         if self.reader is None:
             return NoGeoIP.unknown
-        self.logger.debug('Getting lat/long for Tautulli stream using ip with last octet ending in %s',
-                          ipaddress.split('.')[-1:][0])
+        self.logger.debug(
+            'Getting lat/long for Tautulli stream using ip with last octet ending in %s', ipaddress.split('.')[-1:][0]
+        )
         return self.reader.city(ipaddress)
 
     def update(self):
@@ -90,8 +100,7 @@ class GeoIPHandler(object):
             self.reader_manager(action='open')
             return
         db_next_update = dbdate + timedelta(days=30)
-        self.logger.debug('MaxMind DB date %s, DB updates after: %s, Today: %s', dbdate, db_next_update,
-                          date.today())
+        self.logger.debug('MaxMind DB date %s, DB updates after: %s, Today: %s', dbdate, db_next_update, date.today())
         if self.reader is None or db_next_update < date.today():
             self.logger.info('Updating the MaxMind DB...')
             # download() swaps the new file in atomically, so the open reader keeps working until it's reopened.
@@ -109,20 +118,24 @@ class GeoIPHandler(object):
             self.logger.info('Downloading GeoLite2 DB from MaxMind...')
             try:
                 # MaxMind publishes each archive's SHA-256 beside it: the archive is installed only if it matches.
-                with requests_get(MAXMIND_URL, params={'suffix': 'tar.gz.sha256'}, auth=auth,
-                                  timeout=MAXMIND_TIMEOUT) as reply:
+                with requests_get(
+                    MAXMIND_URL, params={'suffix': 'tar.gz.sha256'}, auth=auth, timeout=MAXMIND_TIMEOUT
+                ) as reply:
                     if reply.status_code == 401:
-                        self.logger.error('MaxMind refused the account ID and license key (HTTP 401): check '
-                                          'maxmind_account_id and maxmind_license_key.')
+                        self.logger.error(
+                            'MaxMind refused the account ID and license key (HTTP 401): check '
+                            'maxmind_account_id and maxmind_license_key.'
+                        )
                         return False
                     reply.raise_for_status()
                     published = reply.text.split()[0].lower() if reply.text.split() else ''
                 if not re.fullmatch(r'[0-9a-f]{64}', published):
-                    self.logger.error('MaxMind\'s SHA-256 for the database is unreadable (attempt %s of 3)', attempt)
+                    self.logger.error("MaxMind's SHA-256 for the database is unreadable (attempt %s of 3)", attempt)
                 else:
                     digest = sha256()
-                    with requests_get(MAXMIND_URL, params={'suffix': 'tar.gz'}, auth=auth, timeout=MAXMIND_TIMEOUT,
-                                      stream=True) as reply:
+                    with requests_get(
+                        MAXMIND_URL, params={'suffix': 'tar.gz'}, auth=auth, timeout=MAXMIND_TIMEOUT, stream=True
+                    ) as reply:
                         reply.raise_for_status()
                         with open(tar_dbfile, 'wb') as archive:
                             for chunk in reply.iter_content(chunk_size=1 << 20):
@@ -131,8 +144,9 @@ class GeoIPHandler(object):
                     if digest.hexdigest() == published:
                         break
                     remove(tar_dbfile)
-                    self.logger.error('The GeoLite2 download doesn\'t match MaxMind\'s SHA-256 (attempt %s of 3)',
-                                      attempt)
+                    self.logger.error(
+                        "The GeoLite2 download doesn't match MaxMind's SHA-256 (attempt %s of 3)", attempt
+                    )
             except HTTPError as e:
                 self.logger.error('MaxMind answered HTTP %s (attempt %s of 3)', e.response.status_code, attempt)
             except RequestException as e:
@@ -171,8 +185,12 @@ class GeoIPHandler(object):
 
 class NoGeoIP(object):
     """Stands in for GeoIPHandler when there is no MaxMind license key: every address has an unknown location."""
-    unknown = SimpleNamespace(location=SimpleNamespace(latitude=None, longitude=None), city=SimpleNamespace(name=None),
-                              subdivisions=SimpleNamespace(most_specific=SimpleNamespace(iso_code=None, name=None)))
+
+    unknown = SimpleNamespace(
+        location=SimpleNamespace(latitude=None, longitude=None),
+        city=SimpleNamespace(name=None),
+        subdivisions=SimpleNamespace(most_specific=SimpleNamespace(iso_code=None, name=None)),
+    )
 
     def lookup(self, ipaddress):
         return self.unknown
@@ -188,8 +206,10 @@ def geoip_handler(data_folder, license_key, account_id=None):
         logger.info('No MaxMind license key: GeoIP is off and Tautulli streams have no location.')
         return NoGeoIP()
     if not account_id:
-        logger.error('GeoIP needs your MaxMind account ID as well as the license key (maxmind_account_id or '
-                     'VRKN_GLOBAL_MAXMIND_ACCOUNT_ID, since 3.0.0): GeoIP is off until it is set.')
+        logger.error(
+            'GeoIP needs your MaxMind account ID as well as the license key (maxmind_account_id or '
+            'VRKN_GLOBAL_MAXMIND_ACCOUNT_ID, since 3.0.0): GeoIP is off until it is set.'
+        )
         return NoGeoIP()
     return GeoIPHandler(data_folder, license_key, account_id)
 
@@ -243,8 +263,11 @@ def connection_handler(session, request, verify, as_is_reply=False):
         logger.error('Either your host is unreachable or you have an SSL issue. : %s', e)
     # Before ConnectionError: a connect timeout is both.
     except Timeout:
-        logger.error('%s did not answer within %s seconds (connect) or %s seconds (read)', urlsplit(r.url).netloc,
-                     *REQUEST_TIMEOUT)
+        logger.error(
+            '%s did not answer within %s seconds (connect) or %s seconds (read)',
+            urlsplit(r.url).netloc,
+            *REQUEST_TIMEOUT,
+        )
     except ConnectionError as e:
         logger.error('Cannot resolve the url/ip/port. Check connectivity. Error: %s', e)
     except ChunkedEncodingError as e:
@@ -274,7 +297,7 @@ def clean_sid_check(server_id_list, server_type=None):
         try:
             valid_sids.append(int(sid))
         except ValueError:
-            logger.error("%s is not a valid server id number", sid)
+            logger.error('%s is not a valid server id number', sid)
     if valid_sids:
         logger.info('%s : %s', t.upper(), valid_sids)
         return valid_sids
