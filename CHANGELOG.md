@@ -20,11 +20,17 @@ All notable changes to this project are documented in this file. The format is b
   (docs/dependencies.md); code-review standards and good first issues (CONTRIBUTING.md); two-factor
   authentication and how access is granted (GOVERNANCE.md).
 - Every source file starts with SPDX copyright and license lines; a test checks.
-- Property-based tests (Hypothesis) for the INI and `VRKN_*` parser, the URL and server-id checks and the log
-  filter, and a Fuzz workflow (Atheris, coverage-guided) that runs them on pull requests that touch `varken/` and
+- Property-based tests (Hypothesis) for the INI and `VRKN_*` parser, the URL and server-id checks, the log filter,
+  the services' JSON replies and the label text in `/metrics`, and a Fuzz workflow (Atheris, coverage-guided) that runs them on pull requests that touch `varken/` and
   weekly. `pytest --hypothesis-profile=thorough` runs 5,000 examples per property.
 
 ### Fixed
+- Two items with the same labels (two downloads of one episode, say) made a duplicate series in one scrape, which
+  Prometheus drops; each info family now emits a label set once.
+- A lone surrogate in a title (JSON can carry `"\ud800"`) made the whole `/metrics` scrape fail to encode, so every
+  metric disappeared; label values now replace it with U+FFFD.
+- A `null` (or any non-object) in a Sonarr, Radarr, Lidarr or Seerr reply list crashed the job with a traceback;
+  such entries are now skipped with an error.
 - A `VRKN_*_URL` ending in a line break (`host\n`) passed the URL check; it is refused now.
 - A server id without a section of its own (`sonarr_server_ids = 3` and no `[sonarr-3]`) ended in a traceback; Varken
   now says which section to add and exits.

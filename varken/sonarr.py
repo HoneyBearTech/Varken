@@ -49,6 +49,10 @@ class SonarrAPI(object):
             return
 
         for show in get:
+            if not isinstance(show, dict):
+                self.logger.error('Skipping a Sonarr entry that is not an object: %s', show)
+
+                continue
             try:
                 series_title = show['series']['title']
                 sxe = episode_code(show['seasonNumber'], show['episodeNumber'])
@@ -97,6 +101,10 @@ class SonarrAPI(object):
             return
 
         for item in get['records']:
+            if not isinstance(item, dict):
+                self.logger.error('Skipping a Sonarr entry that is not an object: %s', item)
+
+                continue
             try:
                 series_title = item['series']['title']
                 episode = item['episode']
