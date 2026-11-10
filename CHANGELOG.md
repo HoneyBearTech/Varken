@@ -7,7 +7,11 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-11-10
+
 ### Changed
+- Code is formatted with `ruff format` (single quotes, line length 120) and CI checks it; the formatting commit is
+  listed in `.git-blame-ignore-revs`.
 - GeoLite2 lookups use `maxminddb` directly instead of `geoip2`. Same database, same locations and metrics; the
   image drops geoip2 and its eight transitive packages (aiohttp and others, used only by an async web client
   Varken never called).
