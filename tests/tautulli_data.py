@@ -4,8 +4,8 @@
 
 from types import SimpleNamespace
 
-from geoip2.errors import AddressNotFoundError
 
+from varken.helpers import AddressNotFoundError
 from varken.structures import TautulliServer
 
 SERVER = TautulliServer(

@@ -9,7 +9,7 @@ from logging import getLogger
 from threading import local
 from ipaddress import IPv4Address
 from types import SimpleNamespace
-from geoip2.database import Reader
+from maxminddb import open_database
 from tarfile import open as taropen
 from urllib3 import disable_warnings
 from os import stat, remove, replace, makedirs
@@ -48,6 +48,28 @@ MAXMIND_TIMEOUT = 60
 MAXMIND_RETRY_AFTER = 3600
 
 
+class AddressNotFoundError(LookupError):
+    """The GeoLite2 database has no record for the address."""
+
+
+def place_from_record(record):
+    """The parts of a GeoLite2-City record that Varken uses, in the shape its Tautulli module reads: latitude and
+    longitude, the city's English name and the most specific subdivision's ISO code and English name. Anything the
+    record lacks is None."""
+    location = record.get('location') or {}
+    subdivisions = record.get('subdivisions') or []
+    most_specific = subdivisions[-1] if subdivisions else {}
+    return SimpleNamespace(
+        location=SimpleNamespace(latitude=location.get('latitude'), longitude=location.get('longitude')),
+        city=SimpleNamespace(name=((record.get('city') or {}).get('names') or {}).get('en')),
+        subdivisions=SimpleNamespace(
+            most_specific=SimpleNamespace(
+                iso_code=most_specific.get('iso_code'), name=(most_specific.get('names') or {}).get('en')
+            )
+        ),
+    )
+
+
 class GeoIPHandler(object):
     """GeoLite2-City lookups for Tautulli's streams. The database lives in the data folder and is downloaded when
     missing or over 30 days old. A failed download leaves Varken running: until a later update succeeds, streams
@@ -66,12 +88,12 @@ class GeoIPHandler(object):
     def reader_manager(self, action=None):
         if action == 'open':
             try:
-                self.reader = Reader(self.dbfile)
+                self.reader = open_database(self.dbfile)
                 return
             except FileNotFoundError:
                 self.logger.info('No MaxMind DB in the data folder yet: downloading it')
             if self.download():
-                self.reader = Reader(self.dbfile)
+                self.reader = open_database(self.dbfile)
             else:
                 self.logger.error(
                     'Could not download the MaxMind DB: streams have no location until the next '
@@ -87,7 +109,10 @@ class GeoIPHandler(object):
         self.logger.debug(
             'Getting lat/long for Tautulli stream using ip with last octet ending in %s', ipaddress.split('.')[-1:][0]
         )
-        return self.reader.city(ipaddress)
+        record = self.reader.get(ipaddress)
+        if record is None:
+            raise AddressNotFoundError(f'The address {ipaddress} is not in the database')
+        return place_from_record(record)
 
     def update(self):
         if self.last_failure is not None and monotonic() - self.last_failure < MAXMIND_RETRY_AFTER:
@@ -106,7 +131,7 @@ class GeoIPHandler(object):
             # download() swaps the new file in atomically, so the open reader keeps working until it's reopened.
             if self.download():
                 self.reader_manager(action='close')
-                self.reader = Reader(self.dbfile)
+                self.reader = open_database(self.dbfile)
 
     def download(self):
         """Download and install the database; True if it worked. Errors are logged by type, never with the
