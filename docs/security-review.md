@@ -28,8 +28,11 @@ Everything Varken 3.2.0 ships and everything that builds it:
 ### Method
 
 - Reading the code along each boundary against the assurance case's claims.
-- Property-based tests (Hypothesis) and coverage-guided fuzzing (Atheris) of every untrusted input, run for this
-  review; adding them to the repository and to CI is in progress, together with the fixes for findings 1–4.
+- Property-based tests (Hypothesis) and coverage-guided fuzzing (Atheris) of the INI and environment parser, the URL and
+  server-id checks and the log filter, run for this review. They're in the repository now
+  ([`tests/test_properties.py`](../tests/test_properties.py), [`fuzz/`](../fuzz/) and the Fuzz workflow); the fixes
+  for findings 1–4 are still in progress, and the first runs found two further bugs, listed under Unreleased in the
+  [changelog](../CHANGELOG.md).
 - The standing tools: CodeQL, ruff's bandit rules, pip-audit, dependency review, gitleaks, Trivy, OpenSSF
   Scorecard; checking each workflow by hand for `pull_request_target`, untrusted interpolation and write tokens.
 - Verifying the published 3.2.0 release from outside: anonymous pull, cosign signatures on the image and the

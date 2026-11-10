@@ -57,6 +57,14 @@ every commit it receives. Changes go to GitHub only; a commit made on the GitLab
 The tests in [`tests/`](tests/) are offline: they run against recorded API responses and mocks, and never
 reach Tautulli, the \*arr apps or MaxMind.
 
+[`tests/test_properties.py`](tests/test_properties.py) holds property-based tests (Hypothesis) for everything that
+turns untrusted text into configuration or log lines; `pytest --hypothesis-profile=thorough` runs 5,000 examples
+of each. The Fuzz workflow ([`.github/workflows/fuzz.yml`](.github/workflows/fuzz.yml)) drives the same properties
+with Atheris (Linux x86_64 only), on pull requests that touch `varken/` and weekly; a failing run uploads the
+crashing input, which replays with `python fuzz/fuzz_properties.py <target> <file>`. A bug a property or the fuzzer
+finds gets its input pinned as an `@example`, and a regression test beside the other tests. A new parser or check
+gets a property here and a target in `fuzz/fuzz_properties.py`.
+
 ## Before you open a pull request
 
 Run what CI runs and make sure it passes:

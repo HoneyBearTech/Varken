@@ -83,7 +83,7 @@ the Argus dashboard in the original Varken look.
 ## Later, if there's interest (icebox)
 
 - Done in 3.0.0: a Seerr module (Overseerr and Jellyseerr merged into Seerr in 2026), as Ombi's successor.
-- Fuzzing the INI and environment parser.
+- Done: fuzzing the INI and environment parser (Hypothesis properties, run coverage-guided by Atheris in CI).
 - Jellyfin and Emby support.
 
 ## What Varken will not do

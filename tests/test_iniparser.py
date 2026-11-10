@@ -265,3 +265,27 @@ def test_plain_http_has_nothing_to_verify_and_no_warning(data_folder, caplog):
 
     assert parser.tautulli_servers[0].verify_ssl is False  # ssl = false in the example
     assert 'without checking the certificate' not in caplog.text
+
+
+def test_a_server_id_without_a_section_says_what_to_add_and_exits(data_folder, caplog):
+    # Regression (found by the property tests): sonarr_server_ids = 3 without [sonarr-3] ended in a NoSectionError
+    # traceback after the example had filled in what it could.
+    ini = (data_folder / 'varken.example.ini').read_text().replace('sonarr_server_ids = 1,2', 'sonarr_server_ids = 3')
+    (data_folder / 'varken.ini').write_text(ini)
+
+    with pytest.raises(SystemExit) as stop:
+        INIParser(str(data_folder))
+
+    assert stop.value.code == 1
+    assert 'no [sonarr-3] section' in caplog.text
+
+
+def test_a_url_with_a_trailing_line_break_is_refused(data_folder, monkeypatch, caplog):
+    # Regression (found by the property tests): `$` matched before a final newline, so 'host\n' passed url_check.
+    monkeypatch.setenv('VRKN_TAUTULLI_1_URL', 'tautulli.example.com:8181\n')
+
+    with pytest.raises(SystemExit) as stop:
+        INIParser(str(data_folder))
+
+    assert stop.value.code == 1
+    assert 'is invalid in module [tautulli-1]' in caplog.text
