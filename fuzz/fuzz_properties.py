@@ -37,6 +37,8 @@ TARGETS = {
     'server_ids': 'test_server_ids_are_integers_or_false',
     'boolcheck': 'test_boolcheck_is_a_bool_and_only_true_or_yes_are_true',
     'log_filter': 'test_no_secret_survives_the_log_filter',
+    'replies': 'test_any_reply_is_handled_and_the_scrape_stays_valid',
+    'labels': 'test_any_label_text_makes_a_scrape_that_parses_back_without_duplicate_series',
 }
 
 

@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
-"""Property-based tests (Hypothesis) for what turns untrusted text into configuration and log lines: the INI file
-and its VRKN_* overrides, the URL and server-id checks, and the filter that redacts secrets from the log.
+"""Property-based tests (Hypothesis) for what turns untrusted text into behaviour: the INI file and its VRKN_*
+overrides, the URL and server-id checks, the filter that redacts secrets from the log, the services' JSON replies
+and the label text that ends up in /metrics.
 
 Each property is a plain Hypothesis test, so fuzz/fuzz_properties.py can drive it with a coverage-guided fuzzer
 (Atheris) through `.hypothesis.fuzz_one_input`: a fuzzer finding is a failing property.
@@ -13,14 +14,25 @@ import shutil
 import tempfile
 from configparser import ConfigParser
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from hypothesis import example, given
 from hypothesis import strategies as st
+from prometheus_client import generate_latest
+from prometheus_client.parser import text_string_to_metric_families
 
-from varken import iniparser
+from tests.arrs_data import LIDARR, RADARR, SONARR
+from tests.seerr_data import SEERR
+from varken import iniparser, lidarr, radarr, seerr, sonarr
 from varken.helpers import boolcheck, clean_sid_check
 from varken.iniparser import INIParser
+from varken.lidarr import LidarrAPI
+from varken.metrics import Metrics, printable
+from varken.radarr import RadarrAPI
+from varken.seerr import SeerrAPI
+from varken.sonarr import SonarrAPI
+from varken.structures import PrometheusServer
 from varken.varkenlogger import BlacklistFilter
 
 REPO = Path(__file__).resolve().parent.parent
@@ -161,3 +173,96 @@ def test_no_secret_survives_the_log_filter(secret_list, text_in_message, text_in
     output = record.getMessage()
     for secret in secret_list:
         assert secret not in output
+
+
+# Any JSON document a service could send.
+json_values = st.recursive(
+    st.none() | st.booleans() | st.integers() | st.floats(allow_nan=False) | any_text,
+    lambda children: st.lists(children, max_size=6) | st.dictionaries(any_text, children, max_size=6),
+    max_leaves=40,
+)
+
+JOBS = {
+    'sonarr_calendar': (sonarr, lambda m: SonarrAPI(SONARR, m).get_calendar, {'query': 'Missing'}),
+    'sonarr_queue': (sonarr, lambda m: SonarrAPI(SONARR, m).get_queue, {}),
+    'radarr_missing': (radarr, lambda m: RadarrAPI(RADARR, m).get_missing, {}),
+    'radarr_queue': (radarr, lambda m: RadarrAPI(RADARR, m).get_queue, {}),
+    'lidarr_calendar': (lidarr, lambda m: LidarrAPI(LIDARR, m).get_calendar, {'query': 'Future'}),
+    'lidarr_queue': (lidarr, lambda m: LidarrAPI(LIDARR, m).get_queue, {}),
+    'seerr_counts': (seerr, lambda m: SeerrAPI(SEERR, m).get_request_counts, {}),
+    'seerr_requests': (seerr, lambda m: SeerrAPI(SEERR, m).get_requests, {}),
+}
+
+
+@given(st.sampled_from(sorted(JOBS)), json_values)
+@example('sonarr_queue', {'records': [None]})
+@example('radarr_missing', [None])
+@example('lidarr_calendar', [1, 'text', None])
+@example('seerr_requests', {'results': [None, 5]})
+def test_any_reply_is_handled_and_the_scrape_stays_valid(name, reply):
+    """Whatever JSON a service sends, its job doesn't raise (the scheduler would only log the traceback) and the
+    scrape that follows is valid exposition text."""
+    module, job, kwargs = JOBS[name]
+    metrics = Metrics(PrometheusServer(stream_details=True))
+    with mock.patch.object(module, 'connection_handler', lambda session, request, verify: reply):
+        job(metrics)(**kwargs)
+    list(text_string_to_metric_families(generate_latest(metrics.registry).decode()))
+
+
+class SonarrAPIStub:
+    """A module job that writes the points it's given (the metrics only see its class name and server id)."""
+
+    server = SimpleNamespace(id=1)
+
+    def __init__(self, output, points):
+        self.output, self.points = output, points
+
+    def get_queue(self):
+        self.output.write_points(self.points)
+
+
+SonarrAPIStub.__name__ = 'SonarrAPI'
+
+
+@given(
+    st.lists(
+        st.fixed_dictionaries(
+            {'name': any_text, 'epname': any_text, 'sxe': any_text, 'protocol': any_text, 'quality': any_text}
+        ),
+        max_size=5,
+    )
+)
+@example([{'name': '\ud800', 'epname': '', 'sxe': '', 'protocol': '', 'quality': ''}])
+@example([{'name': 'x', 'epname': '', 'sxe': '', 'protocol': '', 'quality': ''}] * 2)
+@example(
+    [
+        {'name': '\ud800', 'epname': '', 'sxe': '', 'protocol': '', 'quality': ''},
+        {'name': '\ud801', 'epname': '', 'sxe': '', 'protocol': '', 'quality': ''},
+    ]
+)
+def test_any_label_text_makes_a_scrape_that_parses_back_without_duplicate_series(items):
+    """A lone surrogate in a title mustn't blank the scrape, and items that look alike (or look alike once a
+    surrogate is replaced) make one series, not a duplicate that Prometheus drops."""
+    metrics = Metrics(PrometheusServer())
+    metrics.run(SonarrAPIStub(metrics, [{'tags': tags, 'fields': {}} for tags in items]).get_queue)
+
+    scrape = generate_latest(metrics.registry).decode()
+    families = {family.name: family for family in text_string_to_metric_families(scrape)}
+
+    series = [sample.labels for sample in families['varken_sonarr_queue_item_info'].samples] if items else []
+    assert len(series) == len({tuple(sorted(labels.items())) for labels in series})
+    assert len(series) == len(
+        {
+            tuple(
+                printable(text)
+                for text in (
+                    i['name'],
+                    i['sxe'],
+                    i['epname'],
+                    i['protocol'].strip().lower().replace(' ', '_'),
+                    i['quality'],
+                )
+            )
+            for i in items
+        }
+    )

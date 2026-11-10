@@ -44,6 +44,10 @@ class LidarrAPI(object):
             return
 
         for album in get:
+            if not isinstance(album, dict):
+                self.logger.error('Skipping a Lidarr entry that is not an object: %s', album)
+
+                continue
             try:
                 title = album['title']
                 artist_name = album['artist']['artistName']
@@ -92,6 +96,10 @@ class LidarrAPI(object):
             return
 
         for item in get['records']:
+            if not isinstance(item, dict):
+                self.logger.error('Skipping a Lidarr entry that is not an object: %s', item)
+
+                continue
             try:
                 quality = item['quality']['quality']['name']
             except KeyError, TypeError:
