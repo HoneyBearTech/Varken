@@ -7,6 +7,11 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+- GeoLite2 lookups use `maxminddb` directly instead of `geoip2`. Same database, same locations and metrics; the
+  image drops geoip2 and its eight transitive packages (aiohttp and others, used only by an async web client
+  Varken never called).
+
 ### Added
 - [docs/security-review.md](docs/security-review.md): a dated security review of 3.2.0 (scope, method, findings,
   accepted risks); the next is due by October 2027.

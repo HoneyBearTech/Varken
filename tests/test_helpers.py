@@ -347,7 +347,7 @@ class FakeReader:
 
 def test_the_next_update_downloads_a_database_the_first_start_missed(tmp_path, monkeypatch):
     FakeReader.opened = []
-    monkeypatch.setattr(helpers, 'Reader', FakeReader)
+    monkeypatch.setattr(helpers, 'open_database', FakeReader)
     maxmind_answers(
         monkeypatch,
         FakeDownload(status=503),
@@ -381,7 +381,7 @@ def test_the_update_job_waits_an_hour_after_a_failed_download(tmp_path, monkeypa
 
 def test_an_update_swaps_in_a_new_database_when_the_old_one_is_due(tmp_path, monkeypatch):
     FakeReader.opened = []
-    monkeypatch.setattr(helpers, 'Reader', FakeReader)
+    monkeypatch.setattr(helpers, 'open_database', FakeReader)
     (tmp_path / 'GeoLite2-City.mmdb').write_bytes(b'old')
     old = 1_700_000_000  # 2023: long past due
     __import__('os').utime(tmp_path / 'GeoLite2-City.mmdb', (old, old))
@@ -455,3 +455,55 @@ def test_no_geoip_knows_no_location():
     place = no_geoip.lookup('203.0.113.5')
     assert place.city.name is None
     assert place.location.latitude is None
+
+
+RECORD = {
+    'city': {'names': {'en': 'Portland', 'de': 'Portland (DE)'}},
+    'location': {'latitude': 45.5, 'longitude': -122.6},
+    'subdivisions': [{'iso_code': 'US-X', 'names': {'en': 'Region'}}, {'iso_code': 'OR', 'names': {'en': 'Oregon'}}],
+}
+
+
+class RecordReader:
+    def __init__(self, records):
+        self.records = records
+
+    def get(self, ip):
+        if ip == 'not an ip':
+            raise ValueError(f'{ip!r} does not appear to be an IPv4 or IPv6 address')
+        return self.records.get(ip)
+
+
+def handler_with(records):
+    handler = GeoIPHandler.__new__(GeoIPHandler)
+    handler.logger = helpers.getLogger()
+    handler.reader = RecordReader(records)
+    return handler
+
+
+def test_a_record_becomes_the_place_tautulli_reads():
+    place = handler_with({'203.0.113.5': RECORD}).lookup('203.0.113.5')
+
+    assert (place.location.latitude, place.location.longitude) == (45.5, -122.6)
+    assert place.city.name == 'Portland'  # the English name
+    assert place.subdivisions.most_specific.iso_code == 'OR'  # the last subdivision is the most specific
+    assert place.subdivisions.most_specific.name == 'Oregon'
+
+
+def test_a_sparse_record_has_none_for_what_it_lacks():
+    place = helpers.place_from_record({'country': {'iso_code': 'US'}})
+
+    assert place.location.latitude is None and place.location.longitude is None
+    assert place.city.name is None
+    assert place.subdivisions.most_specific.iso_code is None and place.subdivisions.most_specific.name is None
+
+
+def test_an_address_the_database_does_not_know_is_not_found():
+    # Regression guard for the geoip2 -> maxminddb swap: Tautulli falls back on AddressNotFoundError.
+    with pytest.raises(helpers.AddressNotFoundError):
+        handler_with({}).lookup('198.51.100.9')
+
+
+def test_a_malformed_address_is_a_value_error():
+    with pytest.raises(ValueError, match='IPv4 or IPv6'):
+        handler_with({}).lookup('not an ip')

@@ -135,7 +135,7 @@ metric names are in [interfaces.md](interfaces.md#output-prometheus-metrics).
 ## Technology
 
 Python 3.14 with [requests](https://requests.readthedocs.io/),
-[geoip2](https://github.com/maxmind/GeoIP2-python),
+[maxminddb](https://github.com/maxmind/MaxMind-DB-Reader-python),
 [prometheus_client](https://github.com/prometheus/client_python),
 [schedule](https://github.com/dbader/schedule) and [distro](https://github.com/python-distro/distro)
 ([dependencies.md](dependencies.md)).

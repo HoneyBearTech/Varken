@@ -5,7 +5,7 @@ dependencies has a vulnerability.
 
 At runtime Varken needs Python and five packages, declared in [`requirements.in`](../requirements.in):
 [requests](https://requests.readthedocs.io/) (and urllib3) for HTTP,
-[geoip2](https://github.com/maxmind/GeoIP2-python) to read the GeoLite2 database,
+[maxminddb](https://github.com/maxmind/MaxMind-DB-Reader-python) to read the GeoLite2 database,
 [prometheus_client](https://github.com/prometheus/client_python) for the `/metrics` endpoint,
 [schedule](https://github.com/dbader/schedule) for the job timer and
 [distro](https://github.com/python-distro/distro) to log the host's distribution.

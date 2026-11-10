@@ -3,11 +3,10 @@
 # SPDX-License-Identifier: MIT
 from logging import getLogger
 from requests import Session, Request, get as requests_get
-from geoip2.errors import AddressNotFoundError
 from datetime import datetime, timezone
 
 from varken.structures import TautulliStream
-from varken.helpers import hashit, connection_handler, itemgetter_with_default
+from varken.helpers import AddressNotFoundError, hashit, connection_handler, itemgetter_with_default
 
 # Looked up once, when neither a stream's IP nor the configured fallback IP is in the GeoLite2 database.
 PUBLIC_IP_URL = 'https://api.ipify.org'
