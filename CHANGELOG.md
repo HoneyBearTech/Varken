@@ -20,8 +20,14 @@ All notable changes to this project are documented in this file. The format is b
   (docs/dependencies.md); code-review standards and good first issues (CONTRIBUTING.md); two-factor
   authentication and how access is granted (GOVERNANCE.md).
 - Every source file starts with SPDX copyright and license lines; a test checks.
+- Property-based tests (Hypothesis) for the INI and `VRKN_*` parser, the URL and server-id checks and the log
+  filter, and a Fuzz workflow (Atheris, coverage-guided) that runs them on pull requests that touch `varken/` and
+  weekly. `pytest --hypothesis-profile=thorough` runs 5,000 examples per property.
 
 ### Fixed
+- A `VRKN_*_URL` ending in a line break (`host\n`) passed the URL check; it is refused now.
+- A server id without a section of its own (`sonarr_server_ids = 3` and no `[sonarr-3]`) ended in a traceback; Varken
+  now says which section to add and exits.
 - The GitLab copy's `checks` job failed the licensing test: its slim Python image has no git, which the test
   uses to list the tracked files. It now runs on the full Python image, which has git.
 - The Device Types and Stream Types pies showed only the sessions playing at that moment, so they were empty whenever

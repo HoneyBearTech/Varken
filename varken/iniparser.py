@@ -32,7 +32,17 @@ class INIParser(object):
             self.parse_opts(read_file=True)
         except NoSectionError as e:
             self.logger.error('Missing section in (varken.ini): %s', e)
-            self.rectify_ini()
+            try:
+                self.rectify_ini()
+            except NoSectionError as e:
+                # A server id without a section of its own (sonarr_server_ids = 3, no [sonarr-3]): the example
+                # can't supply that section, so say what to add rather than fail with a traceback.
+                self.logger.error(
+                    'varken.ini has no [%s] section, but a server id in [global] points to it: add the section, '
+                    'or remove the id. Exiting.',
+                    e.section,
+                )
+                exit(1)
 
     def read_secret_files(self):
         """VRKN_<SECTION>_<KEY>_FILE names a file that holds the value (Docker and compose secrets)."""
@@ -134,9 +144,9 @@ class INIParser(object):
         )
         # Include search for port if it is needed.
         if inc_port:
-            search = search + r'(?::\d+)?' + r'(?:/?|[/?]\S+)$'
+            search = search + r'(?::\d+)?' + r'(?:/?|[/?]\S+)\Z'
         else:
-            search = search + r'(?:/?|[/?]\S+)$'
+            search = search + r'(?:/?|[/?]\S+)\Z'
 
         regex = compile('{}'.format(search), IGNORECASE)
 

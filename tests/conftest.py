@@ -6,8 +6,15 @@ import shutil
 from pathlib import Path
 
 import pytest
+from hypothesis import settings
 
 REPO = Path(__file__).resolve().parent.parent
+
+# Hypothesis: the parser properties write files, so no deadline; `pytest --hypothesis-profile=thorough` runs 5,000
+# examples per property. No example database, so a run never depends on what an earlier run left in the checkout.
+settings.register_profile('default', deadline=None, database=None)
+settings.register_profile('thorough', deadline=None, database=None, max_examples=5000)
+settings.load_profile('default')
 
 
 @pytest.fixture(autouse=True)
