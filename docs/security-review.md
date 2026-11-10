@@ -41,10 +41,10 @@ Everything Varken 3.2.0 ships and everything that builds it:
 
 | # | Finding | Severity | Status |
 | --- | --- | --- | --- |
-| 1 | A lone surrogate in a title from a service made the whole `/metrics` scrape fail to encode, so every metric disappeared (a remote service could blank the monitoring) | Medium | Fixed on `main`, in the next release (label values replace it with U+FFFD), with a property test |
-| 2 | A `null` or other non-object in a Sonarr, Radarr, Lidarr or Seerr reply list crashed the job with a traceback | Low | Fixed on `main`, in the next release (such entries are skipped with an error), with a property test |
-| 3 | Two items with the same labels made a duplicate series in one scrape, which Prometheus drops | Low | Fixed on `main`, in the next release (each info family emits a label set once), with a property test |
-| 4 | A server id with no `varken.ini` section ended in a traceback instead of an error | Low | Fixed on `main`, in the next release (Varken exits with a message naming the section), with a regression test |
+| 1 | A lone surrogate in a title from a service made the whole `/metrics` scrape fail to encode, so every metric disappeared (a remote service could blank the monitoring) | Medium | Fixed in 3.3.0 (label values replace it with U+FFFD), with a property test |
+| 2 | A `null` or other non-object in a Sonarr, Radarr, Lidarr or Seerr reply list crashed the job with a traceback | Low | Fixed in 3.3.0 (such entries are skipped with an error), with a property test |
+| 3 | Two items with the same labels made a duplicate series in one scrape, which Prometheus drops | Low | Fixed in 3.3.0 (each info family emits a label set once), with a property test |
+| 4 | A server id with no `varken.ini` section ended in a traceback instead of an error | Low | Fixed in 3.3.0 (Varken exits with a message naming the section), with a regression test |
 | 5 | Secrets were masked to `********` plus their last five characters | Low | Fixed in 3.0.0: nothing is kept |
 | 6 | The GeoLite2 download wasn't checked against MaxMind's published SHA-256 | Low | Fixed in 3.1.0 |
 | 7 | Merges to `main` had no code-scanning gate: CodeQL's check passed even with alerts | Low | Fixed: the branch ruleset blocks a merge on a high or critical CodeQL alert |
@@ -64,6 +64,6 @@ Each is documented where users will see it:
 
 ### Result
 
-Findings 5–7 are fixed in releases, and 1–4 are fixed on `main` and ship with the next release; none of them
-exposed a credential or viewer data. Apart from them, the security requirements in
+Findings 5–7 are fixed in 3.0.0, 3.1.0 and the branch rules, and findings 1–4 in 3.3.0; none of them exposed a
+credential or viewer data. Apart from them, the security requirements in
 [security.md](security.md) hold for 3.2.0.
