@@ -22,14 +22,17 @@ as (`chmod 600`): it holds API keys and passwords.
 - **Environment variables win.** For each key, Varken uses `VRKN_<SECTION>_<KEY>` if it is set, otherwise
   the value in `varken.ini`. The section name is upper-cased and its `-` becomes `_`, so `[tautulli-1]`
   `apikey` is `VRKN_TAUTULLI_1_APIKEY`.
-- **The key must still exist in `varken.ini`**, even when its environment variable is set: Varken reads
-  the file's value first. In practice, keep a complete `varken.ini` (the example has every key) and use
-  environment variables to override values in it. A server section that doesn't exist in the file, such as
-  `[sonarr-3]`, can't be created from environment variables alone; add it to the file.
-- **A missing key is filled in.** If a key or section Varken needs is missing from `varken.ini`, Varken
-  copies it from `varken.example.ini` (along with every other missing or empty key and section in that
-  file) and rewrites `varken.ini`, which drops any comments. This needs write access to the file; if the
-  file is read-only, Varken stops. The "Example" column below is that value.
+- **A key missing from `varken.ini` takes the example's value.** If `varken.ini` lacks a key, or a whole
+  section, that Varken needs (a setting new in this version, usually), Varken uses the value in
+  `varken.example.ini` from the same folder and logs one line naming those keys. The "Example" column below is
+  that value. To use another, add the key to `varken.ini` or set its environment variable. A key that is
+  there but empty stays empty.
+- **Varken never rewrites `varken.ini`.** It writes the file once, when it creates it from the example on a
+  first start. After that it only reads it: your comments stay, and the file can be read-only. (Before 3.4.0 a
+  missing key made Varken rewrite the file, which dropped its comments.)
+- **Every key must be in one of the two files**, even when its environment variable is set; the example has
+  every key. A server section that is in neither file, such as `[sonarr-3]`, can't be created from
+  environment variables alone: add it to `varken.ini`.
 - **Booleans** are true only for `true` or `yes` (any case); anything else is false.
 - **Server ids** (`<service>_server_ids`) are comma-separated whole numbers that name sections: `1,2` means
   `[sonarr-1]` and `[sonarr-2]`. `false` or `no` disables the service.
@@ -105,8 +108,8 @@ The endpoint has no authentication and no TLS. Keep it on a private network (a D
 Prometheus, for example) or bind it to `127.0.0.1`; see [security.md](security.md#the-metrics-endpoint).
 
 **From upstream Varken.** A `varken.ini` from upstream 1.7.x has no `[prometheus]` section: on its first
-start Varken adds it with the defaults above, as for any [missing key](#how-values-are-read) (which needs
-write access to the file). Its `[influxdb]` section, and any `VRKN_INFLUXDB_*` variable, is ignored: Varken no
+Varken uses the defaults above, as for any [missing key](#how-values-are-read), and leaves the file as it
+is. Its `[influxdb]` section, and any `VRKN_INFLUXDB_*` variable, is ignored: Varken no
 longer writes to InfluxDB. Delete the section or leave it ([upgrading.md](upgrading.md)).
 
 ## Keys every server section has

@@ -7,6 +7,17 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+- Varken no longer rewrites `varken.ini`. A setting the file lacks (one a newer version added, usually) takes its
+  value from `varken.example.ini`, in memory, and one INFO line names those settings. Before, Varken wrote them
+  into the file, which dropped every comment in it, needed write access and could leave the file cut short if the
+  write was interrupted. `varken.ini` is now written only when it is created on a first start, so it can be
+  read-only afterwards ([upgrading](docs/upgrading.md#33x-to-340)).
+
+### Fixed
+- A setting missing from `varken.ini` with no `varken.example.ini` beside it ended in a traceback; Varken now names
+  the setting and exits.
+
 ### Added
 - A second key for signing release tags (ED25519), kept on the maintainer's build host. Its public half is in
   `.github/allowed_signers`, and [docs/verifying-releases.md](docs/verifying-releases.md#the-git-tag) lists both

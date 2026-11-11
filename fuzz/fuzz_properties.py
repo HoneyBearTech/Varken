@@ -32,6 +32,7 @@ logging.disable(logging.CRITICAL)
 
 TARGETS = {
     'config': 'test_any_config_and_environment_starts_cleanly_or_refuses_with_exit_1',
+    'missing_keys': 'test_keys_missing_from_varken_ini_take_the_examples_values',
     'url': 'test_url_check_returns_the_url_untouched_or_refuses_to_start',
     'url_line_breaks': 'test_a_url_that_passes_has_no_line_break_in_it',
     'server_ids': 'test_server_ids_are_integers_or_false',

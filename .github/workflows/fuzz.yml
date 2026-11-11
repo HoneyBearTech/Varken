@@ -33,6 +33,7 @@ jobs:
       matrix:
         target:
           - config
+          - missing_keys
           - url
           - url_line_breaks
           - server_ids

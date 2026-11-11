@@ -29,7 +29,7 @@ Update these files as the project evolves: tick roadmap checkboxes, add a Pass-M
   each scrape), `helpers.py` (GeoIP, HTTP), `structures.py` (NamedTuples) and `varkenlogger.py` (logging plus the
   `BlacklistFilter` that redacts secrets). Points are internal: only the metrics in `docs/interfaces.md` are a
   public interface.
-- Config: `varken.ini` in the data folder (template `data/varken.example.ini`); every key can be overridden by `VRKN_<SECTION>_<KEY>`. Env values only override: every key must still exist in the ini, which is created from the example on first start.
+- Config: `varken.ini` in the data folder (template `data/varken.example.ini`); every key can be overridden by `VRKN_<SECTION>_<KEY>`. The ini is created from the example on first start and never written again: a key it lacks takes the example's value in memory (`ConfigFile` in `iniparser.py`), so every key must be in one of the two files, even when its env variable is set.
 - Runtime deps in `requirements.in` → `requirements.txt` (hash-pinned): distro, maxminddb, prometheus-client, requests,
   schedule. Dev tools in `requirements-dev.in` → `requirements-dev.txt`.
 - Image: `Dockerfile` (`python:3.15.x-slim` pinned by version and digest; Dependabot bumps it, uid 1000, read-only-rootfs friendly), published to `ghcr.io/honeybeartech/varken` by `.github/workflows/release.yml` on a signed `vX.Y.Z` tag (SBOM, provenance, cosign, signed SHA256SUMS). Release = a `## [x.y.z]` section in CHANGELOG.md, then `git tag -s`.

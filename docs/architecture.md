@@ -38,7 +38,7 @@ UniFi ────┘                  │            ▲     └─▶ logs (st
 | Component | File | Role |
 | --- | --- | --- |
 | Entry point | [`Varken.py`](../Varken.py) | Parses the command line, finds the data folder, sets up logging, loads the config, starts the metrics server, registers one job per enabled server and feature, then runs the scheduler loop. `thread()` starts each job in its own thread, through the metrics collector. |
-| Config | [`varken/iniparser.py`](../varken/iniparser.py) | Reads `VRKN_*_FILE` secrets, reads `varken.ini`, applies `VRKN_*` overrides, validates URLs, `fallback_ip` and the `[prometheus]` address and port, fills missing keys from the example, and builds the `[prometheus]` settings and one server record per section ([configuration.md](configuration.md)). |
+| Config | [`varken/iniparser.py`](../varken/iniparser.py) | Reads `VRKN_*_FILE` secrets, reads `varken.ini`, applies `VRKN_*` overrides, validates URLs, `fallback_ip` and the `[prometheus]` address and port, takes the value of a key the file lacks from the example (without writing to the file), and builds the `[prometheus]` settings and one server record per section ([configuration.md](configuration.md)). |
 | Data shapes | [`varken/structures.py`](../varken/structures.py) | Named tuples for the metrics endpoint's settings (`PrometheusServer`), each server's settings and the API responses Varken understands. |
 | Modules | [`varken/tautulli.py`](../varken/tautulli.py), [`sonarr.py`](../varken/sonarr.py), [`radarr.py`](../varken/radarr.py), [`lidarr.py`](../varken/lidarr.py), [`ombi.py`](../varken/ombi.py), [`seerr.py`](../varken/seerr.py), [`sickchill.py`](../varken/sickchill.py), [`unifi.py`](../varken/unifi.py) | One class per service. Each job makes its requests, maps the answer onto the data shapes, builds points and hands them to the metrics collector (`Metrics.write_points`). |
 | Metrics collector | [`varken/metrics.py`](../varken/metrics.py) | Varken's output. Runs each job, records whether it succeeded and the points it wrote, and builds the metrics from those snapshots on every scrape; serves them with prometheus_client's HTTP server. |
@@ -50,7 +50,8 @@ UniFi ────┘                  │            ▲     └─▶ logs (st
 1. **Start-up.** Varken finds the data folder (`DATA_FOLDER`, `-d`, or `data/`) and stops if it doesn't
    exist. It logs to the console and, unless `LOG_TO_FILE=false`, to `logs/varken.log`.
 2. **Config.** It reads the `VRKN_*_FILE` secrets into their variables, reads `varken.ini` (creating it from
-   `varken.example.ini` if missing, and filling in missing keys), applies the environment overrides, and
+   `varken.example.ini` on a first start; a key the file lacks takes the example's value, and the file is not
+   rewritten), applies the environment overrides, and
    builds the `[prometheus]` settings and the list of servers per enabled service. An unreadable or
    doubly-set secret, an invalid URL, a private `fallback_ip` or an invalid `[prometheus]` `bind` or `port`
    stops it here. An `[influxdb]` section left over from upstream Varken is ignored.
@@ -76,9 +77,9 @@ UniFi ────┘                  │            ▲     └─▶ logs (st
 ### When something fails
 
 - **A service is down, slow or answers with an error**: the job logs it (401: wrong API key, 404: wrong
-  URL, connection or TLS errors) and records nothing; the next run tries again. Requests have no timeout,
-  so a service that accepts the connection but never answers holds that job's thread
-  ([a known weakness](security.md#known-weaknesses)).
+  URL, connection or TLS errors) and records nothing; the next run tries again. Every request has a timeout
+  (10 s to connect, 30 s to read), so a service that accepts the connection but never answers fails that run
+  instead of holding the job's thread.
 - **An answer has a shape Varken doesn't expect**: an unknown field is logged and that item (or that
   run) skipped; a missing field ends that run with a Python traceback in the log. Either way the next run
   tries again.
