@@ -1,4 +1,6 @@
-# Commits that only reformatted code; git blame skips them (git config blame.ignoreRevsFile .git-blame-ignore-revs;
-# GitHub honours this file by default).
+# Changes to how the code is written, not to what it does; git blame skips them
+# (git config blame.ignoreRevsFile .git-blame-ignore-revs; GitHub honours this file by default).
 # Adopt ruff format (#34)
 4a034d0d790e6d8b4e4eeb19abf597d85fca3ac1
+# Check the code with every ruff rule family (#48): type hints, docstrings, sorted imports, pathlib
+c79dfe29a9d2ef2e8342022efa353714c41ec8a1
