@@ -132,6 +132,13 @@ What the project itself holds, and how each is kept (the operator's secrets are 
   permissions protect it), is registered with GitHub for signing only, and gives no access to any repository or
   host. Commits made on that host are signed with it too. If either is lost or exposed, the maintainer removes it
   from GitHub and from `allowed_signers`, publishes the new public key, and says which tags it signed.
+- **The machine account's access token.** Work the maintainer prepares on the build host reaches GitHub through
+  a machine account of the maintainer's ([GOVERNANCE.md](../GOVERNANCE.md#access-to-sensitive-resources)). Its
+  access token is a file on that host and has no expiry date. What the token can do is bounded by the account,
+  which has the write role and no admin rights: it can push branches and version tags, open pull requests and
+  merge one the maintainer has approved, but it can't push to `main`, approve a pull request, or change a rule
+  or a setting. If the host or the token may have been exposed, the maintainer revokes the token and checks
+  what the account did in the meantime.
 - **The GitLab mirror token** is a project access token on the maintainer's own GitLab, scoped to writing that
   one repository, with an expiry, in a masked, protected CI/CD variable; it is rotated before it expires, or at
   once if it may have leaked.

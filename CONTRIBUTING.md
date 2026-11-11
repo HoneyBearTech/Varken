@@ -174,8 +174,12 @@ Every pull request is reviewed before it merges, against the same list, whoever 
 - **Dependencies** are pinned with hashes, needed, maintained and under an allowed license.
 - **Every new source file** starts with SPDX copyright and license lines (a test checks).
 
-With one maintainer, the maintainer reviews their own pull requests against this list and merges them through
-the ruleset's pull-request bypass ([GOVERNANCE.md](GOVERNANCE.md)); a second maintainer would review instead.
+With one maintainer, the maintainer reviews their own work against this list. Pull requests opened by
+[@honeybeartech-ops](https://github.com/honeybeartech-ops) are the maintainer's work too: that is the maintainer's
+machine account, and the maintainer reviews and approves each of its pull requests under their own account before
+it merges. A pull request opened under the maintainer's own account is merged through the ruleset's pull-request
+bypass. [GOVERNANCE.md](GOVERNANCE.md) describes both; neither is a second pair of eyes, and a second maintainer
+would review instead.
 
 ## Releases
 
