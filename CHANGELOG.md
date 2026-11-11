@@ -10,7 +10,8 @@ All notable changes to this project are documented in this file. The format is b
 ### Changed
 - For contributors: ruff now checks the code with every rule family (`select = ["ALL"]`; the few exceptions are
   listed with their reasons in `pyproject.toml`), where it had five. Every function has type hints and, outside
-  the tests, a docstring. What Varken does, exports and logs is unchanged.
+  the tests, a docstring. What Varken does, exports and logs is unchanged. That change is listed in
+  `.git-blame-ignore-revs`.
 
 ### Added
 - Tests for the Ombi, SickChill and UniFi modules, which had none: test coverage goes from 84 % to 94 %.
