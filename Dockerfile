@@ -1,5 +1,5 @@
 # Base image pinned by version and multi-arch digest; Dependabot proposes updates to both.
-FROM python:3.14.8-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+FROM python:3.15.2-slim@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928
 
 # Set by the release workflow from the tag; a local build reports 0.0.0.
 ARG VERSION=0.0.0

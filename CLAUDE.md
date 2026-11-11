@@ -24,7 +24,7 @@ Update these files as the project evolves: tick roadmap checkboxes, add a Pass-M
 - **Keep every module working**, but build the Argus integration around **Tautulli first**. Argus already covers the *arrs (exportarr), Plex (Plex exporter) and UniFi (unpoller).
 
 ## Stack
-- Python 3.14. Entry point `Varken.py`; package `varken/`, with one module per service, `iniparser.py` (config),
+- Python 3.15. Entry point `Varken.py`; package `varken/`, with one module per service, `iniparser.py` (config),
   `metrics.py` (the output: runs each job, keeps the points the job hands to `Metrics.write_points`, builds gauges on
   each scrape), `helpers.py` (GeoIP, HTTP), `structures.py` (NamedTuples) and `varkenlogger.py` (logging plus the
   `BlacklistFilter` that redacts secrets). Points are internal: only the metrics in `docs/interfaces.md` are a
@@ -32,7 +32,7 @@ Update these files as the project evolves: tick roadmap checkboxes, add a Pass-M
 - Config: `varken.ini` in the data folder (template `data/varken.example.ini`); every key can be overridden by `VRKN_<SECTION>_<KEY>`. Env values only override: every key must still exist in the ini, which is created from the example on first start.
 - Runtime deps in `requirements.in` → `requirements.txt` (hash-pinned): distro, maxminddb, prometheus-client, requests,
   schedule. Dev tools in `requirements-dev.in` → `requirements-dev.txt`.
-- Image: `Dockerfile` (`python:3.14.x-slim` pinned by version and digest; Dependabot bumps it, uid 1000, read-only-rootfs friendly), published to `ghcr.io/honeybeartech/varken` by `.github/workflows/release.yml` on a signed `vX.Y.Z` tag (SBOM, provenance, cosign, signed SHA256SUMS). Release = a `## [x.y.z]` section in CHANGELOG.md, then `git tag -s`.
+- Image: `Dockerfile` (`python:3.15.x-slim` pinned by version and digest; Dependabot bumps it, uid 1000, read-only-rootfs friendly), published to `ghcr.io/honeybeartech/varken` by `.github/workflows/release.yml` on a signed `vX.Y.Z` tag (SBOM, provenance, cosign, signed SHA256SUMS). Release = a `## [x.y.z]` section in CHANGELOG.md, then `git tag -s`.
 - Default branch is `main` (renamed from `master` on 2026-10-16).
 - GitLab copy: the owner's self-hosted GitLab (CE, LAN only; host facts in Chronos) holds a mirror. GitHub stays
   the home (OpenSSF badges, Scorecard, Dependabot, releases); every change goes to GitHub as a PR, never to
@@ -54,7 +54,7 @@ Update these files as the project evolves: tick roadmap checkboxes, add a Pass-M
 python3 -m venv .venv && .venv/bin/pip install --require-hashes --no-deps -r requirements.txt -r requirements-dev.txt
 .venv/bin/ruff check . && .venv/bin/yamllint --strict .
 .venv/bin/coverage run -m pytest && .venv/bin/coverage report
-uv pip compile --generate-hashes --python-version 3.14 requirements.in -o requirements.txt   # same for requirements-dev.in
+uv pip compile --generate-hashes --python-version 3.15 requirements.in -o requirements.txt   # same for requirements-dev.in
 docker build -t varken:dev .
 cp .env.example .env && docker compose up -d      # Varken alone, /metrics on 127.0.0.1:9180 (BYO Prometheus/Grafana)
 curl -s 127.0.0.1:9180/metrics | grep varken_job_up
