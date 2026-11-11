@@ -130,8 +130,8 @@ What the project itself holds, and how each is kept (the operator's secrets are 
   in [`.github/allowed_signers`](../.github/allowed_signers). One is held in a password manager. The other is a
   file on the maintainer's own build host, so that releases can be tagged there: it has no passphrase (file
   permissions protect it), is registered with GitHub for signing only, and gives no access to any repository or
-  host. If either is lost or exposed, the maintainer removes it from GitHub and from `allowed_signers`, publishes
-  the new public key, and says which tags it signed.
+  host. Commits made on that host are signed with it too. If either is lost or exposed, the maintainer removes it
+  from GitHub and from `allowed_signers`, publishes the new public key, and says which tags it signed.
 - **The GitLab mirror token** is a project access token on the maintainer's own GitLab, scoped to writing that
   one repository, with an expiry, in a masked, protected CI/CD variable; it is rotated before it expires, or at
   once if it may have leaked.
