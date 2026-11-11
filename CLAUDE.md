@@ -1,9 +1,9 @@
 # Varken — Project Context for Claude Code
 
-Collects data from the Plex ecosystem (Tautulli, Sonarr, Radarr, Lidarr, Ombi, SickChill) and UniFi and serves it
-as Prometheus metrics at `/metrics` (port 9180). A standalone continuation of Boerderij/Varken (detached from the
-fork network), to be integrated into **Argus** (the owner's Prometheus/Grafana stack). It no longer writes to
-InfluxDB.
+Collects data from the Plex ecosystem (Tautulli, Sonarr, Radarr, Lidarr, Ombi, Seerr, SickChill) and UniFi and
+serves it as Prometheus metrics at `/metrics` (port 9180). A standalone continuation of Boerderij/Varken (detached
+from the fork network), which **Argus** (the owner's Prometheus/Grafana stack) runs as an optional service since
+Argus 0.8.0. It no longer writes to InfluxDB.
 
 ## Before Making Structural Changes
 Read the project's notes first. They live outside this repo, in the owner's Obsidian vault **Chronos** at `~/Chronos/Projects/Varken/` (every file is prefixed `varken-`):
@@ -43,16 +43,16 @@ Update these files as the project evolves: tick roadmap checkboxes, add a Pass-M
 ## Conventions
 - No secrets, keys, hostnames or IPs in anything committed; `.env` and `config/` are gitignored, so extend `.gitignore` rather than working around it. Examples use `*.example.com` placeholders.
 - Any value that can hold a secret must be redacted from logs (`BlacklistFilter.blacklisted_strings`, `INIParser.config_blacklist`). Never send credentials anywhere but the service they belong to (the Tautulli session adds `apikey` to every request it makes).
-- Tests are offline (fixtures and mocks, no network). New behaviour gets tests; a bug fix gets a regression test; coverage never drops below the floor in `pyproject.toml` (`fail_under = 65`).
+- Tests are offline (fixtures and mocks, no network). New behaviour gets tests; a bug fix gets a regression test; coverage never drops below the floor in `pyproject.toml` (`fail_under = 80`).
 - User-visible changes go under "Unreleased" in `CHANGELOG.md`; docs in `docs/` stay true (mark unbuilt things **Planned**).
 - Metric names and labels (`docs/interfaces.md`) are a public interface: renaming or removing one is a breaking change.
 - Commits are signed off (`git commit -s`, DCO). Workflows: `permissions: contents: read` at the top, actions pinned to full SHAs, untrusted input only through `env:`. CI's job name "Checks + tests" is the required check, so keep it. The default-branch ruleset also requires a code owner's approval after the last push and an up-to-date branch; the owner merges through the admin pull-request bypass (`gh pr merge --squash --admin`, owner's decision 2026-10-16), never by pushing, and only when every required check is green and code scanning shows no open alert on the PR (the bypass also skips the ruleset's CodeQL gate). New source files start with the SPDX lines (`# SPDX-FileCopyrightText: 2026 HoneyBearTech` / `# SPDX-License-Identifier: MIT`); `tests/test_licensing.py` checks.
-- Ruff rules are `E, F, W, B, S` at line length 120; exceptions are per line with a reason. `ruff format` isn't adopted yet (it's on the roadmap).
+- Ruff rules are `E, F, W, B, S` at line length 120; exceptions are per line with a reason. Code is formatted with `ruff format` (single quotes); CI fails on unformatted files.
 
 ## Commands
 ```sh
 python3 -m venv .venv && .venv/bin/pip install --require-hashes --no-deps -r requirements.txt -r requirements-dev.txt
-.venv/bin/ruff check . && .venv/bin/yamllint --strict .
+.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/yamllint --strict .
 .venv/bin/coverage run -m pytest && .venv/bin/coverage report
 uv pip compile --generate-hashes --python-version 3.15 requirements.in -o requirements.txt   # same for requirements-dev.in
 docker build -t varken:dev .

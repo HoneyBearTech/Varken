@@ -48,18 +48,27 @@ nothing ([upgrading](upgrading.md)).
 **3.2.0** (2026-10-16) adds Lidarr item metrics (the queue, and missing and upcoming albums) and a classic copy of
 the Argus dashboard in the original Varken look.
 
+**3.3.0** (2026-11-10) moves to Python 3.15, reads GeoLite2 with `maxminddb` instead of `geoip2`, and fixes
+bugs that could break a scrape or crash a job (a lone surrogate in a title, two items with the same labels, a
+`null` in a service's reply). It adds property-based tests, coverage-guided fuzzing in CI and a dated
+[security review](security-review.md), and formats the code with `ruff format`.
+
 ## Over the following year
 
-**Next, Phase 3: Argus integration** (**Planned**, in the [Argus](https://github.com/HoneyBearTech/Argus) repository)
+**Phase 3: Argus integration** (built, in the [Argus](https://github.com/HoneyBearTech/Argus) repository since
+its 0.8.0)
 
-- A `varken` service and Prometheus job in Argus, a Tautulli dashboard and alerts (for example "Varken
-  silent" and "Tautulli unreachable"). Varken stays a standalone project; Argus is one user of it.
+- Argus runs Varken as its optional `varken` service and scrapes it as the `varken` job. It ships a Tautulli
+  dashboard, the Varken dashboard and its classic copy ([dashboard/](../dashboard/README.md)), and two alerts,
+  "Tautulli unreachable" and "Tautulli data stale"; its "Monitoring target down" alert covers Varken going
+  silent. Varken stays a standalone project; Argus is one user of it.
 
 **Phase 1: finish modernizing the runtime**
 
 - Sonarr 5's new API (Sonarr 5 is in beta as of October 2026), once Sonarr 5 is stable, alongside `/api/v3`
   for Sonarr 4.
-- Raise test coverage to 80 %, and adopt `ruff format` (done) and a wider ruff rule set.
+- A wider ruff rule set. Done: the coverage floor is 80 % (2.3.0), and the code is formatted with `ruff format`
+  (3.3.0).
 
 **Phase 2: Prometheus output** (built, see above; [how it works](architecture.md#the-prometheus-output))
 
@@ -68,17 +77,17 @@ the Argus dashboard in the original Varken look.
 
 **Security and project health**
 
-- Turn on GitHub Issues, private vulnerability reporting, secret scanning with push protection and
-  Dependabot security updates.
-- Protect the default branch with a ruleset: changes only through pull requests that pass "Checks + tests",
-  no force-pushes or deletion.
-- Sign every release tag (`git tag -s`, key in `.github/allowed_signers`) and every release, starting with
+- Done: GitHub Issues, private vulnerability reporting, secret scanning with push protection and Dependabot
+  security updates are on.
+- Done: rulesets protect the default branch (changes only through pull requests that pass "Checks + tests",
+  no force-pushes or deletion) and the release tags (a pushed tag can't be moved or deleted).
+- Done: every release tag (`git tag -s`, keys in `.github/allowed_signers`) and every release is signed, since
   2.0.0 ([verifying-releases.md](verifying-releases.md)).
-- The [OpenSSF Best Practices badge](https://www.bestpractices.dev/projects/15525) at Passing, then Silver,
-  and OSPS Baseline Levels 1 and 2.
-- A healthy OpenSSF Scorecard: pinned dependencies, signed releases, branch protection, SAST.
-- Close the remaining [known weaknesses](security.md#known-weaknesses) (the Phase 1 items above, and full
-  masking of secrets in logs).
+- Done: the [OpenSSF Best Practices badge](https://www.bestpractices.dev/projects/15525) is at Silver, with
+  OSPS Baseline Levels 1 and 2.
+- Keep a healthy OpenSSF Scorecard: pinned dependencies, signed releases, branch protection, SAST.
+- Close the remaining [known weakness](security.md#known-weaknesses): Varken rewrites `varken.ini` when keys are
+  missing, which drops its comments. (Secrets in logs are fully masked since 3.0.0.)
 
 ## Later, if there's interest (icebox)
 
