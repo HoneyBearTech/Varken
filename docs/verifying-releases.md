@@ -70,7 +70,7 @@ is covered.
 
 ## The git tag
 
-The maintainer signs version tags with an SSH key whose public half is in
+The maintainer signs version tags with one of two SSH keys whose public halves are in
 [`.github/allowed_signers`](../.github/allowed_signers):
 
 ```sh
@@ -78,9 +78,15 @@ git clone https://github.com/HoneyBearTech/Varken.git && cd Varken
 git -c gpg.ssh.allowedSignersFile=.github/allowed_signers verify-tag v3.3.0
 ```
 
-It should print `Good "git" signature for 31805425+HoneyBearTech@users.noreply.github.com`. Check
-`.github/allowed_signers` against the key published at <https://github.com/HoneyBearTech.keys> rather than
-trusting the copy in the same checkout alone.
+It should print `Good "git" signature for 31805425+HoneyBearTech@users.noreply.github.com` with one of these
+keys:
+
+- `RSA key SHA256:CDViWx+dYgAlIJ8VOGUnzwwyPIf/KC48fVOwbJrDL+g`, which signed every tag from v2.0.0 to v3.3.0;
+- `ED25519 key SHA256:R72gK4FoQHzz05uOXN5TiuZpijRUWqgyWbTxKxhe21M`, added after 3.3.0.
+
+Check `.github/allowed_signers` against the signing keys GitHub lists for the maintainer at
+<https://api.github.com/users/HoneyBearTech/ssh_signing_keys> rather than trusting the copy in the same
+checkout alone.
 
 ## If a check fails
 
