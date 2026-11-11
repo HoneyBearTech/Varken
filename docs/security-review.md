@@ -6,8 +6,8 @@ a new service module, whichever comes first.
 
 ## 2026-10-16 — Varken 3.2.0 and `main`
 
-**Reviewed by** the maintainer (@HoneyBearTech), with an AI coding assistant (Claude Code) doing the line-by-line
-reading and running the tools. This is a review by a project member, not an independent audit.
+**Reviewed by** the maintainer (@HoneyBearTech), with an automated assistant doing the line-by-line reading and
+running the tools. This is a review by a project member, not an independent audit.
 
 ### Scope
 
