@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Seerr: request and issue counts, and the requests still waiting."""
 
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
 import pytest
@@ -13,17 +14,20 @@ from varken.metrics import Metrics
 from varken.seerr import SeerrAPI
 from varken.structures import PrometheusServer
 
+if TYPE_CHECKING:
+    from requests import PreparedRequest, Session
+
 
 @pytest.fixture
-def metrics():
+def metrics() -> Metrics:
     return Metrics(PrometheusServer())
 
 
-def answer(monkeypatch, routes):
+def answer(monkeypatch: pytest.MonkeyPatch, routes: dict[str, Any]) -> list[PreparedRequest]:
     """Make Seerr answer each request by its path; return the requests made."""
     made = []
 
-    def fake(session, request, verify):
+    def fake(session: Session, request: PreparedRequest, *, verify: bool) -> object:
         made.append(request)
         reply = routes.get(urlsplit(request.url).path, False)
         if reply is False:
@@ -34,7 +38,7 @@ def answer(monkeypatch, routes):
     return made
 
 
-def test_request_counts(metrics, monkeypatch):
+def test_request_counts(metrics: Metrics, monkeypatch: pytest.MonkeyPatch) -> None:
     made = answer(monkeypatch, replies())
 
     metrics.run(SeerrAPI(SEERR, metrics).get_request_counts)
@@ -48,7 +52,7 @@ def test_request_counts(metrics, monkeypatch):
     assert value(metrics, 'varken_job_up', service='seerr', server='1', job='request_counts') == 1
 
 
-def test_issue_counts(metrics, monkeypatch):
+def test_issue_counts(metrics: Metrics, monkeypatch: pytest.MonkeyPatch) -> None:
     answer(monkeypatch, replies())
 
     metrics.run(SeerrAPI(SEERR, metrics).get_issue_counts)
@@ -58,14 +62,16 @@ def test_issue_counts(metrics, monkeypatch):
     assert value(metrics, 'varken_seerr_issues_by_type', server='1', type='other') == 1
 
 
-def waiting(metrics):
+def waiting(metrics: Metrics) -> list[dict[str, str]]:
     return sorted(
         (dict(labels) for name, labels in samples(metrics) if name == 'varken_seerr_request_info'),
         key=lambda labels: labels['title'],
     )
 
 
-def test_requests_lists_the_ones_still_waiting_without_the_requester(metrics, monkeypatch):
+def test_requests_lists_the_ones_still_waiting_without_the_requester(
+    metrics: Metrics, monkeypatch: pytest.MonkeyPatch
+) -> None:
     made = answer(monkeypatch, replies())
 
     metrics.run(SeerrAPI(SEERR, metrics).get_requests)
@@ -95,7 +101,7 @@ def test_requests_lists_the_ones_still_waiting_without_the_requester(metrics, mo
     assert value(metrics, 'varken_job_up', service='seerr', server='1', job='requests') == 1
 
 
-def test_requests_name_the_requester_with_stream_details_and_never_their_email(monkeypatch):
+def test_requests_name_the_requester_with_stream_details_and_never_their_email(monkeypatch: pytest.MonkeyPatch) -> None:
     metrics = Metrics(PrometheusServer(stream_details=True))
     answer(monkeypatch, replies())
 
@@ -105,7 +111,7 @@ def test_requests_name_the_requester_with_stream_details_and_never_their_email(m
     assert 'example.com' not in repr(metrics.snapshot())
 
 
-def test_titles_are_looked_up_once(metrics, monkeypatch):
+def test_titles_are_looked_up_once(metrics: Metrics, monkeypatch: pytest.MonkeyPatch) -> None:
     made = answer(monkeypatch, replies())
     api = SeerrAPI(SEERR, metrics)
 
@@ -119,7 +125,9 @@ def test_titles_are_looked_up_once(metrics, monkeypatch):
     ]
 
 
-def test_a_failed_title_lookup_lists_the_tmdb_id_and_keeps_the_run_up(metrics, monkeypatch):
+def test_a_failed_title_lookup_lists_the_tmdb_id_and_keeps_the_run_up(
+    metrics: Metrics, monkeypatch: pytest.MonkeyPatch
+) -> None:
     routes = replies()
     del routes['/api/v1/movie/603']
     answer(monkeypatch, routes)
@@ -138,7 +146,9 @@ def test_a_failed_title_lookup_lists_the_tmdb_id_and_keeps_the_run_up(metrics, m
         ('get_requests', '/api/v1/request', {'results': 'none'}),
     ],
 )
-def test_an_unexpected_reply_marks_the_job_down(metrics, monkeypatch, job, path, reply):
+def test_an_unexpected_reply_marks_the_job_down(
+    metrics: Metrics, monkeypatch: pytest.MonkeyPatch, job: str, path: str, reply: object
+) -> None:
     answer(monkeypatch, replies({path: reply}))
 
     metrics.run(getattr(SeerrAPI(SEERR, metrics), job))
@@ -146,7 +156,7 @@ def test_an_unexpected_reply_marks_the_job_down(metrics, monkeypatch, job, path,
     assert value(metrics, 'varken_job_up', service='seerr', server='1', job=job.removeprefix('get_')) == 0
 
 
-def test_seerr_unreachable_marks_the_job_down(metrics, monkeypatch):
+def test_seerr_unreachable_marks_the_job_down(metrics: Metrics, monkeypatch: pytest.MonkeyPatch) -> None:
     answer(monkeypatch, {})
 
     metrics.run(SeerrAPI(SEERR, metrics).get_request_counts)

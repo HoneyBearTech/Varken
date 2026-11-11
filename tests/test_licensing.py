@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_every_python_file_has_spdx_copyright_and_license_lines():
+def test_every_python_file_has_spdx_copyright_and_license_lines() -> None:
     files = subprocess.run(
         ['git', 'ls-files', '*.py'],  # noqa: S607
         cwd=ROOT,

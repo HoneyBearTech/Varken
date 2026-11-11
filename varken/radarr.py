@@ -1,21 +1,31 @@
 # SPDX-FileCopyrightText: 2018 Boerderij
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
+"""Radarr: its download queue, and the movies it has no file for."""
+
+from datetime import UTC, datetime
 from logging import getLogger
-from requests import Session, Request
-from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any
 
-from varken.helpers import hashit, connection_handler
+from requests import Request, Session
+
+from varken.helpers import connection_handler, hashit
+
+if TYPE_CHECKING:
+    from varken.metrics import Metrics
+    from varken.structures import RadarrServer
 
 
-def movie_name(movie):
+def movie_name(movie: dict[str, Any]) -> str:
+    """Name a movie with its year: Title (2024)."""
     return f'{movie.get("title", "")} ({movie.get("year", "")})'
 
 
-class RadarrAPI(object):
+class RadarrAPI:
     """Radarr through its v3 API (Radarr 4 and later; Radarr 3 serves the same API)."""
 
-    def __init__(self, server, output):
+    def __init__(self, server: RadarrServer, output: Metrics) -> None:
+        """Set up a session for the server; `output` takes the points."""
         self.output = output
         self.server = server
         # Create session to reduce server web thread load, and globally define pageSize for all requests
@@ -23,16 +33,18 @@ class RadarrAPI(object):
         self.session.headers = {'X-Api-Key': self.server.api_key}
         self.logger = getLogger()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Name the server as the log does."""
         return f'<radarr-{self.server.id}>'
 
-    def get_missing(self):
+    def get_missing(self) -> None:
+        """Write a point for each monitored movie without a file."""
         endpoint = '/api/v3/movie'
-        now = datetime.now(timezone.utc).astimezone().isoformat()
+        now = datetime.now(UTC).astimezone().isoformat()
         points = []
 
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint))
-        get = connection_handler(self.session, req, self.server.verify_ssl)
+        get = connection_handler(self.session, req, verify=self.server.verify_ssl)
 
         if get is False:
             return
@@ -69,14 +81,15 @@ class RadarrAPI(object):
 
         self.output.write_points(points)
 
-    def get_queue(self):
+    def get_queue(self) -> None:
+        """Write a point for each movie in the download queue."""
         endpoint = '/api/v3/queue'
         params = {'includeMovie': 'true', 'pageSize': 1000}
-        now = datetime.now(timezone.utc).astimezone().isoformat()
+        now = datetime.now(UTC).astimezone().isoformat()
         points = []
 
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint, params=params))
-        get = connection_handler(self.session, req, self.server.verify_ssl)
+        get = connection_handler(self.session, req, verify=self.server.verify_ssl)
 
         if get is False:
             return

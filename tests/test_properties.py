@@ -15,6 +15,7 @@ import tempfile
 from configparser import ConfigParser
 from pathlib import Path
 from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any
 from unittest import mock
 
 from hypothesis import example, given
@@ -35,6 +36,9 @@ from varken.sonarr import SonarrAPI
 from varken.structures import PrometheusServer
 from varken.varkenlogger import BlacklistFilter
 
+if TYPE_CHECKING:
+    from collections.abc import Collection
+
 REPO = Path(__file__).resolve().parent.parent
 EXAMPLE_INI = (REPO / 'data' / 'varken.example.ini').read_text()
 
@@ -44,7 +48,7 @@ any_text = st.text(st.one_of(st.characters(), st.characters(categories=['Cs'])))
 ini_value = st.text().filter(lambda text: '\n' not in text and '\r' not in text).map(str.strip)
 
 
-def parser_for(ini_text, environment):
+def parser_for(ini_text: str, environment: dict[str, str]) -> INIParser | str:
     """Run INIParser over `ini_text` as the varken.ini of a fresh data folder, with `environment` as the process's
     environment. Returns the parser, or 'exit' where Varken refuses to start (an exit(1) after an error log)."""
     with tempfile.TemporaryDirectory() as folder:
@@ -58,14 +62,16 @@ def parser_for(ini_text, environment):
             with mock.patch.object(iniparser, 'env', dict(environment)):
                 return INIParser(folder)
         except SystemExit as stop:
-            assert stop.code == 1  # a refusal to start is always exit(1), never a different code
+            # A refusal to start is always exit(1), never a different code. Starting is fine too, so there is
+            # nothing for pytest.raises to expect.
+            assert stop.code == 1  # noqa: PT017
             return 'exit'
         finally:
             logging.disable(logging.NOTSET)
             assert ini.read_bytes() == written  # an existing varken.ini is the user's: Varken never writes to it
 
 
-def example_config():
+def example_config() -> ConfigParser:
     config = ConfigParser(interpolation=None)
     config.read_string(EXAMPLE_INI)
     return config
@@ -74,7 +80,7 @@ def example_config():
 CONFIG_KEYS = [(name, key) for name, section in example_config().items() for key in section]
 
 
-def with_values(values, without=()):
+def with_values(values: dict[tuple[str, str], str], without: Collection[tuple[str, str]] = ()) -> str:
     """The example config with some keys given other values, and some left out. `values` maps (section, key) to
     text; `without` holds the (section, key) pairs to leave out. A section left with no keys goes too."""
     config = example_config()
@@ -101,7 +107,7 @@ environments = st.dictionaries(
 )
 
 
-def check_parsed(parser):
+def check_parsed(parser: INIParser) -> None:
     """What every accepted configuration promises."""
     server = parser.prometheus_server
     assert 0 < server.port < 65536
@@ -120,13 +126,15 @@ def check_parsed(parser):
 @example({('global', 'sonarr_server_ids'): '1,,x'}, {})
 @example({('global', 'sonarr_server_ids'): '3'}, {})  # no [sonarr-3] section
 @example({}, {'VRKN_SONARR_1_URL': 'sonarr.example.com\n'})
-def test_any_config_and_environment_starts_cleanly_or_refuses_with_exit_1(values, environment):
+def test_any_config_and_environment_starts_cleanly_or_refuses_with_exit_1(
+    values: dict[tuple[str, str], str], environment: dict[str, str]
+) -> None:
     parser = parser_for(with_values(values), environment)
     if parser != 'exit':
         check_parsed(parser)
 
 
-def parsed(parser):
+def parsed(parser: INIParser | str) -> object:
     """Everything a start-up hands to the rest of Varken."""
     if parser == 'exit':
         return parser
@@ -140,18 +148,23 @@ def parsed(parser):
 @example({('prometheus', key) for key in ('bind', 'port', 'stream_details')}, {})  # an upstream 1.7.x file
 @example({('global', 'maxmind_account_id')}, {'VRKN_TAUTULLI_1_URL': 'tautulli.example.com'})
 @example({key for key in CONFIG_KEYS if key[0] == 'sonarr-2'}, {})  # a server id whose section is gone
-def test_keys_missing_from_varken_ini_take_the_examples_values(without, environment):
+def test_keys_missing_from_varken_ini_take_the_examples_values(
+    without: set[tuple[str, str]], environment: dict[str, str]
+) -> None:
     assert parsed(parser_for(with_values({}, without), environment)) == parsed(parser_for(EXAMPLE_INI, environment))
 
 
 @given(any_text, st.booleans())
-def test_url_check_returns_the_url_untouched_or_refuses_to_start(url, include_port):
+def test_url_check_returns_the_url_untouched_or_refuses_to_start(
+    url: str,
+    include_port: bool,  # noqa: FBT001 - drawn by Hypothesis, which passes it by name
+) -> None:
     parser = INIParser.__new__(INIParser)
     parser.logger = logging.getLogger()
     try:
         checked = parser.url_check(url, include_port=include_port, section='sonarr-1')
     except SystemExit as stop:
-        assert stop.code == 1
+        assert stop.code == 1  # noqa: PT017 - either outcome is fine
     else:
         assert checked == url
 
@@ -159,24 +172,25 @@ def test_url_check_returns_the_url_untouched_or_refuses_to_start(url, include_po
 @given(any_text)
 @example('localhost\n')
 @example('sonarr:8989/path\n')
-def test_a_url_that_passes_has_no_line_break_in_it(url):
+def test_a_url_that_passes_has_no_line_break_in_it(url: str) -> None:
     parser = INIParser.__new__(INIParser)
     parser.logger = logging.getLogger()
     try:
         checked = parser.url_check(url, section='sonarr-1')
     except SystemExit:
         return
-    assert '\n' not in checked and '\r' not in checked  # it ends up in a request line and in log lines
+    assert '\n' not in checked
+    assert '\r' not in checked
 
 
 @given(any_text)
-def test_server_ids_are_integers_or_false(text):
+def test_server_ids_are_integers_or_false(text: str) -> None:
     ids = clean_sid_check(text, 'sonarr')
     assert ids is False or (ids and all(isinstance(i, int) for i in ids))
 
 
 @given(any_text)
-def test_boolcheck_is_a_bool_and_only_true_or_yes_are_true(text):
+def test_boolcheck_is_a_bool_and_only_true_or_yes_are_true(text: str) -> None:
     assert boolcheck(text) is (text.lower() in ('true', 'yes'))
 
 
@@ -188,7 +202,7 @@ secrets = st.lists(
 @given(secrets, any_text, any_text)
 @example(['key'], 'GET /api?apikey=', '')
 @example(['key'], '', 'https://host/?apikey=')
-def test_no_secret_survives_the_log_filter(secret_list, text_in_message, text_in_argument):
+def test_no_secret_survives_the_log_filter(secret_list: list[str], text_in_message: str, text_in_argument: str) -> None:
     """A secret placed in a log line's message or in one of its arguments is masked in the output. (Masking only
     inserts asterisks, so it can't join letters into another secret. Secrets are at least four characters, as real
     keys are: a one-letter "secret" such as `s` would also mask the `%s` of a format string.)"""
@@ -225,12 +239,12 @@ JOBS = {
 @example('radarr_missing', [None])
 @example('lidarr_calendar', [1, 'text', None])
 @example('seerr_requests', {'results': [None, 5]})
-def test_any_reply_is_handled_and_the_scrape_stays_valid(name, reply):
+def test_any_reply_is_handled_and_the_scrape_stays_valid(name: str, reply: object) -> None:
     """Whatever JSON a service sends, its job doesn't raise (the scheduler would only log the traceback) and the
     scrape that follows is valid exposition text."""
     module, job, kwargs = JOBS[name]
     metrics = Metrics(PrometheusServer(stream_details=True))
-    with mock.patch.object(module, 'connection_handler', lambda session, request, verify: reply):
+    with mock.patch.object(module, 'connection_handler', return_value=reply):
         job(metrics)(**kwargs)
     list(text_string_to_metric_families(generate_latest(metrics.registry).decode()))
 
@@ -240,10 +254,10 @@ class SonarrAPIStub:
 
     server = SimpleNamespace(id=1)
 
-    def __init__(self, output, points):
+    def __init__(self, output: Metrics, points: list[dict[str, Any]]) -> None:
         self.output, self.points = output, points
 
-    def get_queue(self):
+    def get_queue(self) -> None:
         self.output.write_points(self.points)
 
 
@@ -266,7 +280,7 @@ SonarrAPIStub.__name__ = 'SonarrAPI'
         {'name': '\ud801', 'epname': '', 'sxe': '', 'protocol': '', 'quality': ''},
     ]
 )
-def test_any_label_text_makes_a_scrape_that_parses_back_without_duplicate_series(items):
+def test_any_label_text_makes_a_scrape_that_parses_back_without_duplicate_series(items: list[dict[str, str]]) -> None:
     """A lone surrogate in a title mustn't blank the scrape, and items that look alike (or look alike once a
     surrogate is replaced) make one series, not a duplicate that Prometheus drops."""
     metrics = Metrics(PrometheusServer())

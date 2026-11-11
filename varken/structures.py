@@ -1,30 +1,23 @@
 # SPDX-FileCopyrightText: 2018 Boerderij
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
-from sys import version_info
-from typing import NamedTuple
-from logging import getLogger
+"""The shapes Varken works with: a server's settings from varken.ini, and the replies of some services."""
 
-logger = getLogger('temp')
-# Check for python3.6 or newer to resolve erroneous typing.NamedTuple issues
-if version_info < (3, 6, 2):
-    logger.error(
-        'Varken requires python3.6.2 or newer. You are on python%s.%s.%s - Exiting...',
-        version_info.major,
-        version_info.minor,
-        version_info.micro,
-    )
-    exit(1)
+from typing import NamedTuple
 
 
 # Server Structures
 class PrometheusServer(NamedTuple):
+    """The [prometheus] section: where /metrics is served, and whether per-stream detail is exported."""
+
     bind: str = '0.0.0.0'  # noqa: S104 -- listens in a container by default; varken.ini can narrow it
     port: int = 9180
     stream_details: bool = False
 
 
 class SonarrServer(NamedTuple):
+    """A [sonarr-N] section, or a [lidarr-N] one: Lidarr has the same settings."""
+
     api_key: str = None
     future_days: int = 0
     future_days_run_seconds: int = 30
@@ -38,6 +31,8 @@ class SonarrServer(NamedTuple):
 
 
 class RadarrServer(NamedTuple):
+    """A [radarr-N] section."""
+
     api_key: str = None
     get_missing: bool = False
     get_missing_run_seconds: int = 30
@@ -49,6 +44,8 @@ class RadarrServer(NamedTuple):
 
 
 class OmbiServer(NamedTuple):
+    """An [ombi-N] section."""
+
     api_key: str = None
     id: int = None
     issue_status_counts: bool = False
@@ -62,6 +59,8 @@ class OmbiServer(NamedTuple):
 
 
 class SeerrServer(NamedTuple):
+    """A [seerr-N] section."""
+
     api_key: str = None
     get_issue_counts: bool = False
     get_issue_counts_run_seconds: int = 300
@@ -75,6 +74,8 @@ class SeerrServer(NamedTuple):
 
 
 class TautulliServer(NamedTuple):
+    """A [tautulli-N] section, with the MaxMind settings of [global]."""
+
     api_key: str = None
     fallback_ip: str = None
     get_activity: bool = False
@@ -89,6 +90,8 @@ class TautulliServer(NamedTuple):
 
 
 class SickChillServer(NamedTuple):
+    """A [sickchill-N] section."""
+
     api_key: str = None
     get_missing: bool = False
     get_missing_run_seconds: int = 30
@@ -98,6 +101,8 @@ class SickChillServer(NamedTuple):
 
 
 class UniFiServer(NamedTuple):
+    """A [unifi-N] section."""
+
     get_usg_stats_run_seconds: int = 30
     id: int = None
     password: str = 'ubnt'  # noqa: S105 -- UniFi's factory default, overridden by varken.ini
@@ -110,18 +115,24 @@ class UniFiServer(NamedTuple):
 
 # Ombi Structures
 class OmbiRequestCounts(NamedTuple):
+    """Ombi's reply to /api/v1/Request/count."""
+
     approved: int = 0
     available: int = 0
     pending: int = 0
 
 
 class OmbiIssuesCounts(NamedTuple):
+    """Ombi's reply to /api/v1/Issues/count."""
+
     inProgress: int = 0
     pending: int = 0
     resolved: int = 0
 
 
 class OmbiTVRequest(NamedTuple):
+    """One TV request in Ombi's reply to /api/v1/Request/tv."""
+
     background: str = None
     childRequests: list = None
     denied: bool = None
@@ -143,6 +154,8 @@ class OmbiTVRequest(NamedTuple):
 
 
 class OmbiMovieRequest(NamedTuple):
+    """One movie request in Ombi's reply to /api/v1/Request/movie."""
+
     approved: bool = None
     available: bool = None
     background: str = None
@@ -181,6 +194,8 @@ class OmbiMovieRequest(NamedTuple):
 
 # Sickchill
 class SickChillTVShow(NamedTuple):
+    """One episode in SickChill's reply to the "future" command."""
+
     airdate: str = None
     airs: str = None
     episode: int = None
@@ -199,6 +214,8 @@ class SickChillTVShow(NamedTuple):
 
 # Tautulli
 class TautulliStream(NamedTuple):
+    """One session in Tautulli's reply to get_activity."""
+
     actors: list = None
     added_at: str = None
     allow_guest: int = None

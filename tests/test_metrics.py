@@ -3,38 +3,46 @@
 import socket
 from logging import getLogger
 from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, Never
 from urllib.request import urlopen
 
 import pytest
 from prometheus_client import generate_latest
 from prometheus_client.parser import text_string_to_metric_families
 
+from tests.sample_metrics import sample
 from tests.tautulli_data import ACTIVITY, LIBRARIES, SERVER, FakeGeoIP, place
 from varken import helpers, tautulli
-from varken.helpers import GeoIPHandler
+from varken.helpers import GeoIPHandler, NoGeoIP
 from varken.metrics import Metrics, job_key
 from varken.structures import PrometheusServer
 from varken.tautulli import TautulliAPI
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from requests import PreparedRequest, Session
+
 
 class SonarrAPI:
-    def __init__(self, output, points=(), fail=False):
+    def __init__(self, output: Metrics, points: Iterable[dict[str, Any]] = (), *, fail: bool = False) -> None:
         self.server = SimpleNamespace(id=2)
         self.output = output
         self.points = list(points)
         self.fail = fail
 
-    def get_calendar(self, query='Missing'):
+    def get_calendar(self, query: str = 'Missing') -> None:
         if self.fail:
             helpers.request_state.failed = True
             return
         self.output.write_points(self.points)
 
-    def get_queue(self):
-        raise RuntimeError('the job broke')
+    def get_queue(self) -> Never:
+        msg = 'the job broke'
+        raise RuntimeError(msg)
 
 
-def samples(metrics):
+def samples(metrics: Metrics) -> dict[tuple[str, frozenset[tuple[str, str]]], float]:
     """{(name, frozenset(labels)): value} from a scrape, the way Prometheus would parse it."""
     text = generate_latest(metrics.registry).decode()
     return {
@@ -44,27 +52,27 @@ def samples(metrics):
     }
 
 
-def value(metrics, name, **labels):
+def value(metrics: Metrics, name: str, **labels: str) -> float | None:
     return samples(metrics).get((name, frozenset(labels.items())))
 
 
-def names(metrics):
+def names(metrics: Metrics) -> set[str]:
     return {name for name, _ in samples(metrics)}
 
 
 @pytest.fixture
-def metrics():
+def metrics() -> Metrics:
     return Metrics(PrometheusServer())
 
 
-def test_job_key_names_the_service_server_and_job(metrics):
+def test_job_key_names_the_service_server_and_job(metrics: Metrics) -> None:
     api = SonarrAPI(None)
     assert job_key(api.get_calendar, {'query': 'Missing'}) == ('sonarr', '2', 'missing')
     assert job_key(api.get_queue, {}) == ('sonarr', '2', 'queue')
     assert job_key(GeoIPHandler.__new__(GeoIPHandler).update, {}) is None
 
 
-def test_a_successful_job_is_up_and_counts_its_points(metrics):
+def test_a_successful_job_is_up_and_counts_its_points(metrics: Metrics) -> None:
     api = SonarrAPI(metrics, points=[{'measurement': 'Sonarr'}] * 3)
 
     metrics.run(api.get_calendar, query='Missing')
@@ -75,13 +83,13 @@ def test_a_successful_job_is_up_and_counts_its_points(metrics):
     assert value(metrics, 'varken_job_last_success_timestamp_seconds', **job) > 0
 
 
-def test_a_job_that_finds_nothing_reports_zero_items(metrics):
+def test_a_job_that_finds_nothing_reports_zero_items(metrics: Metrics) -> None:
     metrics.run(SonarrAPI(metrics).get_calendar, query='Future')
 
     assert value(metrics, 'varken_job_points', service='sonarr', server='2', job='future') == 0
 
 
-def test_a_failed_request_marks_the_job_down_and_drops_its_data(metrics):
+def test_a_failed_request_marks_the_job_down_and_drops_its_data(metrics: Metrics) -> None:
     metrics.run(SonarrAPI(metrics, points=[{}]).get_calendar, query='Missing')
     last_success = value(
         metrics, 'varken_job_last_success_timestamp_seconds', service='sonarr', server='2', job='missing'
@@ -95,20 +103,20 @@ def test_a_failed_request_marks_the_job_down_and_drops_its_data(metrics):
     assert value(metrics, 'varken_job_last_success_timestamp_seconds', **job) == last_success
 
 
-def test_a_job_that_raises_is_marked_down(metrics):
+def test_a_job_that_raises_is_marked_down(metrics: Metrics) -> None:
     with pytest.raises(RuntimeError):
         metrics.run(SonarrAPI(metrics).get_queue)
 
     assert value(metrics, 'varken_job_up', service='sonarr', server='2', job='queue') == 0
 
 
-def test_points_written_outside_a_job_are_ignored(metrics):
+def test_points_written_outside_a_job_are_ignored(metrics: Metrics) -> None:
     metrics.write_points([{'measurement': 'Tautulli'}])
 
     assert value(metrics, 'varken_job_up', service='tautulli', server='1', job='activity') is None
 
 
-def test_jobs_that_are_not_module_jobs_run_without_being_recorded(metrics):
+def test_jobs_that_are_not_module_jobs_run_without_being_recorded(metrics: Metrics) -> None:
     ran = []
     metrics.run(lambda: ran.append(True))
 
@@ -116,17 +124,17 @@ def test_jobs_that_are_not_module_jobs_run_without_being_recorded(metrics):
     assert metrics.snapshot() == {}
 
 
-def test_build_info(metrics):
+def test_build_info(metrics: Metrics) -> None:
     assert value(metrics, 'varken_build_info', version='0.0.0', branch='develop') == 1
 
 
-def run_tautulli(metrics, monkeypatch, reply, job):
+def run_tautulli(metrics: Metrics, monkeypatch: pytest.MonkeyPatch, reply: object, job: str) -> None:
     monkeypatch.setattr(tautulli, 'connection_handler', lambda session, request, verify: reply)
     api = TautulliAPI(SERVER, metrics, FakeGeoIP({'203.0.113.5': place()}))
     metrics.run(getattr(api, job))
 
 
-def test_tautulli_activity(metrics, monkeypatch):
+def test_tautulli_activity(metrics: Metrics, monkeypatch: pytest.MonkeyPatch) -> None:
     run_tautulli(metrics, monkeypatch, ACTIVITY, 'get_activity')
 
     assert value(metrics, 'varken_tautulli_streams', server='1') == 1
@@ -151,7 +159,7 @@ def test_tautulli_activity(metrics, monkeypatch):
     assert value(metrics, 'varken_job_points', service='tautulli', server='1', job='activity') == 2
 
 
-def test_tautulli_activity_keeps_viewers_out_by_default(metrics, monkeypatch):
+def test_tautulli_activity_keeps_viewers_out_by_default(metrics: Metrics, monkeypatch: pytest.MonkeyPatch) -> None:
     run_tautulli(metrics, monkeypatch, ACTIVITY, 'get_activity')
 
     text = generate_latest(metrics.registry).decode()
@@ -161,7 +169,7 @@ def test_tautulli_activity_keeps_viewers_out_by_default(metrics, monkeypatch):
     assert 'Pilot' not in text
 
 
-def test_tautulli_stream_details_when_enabled(monkeypatch):
+def test_tautulli_stream_details_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     metrics = Metrics(PrometheusServer(stream_details=True))
 
     run_tautulli(metrics, monkeypatch, ACTIVITY, 'get_activity')
@@ -195,10 +203,12 @@ def test_tautulli_stream_details_when_enabled(monkeypatch):
     assert '203.0.113.5' not in generate_latest(metrics.registry).decode()
 
 
-def test_tautulli_streams_disappear_when_tautulli_is_unreachable(metrics, monkeypatch):
+def test_tautulli_streams_disappear_when_tautulli_is_unreachable(
+    metrics: Metrics, monkeypatch: pytest.MonkeyPatch
+) -> None:
     run_tautulli(metrics, monkeypatch, ACTIVITY, 'get_activity')
 
-    def unreachable(session, request, verify):
+    def unreachable(session: Session, request: PreparedRequest, *, verify: bool) -> bool:
         helpers.request_state.failed = True
         return False
 
@@ -210,7 +220,7 @@ def test_tautulli_streams_disappear_when_tautulli_is_unreachable(metrics, monkey
     assert value(metrics, 'varken_job_up', service='tautulli', server='1', job='activity') == 0
 
 
-def test_tautulli_libraries(metrics, monkeypatch):
+def test_tautulli_libraries(metrics: Metrics, monkeypatch: pytest.MonkeyPatch) -> None:
     run_tautulli(metrics, monkeypatch, LIBRARIES, 'get_stats')
 
     assert (
@@ -222,28 +232,28 @@ def test_tautulli_libraries(metrics, monkeypatch):
     )
 
 
-def free_port():
+def free_port() -> int:
     with socket.socket() as sock:
         sock.bind(('127.0.0.1', 0))
         return sock.getsockname()[1]
 
 
-def test_serves_metrics_over_http():
+def test_serves_metrics_over_http() -> None:
     port = free_port()
     metrics = Metrics(PrometheusServer(bind='127.0.0.1', port=port))
 
     metrics.start()
 
-    with urlopen(f'http://127.0.0.1:{port}/metrics', timeout=5) as response:  # noqa: S310 -- the test's own server
+    with urlopen(f'http://127.0.0.1:{port}/metrics', timeout=5) as response:
         assert b'varken_build_info' in response.read()
 
 
-def test_a_job_that_logs_an_error_is_marked_down(metrics):
+def test_a_job_that_logs_an_error_is_marked_down(metrics: Metrics) -> None:
     # Regression: a reply the module couldn't parse was only logged, so the job looked healthy.
     class RadarrAPI:
         server = SimpleNamespace(id=1)
 
-        def get_queue(self):
+        def get_queue(self) -> None:
             getLogger().error('TypeError has occurred while creating the Queue structure')
 
     metrics.run(RadarrAPI().get_queue)
@@ -251,15 +261,13 @@ def test_a_job_that_logs_an_error_is_marked_down(metrics):
     assert value(metrics, 'varken_job_up', service='radarr', server='1', job='queue') == 0
 
 
-def test_errors_logged_outside_a_job_change_nothing(metrics):
+def test_errors_logged_outside_a_job_change_nothing(metrics: Metrics) -> None:
     getLogger().error('the GeoIP update failed')
 
     assert metrics.snapshot() == {}
 
 
-def test_the_ci_sample_has_every_metric():
-    from tests.sample_metrics import sample
-
+def test_the_ci_sample_has_every_metric() -> None:
     text = sample()
     for name in (
         'varken_build_info',
@@ -303,10 +311,11 @@ def test_the_ci_sample_has_every_metric():
     ):
         assert f'job="{job}"' in text, job
     up = [line for line in text.splitlines() if line.startswith('varken_job_up{')]
-    assert len(up) == 17 and all(line.endswith(' 1.0') for line in up), up
+    assert len(up) == 17, up
+    assert all(line.endswith(' 1.0') for line in up), up
 
 
-def test_a_port_in_use_exits_cleanly():
+def test_a_port_in_use_exits_cleanly() -> None:
     with socket.socket() as taken:
         taken.bind(('127.0.0.1', 0))
         taken.listen()
@@ -315,10 +324,8 @@ def test_a_port_in_use_exits_cleanly():
             Metrics(PrometheusServer(bind='127.0.0.1', port=port)).start()
 
 
-def test_an_unlocated_viewer_has_no_place_on_the_map(monkeypatch):
+def test_an_unlocated_viewer_has_no_place_on_the_map(monkeypatch: pytest.MonkeyPatch) -> None:
     # The Tautulli module records an alien and Area 51 for viewers it can't place; the metrics leave them empty.
-    from varken.helpers import NoGeoIP
-
     metrics = Metrics(PrometheusServer(stream_details=True))
     monkeypatch.setattr(tautulli, 'connection_handler', lambda session, request, verify: ACTIVITY)
     metrics.run(TautulliAPI(SERVER, metrics, NoGeoIP()).get_activity)

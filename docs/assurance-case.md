@@ -104,7 +104,7 @@ Status: **Countered**, **Partly** (countered with gaps), or **Open** (known, on 
 ## 5. Verification evidence
 
 On every push and pull request, CI ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) runs ruff
-(including the bandit security rules), yamllint, actionlint with shellcheck, hadolint, gitleaks over the full
+(every rule family, including the bandit security rules), yamllint, actionlint with shellcheck, hadolint, gitleaks over the full
 history, pip-audit against the pinned requirements, the offline unit tests with a coverage floor (including the metrics tests in
 [`tests/test_metrics.py`](../tests/test_metrics.py)), Prometheus' `promtool check metrics` on a sample scrape
 with every metric (`python -m tests.sample_metrics`), property-based tests of the untrusted inputs

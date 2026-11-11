@@ -1,19 +1,38 @@
 # SPDX-FileCopyrightText: 2018 Boerderij
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
-from logging import getLogger
-from requests import Session, Request, get as requests_get
-from datetime import datetime, timezone
+"""Tautulli: the current streams, with where their viewers are, and the libraries' sizes."""
 
-from varken.structures import TautulliStream
-from varken.helpers import AddressNotFoundError, hashit, connection_handler, itemgetter_with_default
+import sys
+from datetime import UTC, datetime
+from logging import getLogger
+from typing import TYPE_CHECKING
+
+from requests import Request, Session
+from requests import get as requests_get
+
+from varken.helpers import (
+    AddressNotFoundError,
+    GeoIPHandler,
+    NoGeoIP,
+    connection_handler,
+    hashit,
+    itemgetter_with_default,
+)
+from varken.structures import TautulliServer, TautulliStream
+
+if TYPE_CHECKING:
+    from varken.metrics import Metrics
 
 # Looked up once, when neither a stream's IP nor the configured fallback IP is in the GeoLite2 database.
 PUBLIC_IP_URL = 'https://api.ipify.org'
 
 
-class TautulliAPI(object):
-    def __init__(self, server, output, geoiphandler):
+class TautulliAPI:
+    """Tautulli through its v2 API, which takes the API key as a parameter of every request."""
+
+    def __init__(self, server: TautulliServer, output: Metrics, geoiphandler: GeoIPHandler | NoGeoIP) -> None:
+        """Set up a session for the server; `output` takes the points and `geoiphandler` locates the viewers."""
         self.output = output
         self.server = server
         self.geoiphandler = geoiphandler
@@ -23,16 +42,18 @@ class TautulliAPI(object):
         self.logger = getLogger()
         self.my_ip = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Name the server as the log does."""
         return f'<tautulli-{self.server.id}>'
 
-    def get_activity(self):
-        now = datetime.now(timezone.utc).astimezone().isoformat()
+    def get_activity(self) -> None:  # noqa: C901, PLR0912, PLR0915 - a step for each part of a session's point
+        """Write a point for each current session, and one for the stream and bandwidth totals."""
+        now = datetime.now(UTC).astimezone().isoformat()
         points = []
         params = {'cmd': 'get_activity'}
 
         req = self.session.prepare_request(Request('GET', self.server.url + self.endpoint, params=params))
-        g = connection_handler(self.session, req, self.server.verify_ssl)
+        g = connection_handler(self.session, req, verify=self.server.verify_ssl)
 
         if not g:
             return
@@ -50,7 +71,7 @@ class TautulliAPI(object):
             # Check to see if ip_address_public attribute exists as it was introduced in v2
             if not hasattr(session, 'ip_address_public'):
                 self.logger.error('Public IP attribute missing!!! Do you have an old version of Tautulli (v1)?')
-                exit(1)
+                sys.exit(1)
 
             try:
                 geodata = self.geoiphandler.lookup(session.ip_address_public)
@@ -80,10 +101,7 @@ class TautulliAPI(object):
                 latitude = geodata.location.latitude
                 longitude = geodata.location.longitude
 
-            if not geodata.city.name:
-                location = '👽'
-            else:
-                location = geodata.city.name
+            location = geodata.city.name or '👽'
 
             decision = session.transcode_decision
             if decision == 'copy':
@@ -186,13 +204,14 @@ class TautulliAPI(object):
 
         self.output.write_points(points)
 
-    def get_stats(self):
-        now = datetime.now(timezone.utc).astimezone().isoformat()
+    def get_stats(self) -> None:
+        """Write a point for each library, with how many items it has."""
+        now = datetime.now(UTC).astimezone().isoformat()
         points = []
         params = {'cmd': 'get_libraries'}
 
         req = self.session.prepare_request(Request('GET', self.server.url + self.endpoint, params=params))
-        g = connection_handler(self.session, req, self.server.verify_ssl)
+        g = connection_handler(self.session, req, verify=self.server.verify_ssl)
 
         if not g:
             return

@@ -11,7 +11,7 @@ CONFIG = yaml.safe_load((Path(__file__).resolve().parent.parent / '.gitlab-ci.ym
 KEYWORDS = {'workflow', 'default', 'stages', 'variables', 'include'}
 
 
-def test_every_script_line_is_a_string():
+def test_every_script_line_is_a_string() -> None:
     # Regression: a plain list item holding "ref: " parsed as a mapping, and GitLab refused to run any pipeline
     # ("jobs:mirror:script config should be a string or a nested array of strings").
     for name, job in CONFIG.items():
@@ -22,13 +22,13 @@ def test_every_script_line_is_a_string():
                 assert isinstance(line, str), f'{name}.{key}: {line!r}'
 
 
-def test_the_mirror_reads_githubs_default_branch():
+def test_the_mirror_reads_githubs_default_branch() -> None:
     script = '\n'.join(CONFIG['mirror']['script'])
     assert 'ls-remote --symref "$MIRROR_SOURCE" HEAD' in script
     assert 'refs/heads/master' not in script
 
 
-def test_the_checks_image_has_git():
+def test_the_checks_image_has_git() -> None:
     # Regression: the slim Python image has no git, so on GitLab the licensing test's "git ls-files" failed with
     # "FileNotFoundError: 'git'" (GitHub's runner has git). The image stays pinned by tag and digest.
     image = CONFIG['checks']['image']
@@ -36,4 +36,4 @@ def test_the_checks_image_has_git():
     assert match, image
     # The same Python as the image Varken ships in.
     dockerfile = (Path(__file__).resolve().parent.parent / 'Dockerfile').read_text()
-    assert re.search(rf'^FROM python:{re.escape(match[1])}\.\d+-slim@sha256:', dockerfile, re.M), image
+    assert re.search(rf'^FROM python:{re.escape(match[1])}\.\d+-slim@sha256:', dockerfile, re.MULTILINE), image

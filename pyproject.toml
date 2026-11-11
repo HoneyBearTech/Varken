@@ -11,15 +11,40 @@ target-version = "py315"
 quote-style = "single"
 
 [tool.ruff.lint]
-# pycodestyle, Pyflakes, bugbear and the bandit security rules. The upstream code predates most other rule
-# families; widening the set is on the roadmap. Exceptions are made per line,
-# with a reason.
-select = ["E", "F", "W", "B", "S"]
+# Every rule family, minus the few that conflict with the formatter, with each other or with how Varken works.
+# Exceptions in the code are made per line, with a reason. A new ruff release can add rules to "ALL": the pull
+# request that bumps ruff then fixes what they find.
+# An import that only annotations use goes in an `if TYPE_CHECKING:` block. ruff's own fix for TC001 and TC002 is a
+# `lazy` import, which is a syntax error on the Python the fuzzer still runs on (tests/test_fuzz_python.py).
+select = ["ALL"]
+ignore = [
+    "COM812", # conflicts with ruff format
+    "CPY001", # files carry SPDX lines instead, which tests/test_licensing.py checks
+    "D203",   # conflicts with D211 (no blank line before a class docstring)
+    "D213",   # conflicts with D212 (summary on the first docstring line)
+    "TRY400", # an error is logged as one line: a traceback's text isn't redacted by BlacklistFilter
+]
+
+[tool.ruff.lint.flake8-quotes]
+# As ruff format writes them.
+inline-quotes = "single"
 
 [tool.ruff.lint.per-file-ignores]
+"varken/structures.py" = [
+    "N815", # the fields of the reply structures are the services' own JSON keys
+]
+"dashboard/**" = [
+    "INP001", # a standalone command, not a package
+    "T201",   # print() is how the command reports
+]
+"fuzz/**" = ["INP001"] # a standalone command, not a package
 "tests/**" = [
-    "S101", # pytest uses assert
-    "S105", # fixtures use placeholder credentials
+    "ARG",     # stand-ins keep the signature of what they replace
+    "D",       # test names say what they test
+    "INP001",  # tests/ is not a package
+    "PLR2004", # expected values are written inline
+    "S101",    # pytest uses assert
+    "S105",    # fixtures use placeholder credentials
     "S106",
 ]
 

@@ -1,17 +1,31 @@
 # SPDX-FileCopyrightText: 2018 Boerderij
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
+"""Lidarr: its download queue, and the albums that are missing tracks or coming out soon."""
+
+from datetime import UTC, datetime, timedelta
 from logging import getLogger
-from requests import Session, Request
-from datetime import datetime, timezone, date, timedelta
+from typing import TYPE_CHECKING
 
-from varken.helpers import hashit, connection_handler
+from requests import Request, Session
+
+from varken.helpers import connection_handler, hashit
+
+if TYPE_CHECKING:
+    from varken.metrics import Metrics
+    from varken.structures import SonarrServer
+
+ALL_TRACKS = 100  # percentOfTracks of an album with a file for every track
 
 
-class LidarrAPI(object):
+class LidarrAPI:
     """Lidarr through its v1 API (Lidarr 1 and 2)."""
 
-    def __init__(self, server, output):
+    def __init__(self, server: SonarrServer, output: Metrics) -> None:
+        """Set up a session for the server; `output` takes the points.
+
+        A [lidarr-N] section has the settings of a [sonarr-N] one, hence the server's type.
+        """
         self.output = output
         self.server = server
         # Create session to reduce server web thread load, and globally define pageSize for all requests
@@ -19,15 +33,18 @@ class LidarrAPI(object):
         self.session.headers = {'X-Api-Key': self.server.api_key}
         self.logger = getLogger()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Name the server as the log does."""
         return f'<lidarr-{self.server.id}>'
 
-    def get_calendar(self, query='Missing'):
+    def get_calendar(self, query: str = 'Missing') -> None:
+        """Write a point for each album missing tracks (query 'Missing'), or for each one coming out soon."""
         endpoint = '/api/v1/calendar'
-        today = str(date.today())
-        last_days = str(date.today() - timedelta(days=self.server.missing_days))
-        future = str(date.today() + timedelta(days=self.server.future_days))
-        now = datetime.now(timezone.utc).astimezone().isoformat()
+        local_date = datetime.now(UTC).astimezone().date()
+        today = str(local_date)
+        last_days = str(local_date - timedelta(days=self.server.missing_days))
+        future = str(local_date + timedelta(days=self.server.future_days))
+        now = datetime.now(UTC).astimezone().isoformat()
         if query == 'Missing':
             params = {'start': last_days, 'end': today, 'includeArtist': 'true'}
         else:
@@ -35,7 +52,7 @@ class LidarrAPI(object):
         points = []
 
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint, params=params))
-        get = connection_handler(self.session, req, self.server.verify_ssl)
+        get = connection_handler(self.session, req, verify=self.server.verify_ssl)
 
         if get is False:
             return
@@ -57,7 +74,7 @@ class LidarrAPI(object):
             statistics = album.get('statistics') or {}
             percent_of_tracks = statistics.get('percentOfTracks', 0)
             # Missing: monitored albums that came out in the last missing_days without every track.
-            if query == 'Missing' and (not album.get('monitored') or percent_of_tracks == 100):
+            if query == 'Missing' and (not album.get('monitored') or percent_of_tracks == ALL_TRACKS):
                 continue
             hash_id = hashit(f'{self.server.id}{title}{album.get("id")}')
             points.append(
@@ -80,14 +97,15 @@ class LidarrAPI(object):
 
         self.output.write_points(points)
 
-    def get_queue(self):
+    def get_queue(self) -> None:
+        """Write a point for each release in the download queue."""
         endpoint = '/api/v1/queue'
-        now = datetime.now(timezone.utc).astimezone().isoformat()
+        now = datetime.now(UTC).astimezone().isoformat()
         points = []
         params = {'pageSize': 1000, 'includeArtist': 'true', 'includeAlbum': 'true'}
 
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint, params=params))
-        get = connection_handler(self.session, req, self.server.verify_ssl)
+        get = connection_handler(self.session, req, verify=self.server.verify_ssl)
 
         if get is False:
             return

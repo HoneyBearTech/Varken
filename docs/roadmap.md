@@ -71,8 +71,10 @@ its 0.8.0)
 
 - Sonarr 5's new API (Sonarr 5 is in beta as of October 2026), once Sonarr 5 is stable, alongside `/api/v3`
   for Sonarr 4.
-- A wider ruff rule set. Done: the coverage floor is 80 % (2.3.0), and the code is formatted with `ruff format`
-  (3.3.0).
+- Done: the coverage floor is 80 % (2.3.0), the code is formatted with `ruff format` (3.3.0), and ruff checks
+  it with every rule family (after 3.4.0), which put type hints and docstrings on every function. The functions
+  that are still longer or more branched than ruff's limits are marked where they are defined; splitting them
+  is what remains.
 
 **Phase 2: Prometheus output** (built, see above; [how it works](architecture.md#the-prometheus-output))
 
