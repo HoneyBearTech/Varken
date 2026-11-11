@@ -126,9 +126,12 @@ What the project itself holds, and how each is kept (the operator's secrets are 
 - **No stored CI secrets.** The repository has no Actions or Dependabot secrets. Workflows use the short-lived
   `GITHUB_TOKEN`, read-only unless a job needs more; releases are signed with Sigstore's keyless signing, using
   the release job's own GitHub identity, so there is no signing key to leak or rotate.
-- **The tag-signing key** is the maintainer's SSH key, held in a password manager and never on CI; its public
-  half is in [`.github/allowed_signers`](../.github/allowed_signers). If it is lost or exposed, the maintainer
-  removes it from GitHub, publishes the new public key there, and says which tags it signed.
+- **The tag-signing keys** are two SSH keys of the maintainer's, neither of them on CI; their public halves are
+  in [`.github/allowed_signers`](../.github/allowed_signers). One is held in a password manager. The other is a
+  file on the maintainer's own build host, so that releases can be tagged there: it has no passphrase (file
+  permissions protect it), is registered with GitHub for signing only, and gives no access to any repository or
+  host. If either is lost or exposed, the maintainer removes it from GitHub and from `allowed_signers`, publishes
+  the new public key, and says which tags it signed.
 - **The GitLab mirror token** is a project access token on the maintainer's own GitLab, scoped to writing that
   one repository, with an expiry, in a masked, protected CI/CD variable; it is rotated before it expires, or at
   once if it may have leaked.
