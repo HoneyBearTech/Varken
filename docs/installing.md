@@ -16,7 +16,7 @@ first look, the [quick start](quick-start.md) is shorter; this page covers the c
 - With GeoIP on, outbound HTTPS to `download.maxmind.com` (which redirects to MaxMind's storage on
   `*.r2.cloudflarestorage.com`) and, rarely, `api.ipify.org` (see
   [interfaces.md](interfaces.md#interfaces-varken-uses)). With GeoIP off, neither.
-- For the image: a Linux host (amd64 or arm64) with Docker. For a bare install: Python 3.14 on any OS
+- For the image: a Linux host (amd64 or arm64) with Docker. For a bare install: Python 3.15 on any OS
   Python supports.
 
 Every setting is in [configuration.md](configuration.md). Varken reads `varken.ini` in its data folder and
@@ -80,7 +80,7 @@ is in `/opt/Varken`, a virtual environment in `/opt/Varken/varken-venv`, and a `
 ```sh
 sudo git clone https://github.com/HoneyBearTech/Varken.git /opt/Varken
 cd /opt/Varken && sudo git checkout v3.3.0
-sudo python3.14 -m venv varken-venv
+sudo python3.15 -m venv varken-venv
 sudo varken-venv/bin/pip install --require-hashes --no-deps -r requirements.txt
 
 # Debian/Ubuntu also: sudo adduser --system --group --no-create-home varken

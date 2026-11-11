@@ -32,7 +32,7 @@ always gets the same bytes:
 
 | Dependency | Declared in | Pinned by | Fetched by |
 | --- | --- | --- | --- |
-| Base image (`python:3.14-slim`, which brings Python and Debian) | [`Dockerfile`](../Dockerfile) | version tag and multi-arch digest | Docker / BuildKit |
+| Base image (`python:3.15-slim`, which brings Python and Debian) | [`Dockerfile`](../Dockerfile) | version tag and multi-arch digest | Docker / BuildKit |
 | Runtime Python packages | [`requirements.in`](../requirements.in) → [`requirements.txt`](../requirements.txt) | exact version and SHA-256 hashes (`uv pip compile --generate-hashes`) | `pip install --require-hashes --no-deps` |
 | Check and test tools (ruff, pytest, coverage, yamllint) | [`requirements-dev.in`](../requirements-dev.in) → [`requirements-dev.txt`](../requirements-dev.txt) | exact version and SHA-256 hashes | `pip install --require-hashes --no-deps` |
 | Linters and scanners used only by CI (actionlint, hadolint, gitleaks, pip-audit, Trivy) | [`.github/workflows/`](../.github/workflows/) | version, and digest for container images | CI |

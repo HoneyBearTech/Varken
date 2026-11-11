@@ -21,7 +21,7 @@ are welcome, but there is no service-level agreement, and review may take a whil
 
 ## Development setup
 
-You need git, Python 3.14 (the image's version), and Docker if you want to build the image.
+You need git, Python 3.15 (the image's version), and Docker if you want to build the image.
 
 ```sh
 git clone https://github.com/HoneyBearTech/Varken.git && cd Varken
@@ -122,8 +122,8 @@ development tools likewise in `requirements-dev.in` and `requirements-dev.txt`. 
 (or to pick up new versions), regenerate the pins with [uv](https://docs.astral.sh/uv/):
 
 ```sh
-uv pip compile --generate-hashes --python-version 3.14 requirements.in -o requirements.txt
-uv pip compile --generate-hashes --python-version 3.14 requirements-dev.in -o requirements-dev.txt
+uv pip compile --generate-hashes --python-version 3.15 requirements.in -o requirements.txt
+uv pip compile --generate-hashes --python-version 3.15 requirements-dev.in -o requirements-dev.txt
 ```
 
 Commit the `.in` and `.txt` files together. Dependabot proposes routine updates; see

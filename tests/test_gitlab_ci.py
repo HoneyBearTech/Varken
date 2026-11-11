@@ -32,4 +32,8 @@ def test_the_checks_image_has_git():
     # Regression: the slim Python image has no git, so on GitLab the licensing test's "git ls-files" failed with
     # "FileNotFoundError: 'git'" (GitHub's runner has git). The image stays pinned by tag and digest.
     image = CONFIG['checks']['image']
-    assert re.fullmatch(r'python:3\.14\.\d+-trixie@sha256:[0-9a-f]{64}', image), image
+    match = re.fullmatch(r'python:(3\.\d+)\.\d+-trixie@sha256:[0-9a-f]{64}', image)
+    assert match, image
+    # The same Python as the image Varken ships in.
+    dockerfile = (Path(__file__).resolve().parent.parent / 'Dockerfile').read_text()
+    assert re.search(rf'^FROM python:{re.escape(match[1])}\.\d+-slim@sha256:', dockerfile, re.M), image

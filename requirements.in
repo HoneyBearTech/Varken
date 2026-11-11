@@ -1,5 +1,5 @@
 # What Varken needs at runtime (installed into the image). Pinned with hashes in requirements.txt,
-# regenerated with:  uv pip compile --generate-hashes --python-version 3.14 requirements.in -o requirements.txt
+# regenerated with:  uv pip compile --generate-hashes --python-version 3.15 requirements.in -o requirements.txt
 distro
 maxminddb
 prometheus-client

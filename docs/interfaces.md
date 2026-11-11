@@ -196,7 +196,7 @@ Nothing else is written. The data that matters lives in the Prometheus server th
 
 ## Image
 
-`ghcr.io/honeybeartech/varken`, built from the [`Dockerfile`](../Dockerfile): `python:3.14-slim` pinned by
+`ghcr.io/honeybeartech/varken`, built from the [`Dockerfile`](../Dockerfile): `python:3.15-slim` pinned by
 version and digest, the hash-pinned packages from [`requirements.txt`](../requirements.txt), and Varken in
 `/app`. It runs as the unprivileged uid/gid 1000:1000 with `DATA_FOLDER=/config`; `/config` is the only
 path it writes to, and belongs to 1000:1000 in the image, so a new named volume there starts out writable.
