@@ -7,6 +7,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-11-11
+
 ### Changed
 - For contributors: ruff now checks the code with every rule family (`select = ["ALL"]`; the few exceptions are
   listed with their reasons in `pyproject.toml`), where it had five. Every function has type hints and, outside

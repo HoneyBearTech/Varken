@@ -57,6 +57,10 @@ bugs that could break a scrape or crash a job (a lone surrogate in a title, two 
 memory, so comments are kept and the file can be read-only. That closes the last known weakness inherited
 from upstream.
 
+**3.5.0** (2026-11-11) changes nothing in what Varken does, exports or logs. ruff now checks the code with every
+rule family, every function has type hints, and the Ombi, SickChill and UniFi modules have tests, which takes
+coverage from 84 % to 94 %.
+
 ## Over the following year
 
 **Phase 3: Argus integration** (built, in the [Argus](https://github.com/HoneyBearTech/Argus) repository since
@@ -72,7 +76,7 @@ its 0.8.0)
 - Sonarr 5's new API (Sonarr 5 is in beta as of October 2026), once Sonarr 5 is stable, alongside `/api/v3`
   for Sonarr 4.
 - Done: the coverage floor is 80 % (2.3.0), the code is formatted with `ruff format` (3.3.0), and ruff checks
-  it with every rule family (after 3.4.0), which put type hints and docstrings on every function. The functions
+  it with every rule family (3.5.0), which put type hints and docstrings on every function. The functions
   that are still longer or more branched than ruff's limits are marked where they are defined; splitting them
   is what remains.
 
