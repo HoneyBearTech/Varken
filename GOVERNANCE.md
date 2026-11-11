@@ -58,7 +58,7 @@ Who can change the code, releases and project settings, as of the date of this f
 | Repository administration (settings, branch rules, merging) | the maintainer (@HoneyBearTech) | GitHub account owner |
 | Publishing images to GHCR (`ghcr.io/honeybeartech/varken`) | the release workflow, on a version tag pushed by the maintainer | GitHub Actions, short-lived `GITHUB_TOKEN` |
 | Signing images and release files | the release workflow, on a version tag | Sigstore keyless signing with the job's GitHub identity; no stored key |
-| Signing commits and version tags | the maintainer | personal SSH key (public half in [`.github/allowed_signers`](.github/allowed_signers)) |
+| Signing commits and version tags | the maintainer | two personal SSH keys, one in a password manager and one on the maintainer's build host (public halves in [`.github/allowed_signers`](.github/allowed_signers)) |
 | Mirroring the repository into the maintainer's self-hosted GitLab | the scheduled mirror job in [`.gitlab-ci.yml`](.gitlab-ci.yml) | a GitLab project access token (Maintainer role, `write_repository` only, with an expiry) in a masked, protected CI/CD variable on that GitLab; the maintainer creates and rotates it |
 | The OpenSSF Best Practices badge entry ([project 15525](https://www.bestpractices.dev/projects/15525)) | the maintainer | GitHub sign-in |
 | Security advisories and private vulnerability reports | the maintainer | GitHub |
@@ -100,15 +100,16 @@ review:
 The credentials the Varken project holds (not those of a Varken installation, such as its API keys and
 UniFi password, which stay in that installation's `varken.ini` or environment), and how they're handled:
 
-- **What exists**: the maintainer's GitHub account and its recovery codes, and the SSH key that signs
+- **What exists**: the maintainer's GitHub account and its recovery codes, and the two SSH keys that sign
   commits and tags. Images and release files are signed keylessly (Sigstore), so there is no long-lived
-  signing key, and the project stores no repository secrets.
+  signing key for them, and the project stores no repository secrets.
 - **Storage**: in the maintainer's password manager, never in the repository, CI logs, issues or pull
-  requests. A gitleaks scan in CI blocks committed secrets, and `.gitignore` excludes `varken.ini`, the
-  GeoLite2 database and logs.
-- **Access**: the maintainer only; the successor reaches the GitHub account and the signing key through
-  the lockbox described under Continuity.
-- **Rotation**: recovery codes are regenerated after use and at least yearly, and the lockbox updated; the
+  requests. The one exception is the second tag-signing key, a file on the maintainer's own build host
+  ([docs/security.md](docs/security.md#the-projects-own-secrets)). A gitleaks scan in CI blocks committed
+  secrets, and `.gitignore` excludes `varken.ini`, the GeoLite2 database and logs.
+- **Access**: the maintainer only; the successor reaches the GitHub account and the signing key in the
+  password manager through the lockbox described under Continuity.
+- **Rotation**: recovery codes are regenerated after use and at least yearly, and the lockbox updated; a
   signing key is replaced (and `.github/allowed_signers` updated) if it may have been exposed. Any secret
   that might have leaked is revoked and replaced at once, and the incident handled as in
   [SECURITY.md](SECURITY.md).
@@ -124,7 +125,7 @@ within a week of it being confirmed that the maintainer can no longer support it
   trusted person the maintainer has chosen can open through the password manager's **emergency access**,
   after a waiting period of a few days (short enough to act within the week). It holds the login and
   two-factor recovery codes of the GitHub account that owns the repository, access to that account's email
-  address, and the SSH key that signs commits and release tags. It is the same arrangement that covers the
+  address, and the SSH signing key kept in the password manager. It is the same arrangement that covers the
   maintainer's other projects under that account.
 - **Releases keep working from the repository alone.** Images are signed keylessly by GitHub Actions, so
   whoever controls the repository can keep publishing verifiable releases to GHCR.

@@ -7,6 +7,11 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+- A second key for signing release tags (ED25519), kept on the maintainer's build host. Its public half is in
+  `.github/allowed_signers`, and [docs/verifying-releases.md](docs/verifying-releases.md#the-git-tag) lists both
+  keys' fingerprints. Tags up to v3.3.0 are signed with the RSA key, which stays valid.
+
 ## [3.3.0] - 2026-11-10
 
 ### Changed
