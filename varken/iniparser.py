@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
 from ipaddress import ip_address
-from os import W_OK, access
 from shutil import copyfile
 from os import environ as env
 from logging import getLogger
@@ -16,12 +15,48 @@ from varken.helpers import clean_sid_check, rfc1918_ip_check, boolcheck
 from varken.structures import SonarrServer, RadarrServer, OmbiServer, TautulliServer
 
 
+class ConfigFile(ConfigParser):
+    """varken.ini as Varken reads it. A key the file doesn't have (one a newer Varken added, usually) takes its
+    value from varken.example.ini, in memory: the file itself is never written to."""
+
+    def __init__(self, example_path):
+        super().__init__(interpolation=None)
+        self.example_path = example_path
+        self.example = None  # varken.example.ini, once read
+        self.defaulted = {}  # section -> the keys whose values came from the example
+
+    def read_example(self):
+        """varken.example.ini, or nothing where there is none: a complete varken.ini doesn't need it."""
+        if self.example is None:
+            self.example = ConfigParser(interpolation=None)
+            if exists(self.example_path):
+                with open(self.example_path) as example_ini:
+                    self.example.read_file(example_ini)
+        return self.example
+
+    def get(self, section, option, **kwargs):
+        try:
+            return super().get(section, option, **kwargs)
+        except (NoSectionError, NoOptionError) as missing:
+            try:
+                value = self.read_example().get(section, option, **kwargs)
+            except (NoSectionError, NoOptionError) as in_example:
+                # In neither file. If varken.ini has the section and only lacks the key, say that: it is more to
+                # the point than the example lacking the whole section.
+                raise (missing if isinstance(missing, NoOptionError) else in_example) from None
+            # With its VRKN_ variable set, the caller uses that and not this value, so nothing was defaulted.
+            if f'VRKN_{section}_{option}'.upper().replace('-', '_') not in env:
+                keys = self.defaulted.setdefault(section, [])
+                if option not in keys:
+                    keys.append(option)
+            return value
+
+
 class INIParser(object):
     def __init__(self, data_folder):
         self.config = None
         self.data_folder = data_folder
         self.filtered_strings = None
-        self.rectified = False
         self.services = ['sonarr', 'radarr', 'lidarr', 'ombi', 'seerr', 'tautulli', 'sickchill', 'unifi']
 
         self.logger = getLogger()
@@ -29,20 +64,10 @@ class INIParser(object):
 
         self.read_secret_files()
         try:
-            self.parse_opts(read_file=True)
-        except NoSectionError as e:
-            self.logger.error('Missing section in (varken.ini): %s', e)
-            try:
-                self.rectify_ini()
-            except NoSectionError as e:
-                # A server id without a section of its own (sonarr_server_ids = 3, no [sonarr-3]): the example
-                # can't supply that section, so say what to add rather than fail with a traceback.
-                self.logger.error(
-                    'varken.ini has no [%s] section, but a server id in [global] points to it: add the section, '
-                    'or remove the id. Exiting.',
-                    e.section,
-                )
-                exit(1)
+            self.parse_opts()
+        except (NoSectionError, NoOptionError) as e:
+            self.missing_setting(e)
+        self.report_defaults()
 
     def read_secret_files(self):
         """VRKN_<SECTION>_<KEY>_FILE names a file that holds the value (Docker and compose secrets)."""
@@ -67,6 +92,13 @@ class INIParser(object):
             for k in section
             if k in BlacklistFilter.blacklisted_strings
         ]
+        # A key the file lacks takes the example's value, which is then used like the file's would be.
+        filtered_strings.extend(
+            value
+            for name, section in self.config.read_example().items()
+            for k, value in section.items()
+            if k in BlacklistFilter.blacklisted_strings and not self.config.has_option(name, k)
+        )
         # VRKN_* environment variables override the file, so their values are just as secret.
         secret_suffixes = tuple(f'_{key}' for key in BlacklistFilter.blacklisted_strings)
         filtered_strings.extend(
@@ -92,44 +124,29 @@ class INIParser(object):
             sids = clean_sid_check(global_server_ids, t)
             return sids
 
-    def read_file(self, inifile):
-        config = ConfigParser(interpolation=None)
-        ini = inifile
-        file_path = join(self.data_folder, ini)
+    def read_file(self):
+        """Read varken.ini. The only time Varken writes it is a first start, when it is copied from
+        varken.example.ini; after that the file is the user's, comments and all."""
+        example_path = join(self.data_folder, 'varken.example.ini')
+        file_path = join(self.data_folder, 'varken.ini')
+        config = ConfigFile(example_path)
 
         if not exists(file_path):
-            if inifile == 'varken.ini':
-                # Normal on a first start.
-                self.logger.info('No varken.ini in %s yet: creating it from varken.example.ini', self.data_folder)
-                try:
-                    copyfile(join(self.data_folder, 'varken.example.ini'), file_path)
-                except IOError as e:
-                    self.logger.error(
-                        'Varken does not have permission to write to %s. Error: %s - Exiting.', self.data_folder, e
-                    )
-                    exit(1)
-            else:
-                self.logger.error('File missing (%s) in %s', ini, self.data_folder)
+            # Normal on a first start.
+            self.logger.info('No varken.ini in %s yet: creating it from varken.example.ini', self.data_folder)
+            try:
+                copyfile(example_path, file_path)
+            except IOError as e:
+                self.logger.error(
+                    'Varken does not have permission to write to %s. Error: %s - Exiting.', self.data_folder, e
+                )
+                exit(1)
 
-        self.logger.debug('Reading from %s', inifile)
+        self.logger.debug('Reading from varken.ini')
         with open(file_path) as config_ini:
             config.read_file(config_ini)
 
         return config
-
-    def write_file(self, inifile):
-        ini = inifile
-        file_path = join(self.data_folder, ini)
-        if exists(file_path):
-            self.logger.debug('Writing to %s', inifile)
-            if not access(file_path, W_OK):
-                self.logger.error('Config file is incomplete and read-only. Exiting.')
-                exit(1)
-            with open(file_path, 'w') as config_ini:
-                self.config.write(config_ini)
-        else:
-            self.logger.error('File missing (%s) in %s', ini, self.data_folder)
-            exit(1)
 
     def url_check(self, url=None, include_port=True, section=None):
         url_check = url
@@ -166,46 +183,50 @@ class INIParser(object):
             self.logger.debug('%s is a valid URL in module [%s].', url_check, module)
             return url_check
 
-    def missing_key(self, error):
-        """A key varken.ini doesn't have (one a newer Varken added, usually): fill it in from the example and parse
-        again. If the key is still missing after that, the example lacks it too, so stop rather than loop."""
-        if self.rectified:
-            self.logger.error('[%s] %s is missing from varken.example.ini too. Exiting.', error.section, error.option)
-            exit(1)
+    def missing_setting(self, error):
+        """A setting that is in neither varken.ini nor varken.example.ini: say what to add and stop."""
+        if not exists(self.config.example_path):
+            self.logger.error(
+                'varken.ini has no [%s] %s, and there is no varken.example.ini in %s to take it from. Exiting.',
+                error.section,
+                getattr(error, 'option', 'section'),
+                self.data_folder,
+            )
+        elif isinstance(error, NoOptionError):
+            self.logger.error(
+                '[%s] %s is missing from varken.ini and from varken.example.ini. Exiting.',
+                error.section,
+                error.option,
+            )
+        elif error.section in ('global', 'prometheus'):
+            self.logger.error('varken.ini and varken.example.ini have no [%s] section. Exiting.', error.section)
+        else:
+            # A server id without a section of its own (sonarr_server_ids = 3, no [sonarr-3]): the example can't
+            # supply that section, so say what to add rather than fail with a traceback.
+            self.logger.error(
+                'varken.ini has no [%s] section, but a server id in [global] points to it: add the section, '
+                'or remove the id. Exiting.',
+                error.section,
+            )
+        exit(1)
+
+    def report_defaults(self):
+        """Name the settings varken.ini doesn't have, whose values came from varken.example.ini. Names only: a
+        value could be a secret."""
+        if not self.config.defaulted:
+            return
         self.logger.info(
-            'varken.ini has no %s in [%s] (new in this version?): adding it from varken.example.ini',
-            error.option,
-            error.section,
+            'varken.ini has no %s: using the values in varken.example.ini. varken.ini is left as it is; add the '
+            'settings to it to change them.',
+            '; '.join(f'[{section}] {", ".join(keys)}' for section, keys in self.config.defaulted.items()),
         )
-        self.rectified = True
-        self.rectify_ini()
 
-    def rectify_ini(self):
-        self.logger.debug('Rectifying varken.ini with varken.example.ini')
-        current_ini = self.config
-        example_ini = self.read_file('varken.example.ini')
-
-        for name, section in example_ini.items():
-            if name not in current_ini:
-                self.logger.debug('Section %s missing. Adding...', name)
-                current_ini[name] = {}
-            for key, value in section.items():
-                # Only keys that are missing: a key left empty on purpose (no MaxMind key, say) stays empty.
-                if key not in current_ini[name]:
-                    self.logger.debug('%s is missing in %s. Adding defaults...', key, name)
-                    current_ini[name][key] = value
-
-        self.config = current_ini
-        self.write_file('varken.ini')
-        self.parse_opts()
-
-    def parse_opts(self, read_file=False):
+    def parse_opts(self):
         for service in self.services:
             setattr(self, f'{service}_servers', [])
 
-        if read_file:
-            self.config = self.read_file('varken.ini')
-            self.config_blacklist()
+        self.config = self.read_file()
+        self.config_blacklist()
         # Parse Prometheus options
         try:
             bind = env.get('VRKN_PROMETHEUS_BIND', self.config.get('prometheus', 'bind'))
@@ -213,9 +234,6 @@ class INIParser(object):
             stream_details = boolcheck(
                 env.get('VRKN_PROMETHEUS_STREAM_DETAILS', self.config.get('prometheus', 'stream_details'))
             )
-        except NoOptionError as e:
-            self.missing_key(e)
-            return
         except ValueError as e:
             self.logger.error('Invalid configuration value in prometheus. Error: %s', e)
             exit(1)
@@ -232,11 +250,7 @@ class INIParser(object):
 
         # Check for all enabled services
         for service in self.services:
-            try:
-                setattr(self, f'{service}_enabled', self.enable_check(f'{service}_server_ids'))
-            except NoOptionError as e:
-                self.missing_key(e)
-                return
+            setattr(self, f'{service}_enabled', self.enable_check(f'{service}_server_ids'))
             service_enabled = getattr(self, f'{service}_enabled')
 
             if service_enabled:
@@ -503,8 +517,5 @@ class INIParser(object):
                             )
 
                         getattr(self, f'{service}_servers').append(server)
-                    except NoOptionError as e:
-                        self.missing_key(e)
-                        return
                     except ValueError as e:
                         self.logger.error('Invalid configuration value in %s. Error: %s', section, e)

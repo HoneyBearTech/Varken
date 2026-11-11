@@ -186,7 +186,7 @@ fails that run (`varken_job_up` 0), and the log names its host.
 
 | Path (in the data folder) | Written by Varken | Contents |
 | --- | --- | --- |
-| `varken.ini` | when created from the example, or when missing keys are filled in | the configuration ([configuration.md](configuration.md)) |
+| `varken.ini` | once, when created from the example on a first start | the configuration ([configuration.md](configuration.md)) |
 | `varken.example.ini` | no (the image copies it in on start) | the template |
 | `GeoLite2-City.mmdb` | downloaded and replaced about every 30 days, when Tautulli is enabled with a MaxMind license key | MaxMind's city database; only the `.mmdb` file is extracted from the archive |
 | `GeoLite2-City.tar.gz` | temporarily, during a download | |

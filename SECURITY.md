@@ -50,8 +50,9 @@ one applies), naming the affected and fixed versions, how to tell whether you're
 work around it, and they're listed in the release notes and [CHANGELOG.md](CHANGELOG.md). None have been
 reported so far.
 
-Known weaknesses that are already public, such as `verify_ssl` defaulting to off, are listed in
-[docs/security.md](docs/security.md#known-weaknesses) with the plan for each. Known vulnerabilities in what
+Known weaknesses that are already public are listed in
+[docs/security.md](docs/security.md#known-weaknesses) with the plan for each, and those already fixed with the
+release that fixed them. Known vulnerabilities in what
 Varken is built from (the Python base image and the Python packages) are handled as described in
 [docs/dependencies.md](docs/dependencies.md).
 

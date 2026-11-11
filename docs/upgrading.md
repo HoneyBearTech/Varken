@@ -9,8 +9,8 @@ need to do first.
 Varken itself holds very little:
 
 - **`varken.ini`** in the data folder (and, with compose, **`.env`**): your settings and secrets. Upgrades
-  never change them, unless a key is missing, which Varken then fills in from the example
-  ([configuration.md](configuration.md#how-values-are-read)).
+  never change them. (Before 3.4.0, Varken rewrote `varken.ini` when a key was missing; see
+  [3.3.x to 3.4.0](#33x-to-340).)
 - **`GeoLite2-City.mmdb`**: downloaded again when missing, so it needn't be backed up.
 - **`logs/`**: only history.
 
@@ -106,6 +106,16 @@ docker compose logs -f varken
 
 For a bare install: `git fetch --tags && git checkout vX.Y.Z`, reinstall `requirements.txt` with
 `--require-hashes --no-deps` (it may have changed), and restart the service.
+
+### 3.3.x to 3.4.0
+
+- **Varken no longer writes to your `varken.ini`.** A setting the file lacks (one a newer release added,
+  usually) takes its value from `varken.example.ini`, which the image refreshes on every start, and one log
+  line names it: `varken.ini has no [prometheus] stream_details: using the values in varken.example.ini`.
+  Add the setting to `varken.ini` when you want another value
+  ([configuration.md](configuration.md#how-values-are-read)). There is nothing to do: a file that an earlier
+  release completed stays as it is, comments are kept from now on, and the file can be read-only.
+- The notes below that say a setting is added to your `varken.ini` describe the releases before 3.4.0.
 
 ### 2.x to 3.0.0
 

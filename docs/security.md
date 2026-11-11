@@ -25,7 +25,7 @@ on the same private network.
 - **Metrics carry no secrets, and scrapes change nothing.** The `/metrics` endpoint serves gauges built from
   the last run of each job: no API keys, passwords, URLs or configuration. A scrape never calls a service
   ([interfaces.md](interfaces.md#output-prometheus-metrics)).
-- **It writes only to its data folder**: `varken.ini` (when it creates or completes it), the GeoLite2
+- **It writes only to its data folder**: `varken.ini` (once, to create it on a first start), the GeoLite2
   database and logs. The database archive is extracted with Python's `data`
   filter, so a tampered archive can't write elsewhere or create links.
 - **Responses are data.** API responses are parsed as JSON and only read; nothing from them is
@@ -141,13 +141,15 @@ What the project itself holds, and how each is kept (the operator's secrets are 
 
 ## Known weaknesses
 
-These are inherited from upstream Varken and are already public. Each has a planned fix on the
-[roadmap](roadmap.md); until then, the workaround is listed. Weaknesses already fixed are listed
-[below](#fixed-in-200).
+None is open. The weaknesses inherited from upstream Varken, which were already public, are fixed; they are
+listed below with the release that fixed each. A new one would be listed here with its workaround and a plan
+on the [roadmap](roadmap.md).
 
-| Weakness | Effect | Workaround today | Plan |
-| --- | --- | --- | --- |
-| Config rewrite | When keys are missing, Varken rewrites `varken.ini` with values from the example, dropping comments | Keep `varken.ini` complete | |
+### Fixed in 3.4.0
+
+| Weakness | Effect | Fix |
+| --- | --- | --- |
+| Config rewrite | When a key was missing, Varken rewrote `varken.ini` from what it had parsed: every comment in the file was lost, an interrupted write could leave the file (and the secrets in it) cut short, and a read-only file stopped Varken | Varken never writes to an existing `varken.ini`. A key the file lacks takes the value in `varken.example.ini`, in memory, and the log names the key |
 
 ### Fixed in 3.0.0
 

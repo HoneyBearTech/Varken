@@ -86,8 +86,8 @@ its 0.8.0)
 - Done: the [OpenSSF Best Practices badge](https://www.bestpractices.dev/projects/15525) is at Silver, with
   OSPS Baseline Levels 1 and 2.
 - Keep a healthy OpenSSF Scorecard: pinned dependencies, signed releases, branch protection, SAST.
-- Close the remaining [known weakness](security.md#known-weaknesses): Varken rewrites `varken.ini` when keys are
-  missing, which drops its comments. (Secrets in logs are fully masked since 3.0.0.)
+- Done: no [known weakness](security.md#known-weaknesses) is open. The last one, the rewrite of `varken.ini`
+  that dropped its comments, is fixed in 3.4.0.
 
 ## Later, if there's interest (icebox)
 

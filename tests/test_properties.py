@@ -49,7 +49,9 @@ def parser_for(ini_text, environment):
     environment. Returns the parser, or 'exit' where Varken refuses to start (an exit(1) after an error log)."""
     with tempfile.TemporaryDirectory() as folder:
         shutil.copy(REPO / 'data' / 'varken.example.ini', Path(folder) / 'varken.example.ini')
-        (Path(folder) / 'varken.ini').write_text(ini_text, encoding='utf-8', errors='surrogatepass')
+        ini = Path(folder) / 'varken.ini'
+        ini.write_text(ini_text, encoding='utf-8', errors='surrogatepass')
+        written = ini.read_bytes()
         # No log capture: the parser logs every refusal, and thousands of records slow a long run to a crawl.
         logging.disable(logging.CRITICAL)
         try:
@@ -60,6 +62,7 @@ def parser_for(ini_text, environment):
             return 'exit'
         finally:
             logging.disable(logging.NOTSET)
+            assert ini.read_bytes() == written  # an existing varken.ini is the user's: Varken never writes to it
 
 
 def example_config():
@@ -71,11 +74,16 @@ def example_config():
 CONFIG_KEYS = [(name, key) for name, section in example_config().items() for key in section]
 
 
-def with_values(values):
-    """The example config with some keys given other values. `values` maps (section, key) to text."""
+def with_values(values, without=()):
+    """The example config with some keys given other values, and some left out. `values` maps (section, key) to
+    text; `without` holds the (section, key) pairs to leave out. A section left with no keys goes too."""
     config = example_config()
     for (section, key), value in values.items():
         config[section][key] = value
+    for section, key in without:
+        config.remove_option(section, key)
+        if not config[section]:
+            config.remove_section(section)
     out = io.StringIO()
     config.write(out)
     return out.getvalue()
@@ -116,6 +124,24 @@ def test_any_config_and_environment_starts_cleanly_or_refuses_with_exit_1(values
     parser = parser_for(with_values(values), environment)
     if parser != 'exit':
         check_parsed(parser)
+
+
+def parsed(parser):
+    """Everything a start-up hands to the rest of Varken."""
+    if parser == 'exit':
+        return parser
+    return (
+        parser.prometheus_server,
+        [(getattr(parser, f'{service}_enabled'), getattr(parser, f'{service}_servers')) for service in parser.services],
+    )
+
+
+@given(st.sets(st.sampled_from(CONFIG_KEYS), max_size=12), environments)
+@example({('prometheus', key) for key in ('bind', 'port', 'stream_details')}, {})  # an upstream 1.7.x file
+@example({('global', 'maxmind_account_id')}, {'VRKN_TAUTULLI_1_URL': 'tautulli.example.com'})
+@example({key for key in CONFIG_KEYS if key[0] == 'sonarr-2'}, {})  # a server id whose section is gone
+def test_keys_missing_from_varken_ini_take_the_examples_values(without, environment):
+    assert parsed(parser_for(with_values({}, without), environment)) == parsed(parser_for(EXAMPLE_INI, environment))
 
 
 @given(any_text, st.booleans())

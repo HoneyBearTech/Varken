@@ -77,14 +77,19 @@ def test_private_fallback_ip_exits(data_folder, monkeypatch):
         INIParser(str(data_folder))
 
 
-def test_missing_key_is_restored_from_the_example(data_folder):
+def test_a_missing_key_takes_the_examples_value_and_varken_ini_is_left_alone(data_folder):
+    # Regression: a missing key made Varken rewrite varken.ini from what it had parsed, which dropped every comment
+    # in the file (and left it truncated if the write was interrupted).
     example = (data_folder / 'varken.example.ini').read_text()
-    (data_folder / 'varken.ini').write_text(example.replace('get_stats_run_seconds = 3600\n', ''))
+    ini = '# Tautulli moved hosts in March; the old key is revoked.\n' + example.replace(
+        'get_stats_run_seconds = 3600\n', '; stats once an hour is plenty\n'
+    )
+    (data_folder / 'varken.ini').write_text(ini)
 
     parser = INIParser(str(data_folder))
 
-    assert 'get_stats_run_seconds = 3600' in (data_folder / 'varken.ini').read_text()
     assert parser.tautulli_servers[0].get_stats_run_seconds == 3600
+    assert (data_folder / 'varken.ini').read_text() == ini
 
 
 def test_prometheus_settings_from_the_environment(data_folder, monkeypatch):
@@ -112,7 +117,8 @@ def test_invalid_prometheus_settings_exit(data_folder, monkeypatch, name, value)
         INIParser(str(data_folder))
 
 
-def test_an_upstream_ini_gets_the_prometheus_settings_and_keeps_its_influxdb_section(data_folder):
+def test_an_upstream_ini_uses_the_default_prometheus_settings_and_is_left_alone(data_folder):
+    # An upstream 1.7.x file: an [influxdb] section Varken ignores, and no [prometheus] section at all.
     example = (data_folder / 'varken.example.ini').read_text()
     upstream = (
         example[: example.index('[prometheus]')]
@@ -123,10 +129,8 @@ def test_an_upstream_ini_gets_the_prometheus_settings_and_keeps_its_influxdb_sec
 
     parser = INIParser(str(data_folder))
 
-    written = (data_folder / 'varken.ini').read_text()
-    assert '[prometheus]' in written
-    assert '[influxdb]' in written
     assert parser.prometheus_server == PrometheusServer()
+    assert (data_folder / 'varken.ini').read_text() == upstream
 
 
 def test_secrets_can_come_from_files(data_folder, monkeypatch, tmp_path):
@@ -175,27 +179,89 @@ def test_maxmind_account_id_from_the_environment(data_folder, monkeypatch):
     assert INIParser(str(data_folder)).tautulli_servers[0].maxmind_account_id == '123456'
 
 
-def test_a_2_1_ini_gets_the_maxmind_account_id(data_folder):
-    # varken.ini files written before 2.2.0 have no maxmind_account_id; it's added, empty, on the next start.
+def test_a_2_1_ini_has_no_maxmind_account_id_and_none_is_used(data_folder):
+    # varken.ini files written before 2.2.0 have no maxmind_account_id; the example's is empty.
     example = (data_folder / 'varken.example.ini').read_text()
     (data_folder / 'varken.ini').write_text(example.replace('maxmind_account_id =\n', ''))
 
     parser = INIParser(str(data_folder))
 
-    assert 'maxmind_account_id' in (data_folder / 'varken.ini').read_text()
+    assert 'maxmind_account_id' not in (data_folder / 'varken.ini').read_text()
     assert parser.tautulli_servers[0].maxmind_account_id is None
 
 
-def test_a_key_new_in_this_version_is_added_without_an_error(data_folder, caplog):
+def test_a_key_new_in_this_version_is_reported_once_without_an_error(data_folder, caplog):
     # Regression: upgrading to 2.2.0 logged "ERROR ... Missing key in tautulli-1" for maxmind_account_id.
     example = (data_folder / 'varken.example.ini').read_text()
-    (data_folder / 'varken.ini').write_text(example.replace('maxmind_account_id =\n', ''))
+    ini = example.replace('maxmind_account_id =\n', '').replace('stream_details = false\n', '')
+    (data_folder / 'varken.ini').write_text(ini.replace('get_stats_run_seconds = 3600\n', ''))
 
     with caplog.at_level(logging.INFO):
         INIParser(str(data_folder))
 
-    assert 'varken.ini has no maxmind_account_id in [global]' in caplog.text
+    reports = [record.getMessage() for record in caplog.records if 'varken.ini has no' in record.getMessage()]
+    assert len(reports) == 1  # one line for every section, not one per key
+    assert '[prometheus] stream_details; [tautulli-1] get_stats_run_seconds; [global] maxmind_account_id' in reports[0]
     assert 'ERROR' not in [record.levelname for record in caplog.records]
+
+
+def test_a_complete_varken_ini_reports_nothing_and_needs_no_example(data_folder, caplog):
+    (data_folder / 'varken.example.ini').rename(data_folder / 'varken.ini')
+
+    with caplog.at_level(logging.INFO):
+        parser = INIParser(str(data_folder))
+
+    assert parser.tautulli_servers[0].get_stats_run_seconds == 3600
+    assert 'varken.ini has no' not in caplog.text
+
+
+def test_the_report_of_missing_keys_names_them_without_their_values(data_folder, caplog):
+    # A value can be a secret (the example's are placeholders, but the line is built from names alone).
+    example = (data_folder / 'varken.example.ini').read_text()
+    (data_folder / 'varken.ini').write_text(example.replace('apikey = xxxxxxxxxxxxxxxx\n', '', 1))
+
+    with caplog.at_level(logging.INFO):
+        INIParser(str(data_folder))
+
+    assert 'varken.ini has no [tautulli-1] apikey' in caplog.text
+    assert 'xxxxxxxxxxxxxxxx' not in caplog.text
+
+
+def test_a_secret_taken_from_the_example_is_redacted_like_one_in_the_file(data_folder, monkeypatch):
+    # The password Varken logs in with when [unifi-1] has none: it must not reach the log either.
+    example = data_folder / 'varken.example.ini'
+    example.write_text(example.read_text().replace('password = ubnt', 'password = from-the-example'))
+    (data_folder / 'varken.ini').write_text(example.read_text().replace('password = from-the-example\n', ''))
+    monkeypatch.setenv('VRKN_GLOBAL_UNIFI_SERVER_IDS', '1')
+
+    parser = INIParser(str(data_folder))
+
+    assert parser.unifi_servers[0].password == 'from-the-example'
+    assert 'from-the-example' in parser.filtered_strings
+
+
+def test_a_missing_key_with_its_environment_variable_set_is_not_reported(data_folder, monkeypatch, caplog):
+    example = (data_folder / 'varken.example.ini').read_text()
+    (data_folder / 'varken.ini').write_text(example.replace('get_stats_run_seconds = 3600\n', ''))
+    monkeypatch.setenv('VRKN_TAUTULLI_1_GET_STATS_RUN_SECONDS', '600')
+
+    with caplog.at_level(logging.INFO):
+        parser = INIParser(str(data_folder))
+
+    assert parser.tautulli_servers[0].get_stats_run_seconds == 600
+    assert 'varken.ini has no' not in caplog.text
+
+
+def test_a_read_only_varken_ini_with_a_missing_key_starts(data_folder):
+    # It used to stop with "Config file is incomplete and read-only".
+    example = (data_folder / 'varken.example.ini').read_text()
+    ini = data_folder / 'varken.ini'
+    ini.write_text(example.replace('get_stats_run_seconds = 3600\n', ''))
+    ini.chmod(0o400)
+
+    parser = INIParser(str(data_folder))
+
+    assert parser.tautulli_servers[0].get_stats_run_seconds == 3600
 
 
 def test_a_key_left_empty_on_purpose_stays_empty(data_folder):
@@ -204,22 +270,51 @@ def test_a_key_left_empty_on_purpose_stays_empty(data_folder):
     ini = example.replace('maxmind_license_key = xxxxxxxxxxxxxxxx\n', 'maxmind_license_key =\n')
     (data_folder / 'varken.ini').write_text(ini.replace('get_stats_run_seconds = 3600\n', ''))
 
-    INIParser(str(data_folder))
+    parser = INIParser(str(data_folder))
 
-    text = (data_folder / 'varken.ini').read_text()
-    assert 'get_stats_run_seconds = 3600' in text
-    assert 'maxmind_license_key = \n' in text or 'maxmind_license_key =\n' in text
+    assert parser.tautulli_servers[0].maxmind_license_key == ''
+    assert parser.tautulli_servers[0].get_stats_run_seconds == 3600
 
 
-def test_a_key_missing_from_the_example_too_exits_instead_of_looping(data_folder):
+def test_a_key_missing_from_the_example_too_says_so_and_exits(data_folder, caplog):
     for name in ('varken.ini', 'varken.example.ini'):
         path = data_folder / name
         if not path.exists():
             path.write_text((data_folder / 'varken.example.ini').read_text())
         path.write_text(path.read_text().replace('get_stats_run_seconds = 3600\n', ''))
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as stop:
         INIParser(str(data_folder))
+
+    assert stop.value.code == 1
+    assert '[tautulli-1] get_stats_run_seconds is missing from varken.ini and from varken.example.ini' in caplog.text
+
+
+def test_a_section_missing_from_the_example_too_says_so_and_exits(data_folder, caplog):
+    example = data_folder / 'varken.example.ini'
+    text = example.read_text()
+    without = text[: text.index('[prometheus]')] + text[text.index('[tautulli-1]') :]
+    example.write_text(without)
+    (data_folder / 'varken.ini').write_text(without)
+
+    with pytest.raises(SystemExit) as stop:
+        INIParser(str(data_folder))
+
+    assert stop.value.code == 1
+    assert 'varken.ini and varken.example.ini have no [prometheus] section' in caplog.text
+
+
+def test_a_missing_key_without_an_example_to_take_it_from_says_so_and_exits(data_folder, caplog):
+    # It used to end in a FileNotFoundError traceback.
+    example = data_folder / 'varken.example.ini'
+    (data_folder / 'varken.ini').write_text(example.read_text().replace('get_stats_run_seconds = 3600\n', ''))
+    example.unlink()
+
+    with pytest.raises(SystemExit) as stop:
+        INIParser(str(data_folder))
+
+    assert stop.value.code == 1
+    assert 'varken.ini has no [tautulli-1] get_stats_run_seconds, and there is no varken.example.ini' in caplog.text
 
 
 def test_seerr_is_off_by_default_and_configured_from_the_environment(data_folder, monkeypatch, tmp_path):
