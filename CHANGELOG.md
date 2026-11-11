@@ -7,14 +7,12 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
-### Changed
-- Python 3.15: the image's base is `python:3.15.2-slim` (pinned by digest) and CI tests on 3.15. Dependencies are
-  unchanged. For a bare install, make the virtual environment with Python 3.15; 3.14 is no longer tested. The Fuzz
-  workflow stays on 3.14 until Atheris has wheels for 3.15.
-
 ## [3.3.0] - 2026-11-10
 
 ### Changed
+- Python 3.15: the image's base is `python:3.15.2-slim` (pinned by digest) and CI tests on 3.15. For a bare
+  install, make the virtual environment with Python 3.15; 3.14 is no longer tested. The Fuzz workflow stays on 3.14
+  until Atheris has wheels for 3.15.
 - Code is formatted with `ruff format` (single quotes, line length 120) and CI checks it; the formatting commit is
   listed in `.git-blame-ignore-revs`.
 - GeoLite2 lookups use `maxminddb` directly instead of `geoip2`. Same database, same locations and metrics; the
