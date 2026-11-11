@@ -113,7 +113,7 @@ actionlint, hadolint, gitleaks and pip-audit run in CI; the exact commands are i
 - **Tests are offline.** They use fixtures and mocks, never a real service or MaxMind, and never
   real API keys, hostnames or viewing data. Fixtures use placeholders such as `tautulli.example.com`.
 - Coverage must stay at or above the floor in [`pyproject.toml`](pyproject.toml); CI fails below it. The
-  floor only goes up, towards the 80 % target on the [roadmap](docs/roadmap.md).
+  floor is 80 % and only goes up.
 
 ## Updating pinned dependencies
 
