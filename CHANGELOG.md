@@ -7,6 +7,13 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+- For contributors: pull requests from `honeybeartech-ops` are the maintainer's. It is the maintainer's machine
+  account, with write access and no admin rights; the maintainer reviews and approves each of its pull requests
+  under their own account before it merges. [GOVERNANCE.md](GOVERNANCE.md) lists what the account can do and how
+  its credentials are kept, [CONTRIBUTING.md](CONTRIBUTING.md) says how its pull requests are reviewed, and
+  [docs/security.md](docs/security.md#the-projects-own-secrets) adds its access token to the project's secrets.
+
 ## [3.5.0] - 2026-11-11
 
 ### Changed

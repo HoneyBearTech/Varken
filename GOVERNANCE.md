@@ -24,11 +24,15 @@ Decisions happen in the open wherever possible:
   [GitHub Issues](https://github.com/HoneyBearTech/Varken/issues). Anyone can open one or comment.
 - **Changes** land only through pull requests to the default branch, `main`, which must pass the
   required checks, be up to date with `main`, and are squash-merged; nobody can push to `main` directly,
-  force-push or delete it. A pull request needs a code owner's approval after its last push. With one
-  maintainer there is no second reviewer: the maintainer, as repository admin, merges their own pull
-  requests through the ruleset's pull-request-only bypass, so every change still goes through a pull request
-  and its checks. A second maintainer would end that bypass. The pull request description records what
-  changed and why.
+  force-push or delete it. A pull request needs a code owner's approval after its last push, and the
+  maintainer is the only code owner. The maintainer's own work gets in one of two ways. Work prepared on the
+  maintainer's build host is opened as a pull request by the maintainer's machine account
+  ([Access to sensitive resources](#access-to-sensitive-resources)); the maintainer reviews and approves it
+  under their own account, and only then is it merged. A pull request opened under the maintainer's own
+  account can't be approved by its author, so the maintainer, as repository admin, merges it through the
+  ruleset's pull-request-only bypass. Either way every change goes through a pull request and its checks,
+  and either way there is no second reviewer: the machine account is the maintainer's, not another person.
+  A second maintainer would end the bypass. The pull request description records what changed and why.
 - **Direction** is published in the [roadmap](docs/roadmap.md), including what the project does not intend
   to do. Larger design choices are explained in the pull requests that make them.
 - **Security reports** are handled privately, as described in [SECURITY.md](SECURITY.md), until a fix is
@@ -45,6 +49,11 @@ reasoning, and may change course. Because the code is MIT-licensed, you can alwa
 | Contributor | Anyone who opens an issue or pull request | Follow [CONTRIBUTING.md](CONTRIBUTING.md) (coding standards, tests, sign-off, no secrets, hostnames or viewing data) and the [Code of Conduct](CODE_OF_CONDUCT.md); report vulnerabilities privately. |
 | Security reporter | Anyone who reports a vulnerability | Report privately and allow time for a fix before disclosing, as described in [SECURITY.md](SECURITY.md). |
 
+The maintainer also acts through a machine account,
+[@honeybeartech-ops](https://github.com/honeybeartech-ops): a second login of the maintainer's with fewer
+rights, not another person and not a role of its own. What it can do is listed under
+[Access to sensitive resources](#access-to-sensitive-resources).
+
 Automated tools also take part: Dependabot proposes updates to the base image, the Python packages and the
 GitHub Actions, which the maintainer reviews and merges by hand, and CI, CodeQL, dependency review and
 OpenSSF Scorecard check every change.
@@ -55,8 +64,9 @@ Who can change the code, releases and project settings, as of the date of this f
 
 | Resource | Who has access | Through |
 | --- | --- | --- |
-| Repository administration (settings, branch rules, merging) | the maintainer (@HoneyBearTech) | GitHub account owner |
-| Publishing images to GHCR (`ghcr.io/honeybeartech/varken`) | the release workflow, on a version tag pushed by the maintainer | GitHub Actions, short-lived `GITHUB_TOKEN` |
+| Repository administration (settings, branch rules, merging, the pull-request bypass) | the maintainer (@HoneyBearTech) | GitHub account owner |
+| Write access: pushing branches and version tags, opening pull requests, merging pull requests the maintainer has approved | the maintainer's machine account (@honeybeartech-ops), which only the maintainer uses | a collaborator with the write role and no admin rights: it can't push to `main`, change settings or rules, approve a pull request or use the bypass. Its access token is a file on the maintainer's build host |
+| Publishing images to GHCR (`ghcr.io/honeybeartech/varken`) | the release workflow, on a version tag pushed by the maintainer under either account | GitHub Actions, short-lived `GITHUB_TOKEN` |
 | Signing images and release files | the release workflow, on a version tag | Sigstore keyless signing with the job's GitHub identity; no stored key |
 | Signing commits and version tags | the maintainer | two personal SSH keys, one in a password manager and one on the maintainer's build host (public halves in [`.github/allowed_signers`](.github/allowed_signers)) |
 | Mirroring the repository into the maintainer's self-hosted GitLab | the scheduled mirror job in [`.gitlab-ci.yml`](.gitlab-ci.yml) | a GitLab project access token (Maintainer role, `write_repository` only, with an expiry) in a masked, protected CI/CD variable on that GitLab; the maintainer creates and rotates it |
@@ -68,7 +78,8 @@ Who can change the code, releases and project settings, as of the date of this f
 
 Everyone with write access to the repository, or access to any resource in the table above, must use
 two-factor authentication on their GitHub account with an authenticator app, a passkey or a security key;
-SMS alone doesn't count. The maintainer's account uses it. A collaborator without it isn't given access.
+SMS alone doesn't count. The maintainer's account and the machine account both use it. A collaborator without
+it isn't given access.
 
 ### Granting access
 
@@ -77,9 +88,12 @@ table above, the maintainer reviews their history with the project (merged pull 
 period of months), confirms two-factor authentication, and records the change in this file in the same pull
 request. Access is the least the role needs, and is removed when it's no longer used.
 
-There are no other collaborators. Workflows use the per-job `GITHUB_TOKEN`, read-only unless a job asks for
-more, and pull requests from forks get read-only tokens and no secrets. The project stores no repository
-secrets.
+The only collaborator is the maintainer's machine account, with the write role since 2026-11-11. It is not a
+contributor who was given access: it is the maintainer's second login, kept to the write role so that the
+token stored on the build host can't administer the repository.
+
+Workflows use the per-job `GITHUB_TOKEN`, read-only unless a job asks for more, and pull requests from forks
+get read-only tokens and no secrets. The project stores no repository secrets.
 
 ## Granting elevated access
 
@@ -95,24 +109,29 @@ review:
    this file, and grants the least access that role needs.
 4. Access is removed when someone steps back or is inactive for a year, also by a pull request here.
 
+The maintainer's machine account did not go through this review, which is for people: it adds nobody to the
+project. It never gets the maintain or admin role.
+
 ## The project's own secrets
 
 The credentials the Varken project holds (not those of a Varken installation, such as its API keys and
 UniFi password, which stay in that installation's `varken.ini` or environment), and how they're handled:
 
-- **What exists**: the maintainer's GitHub account and its recovery codes, and the two SSH keys that sign
+- **What exists**: the maintainer's GitHub account and its recovery codes, the machine account's login and
+  recovery codes, the access token that account uses on the build host, and the two SSH keys that sign
   commits and tags. Images and release files are signed keylessly (Sigstore), so there is no long-lived
   signing key for them, and the project stores no repository secrets.
 - **Storage**: in the maintainer's password manager, never in the repository, CI logs, issues or pull
-  requests. The one exception is the second tag-signing key, a file on the maintainer's own build host
-  ([docs/security.md](docs/security.md#the-projects-own-secrets)). A gitleaks scan in CI blocks committed
-  secrets, and `.gitignore` excludes `varken.ini`, the GeoLite2 database and logs.
-- **Access**: the maintainer only; the successor reaches the GitHub account and the signing key in the
+  requests. The two exceptions are files on the maintainer's own build host: the second tag-signing key and
+  the machine account's access token ([docs/security.md](docs/security.md#the-projects-own-secrets)). A
+  gitleaks scan in CI blocks committed secrets, and `.gitignore` excludes `varken.ini`, the GeoLite2
+  database and logs.
+- **Access**: the maintainer only; the successor reaches both GitHub accounts and the signing key in the
   password manager through the lockbox described under Continuity.
 - **Rotation**: recovery codes are regenerated after use and at least yearly, and the lockbox updated; a
-  signing key is replaced (and `.github/allowed_signers` updated) if it may have been exposed. Any secret
-  that might have leaked is revoked and replaced at once, and the incident handled as in
-  [SECURITY.md](SECURITY.md).
+  signing key is replaced (and `.github/allowed_signers` updated), and the machine account's token revoked
+  and issued anew, if it may have been exposed. Any secret that might have leaked is revoked and replaced at
+  once, and the incident handled as in [SECURITY.md](SECURITY.md).
 - A new stored secret needs a reason, is scoped to the one workflow job that uses it, and is added to this
   section in the same pull request.
 
@@ -125,8 +144,9 @@ within a week of it being confirmed that the maintainer can no longer support it
   trusted person the maintainer has chosen can open through the password manager's **emergency access**,
   after a waiting period of a few days (short enough to act within the week). It holds the login and
   two-factor recovery codes of the GitHub account that owns the repository, access to that account's email
-  address, and the SSH signing key kept in the password manager. It is the same arrangement that covers the
-  maintainer's other projects under that account.
+  address, the login and recovery codes of the maintainer's machine account, and the SSH signing key kept in
+  the password manager. It is the same arrangement that covers the maintainer's other projects under that
+  account.
 - **Releases keep working from the repository alone.** Images are signed keylessly by GitHub Actions, so
   whoever controls the repository can keep publishing verifiable releases to GHCR.
 - **A succession note**, kept with the maintainer's personal papers and referenced from the lockbox, gives
