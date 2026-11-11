@@ -1,15 +1,26 @@
 # SPDX-FileCopyrightText: 2018 Boerderij
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
+"""UniFi: the traffic and load of a UniFi Security Gateway."""
+
+from datetime import UTC, datetime
 from logging import getLogger
-from requests import Session, Request
-from datetime import datetime, timezone
+from typing import TYPE_CHECKING
+
+from requests import Request, Session
 
 from varken.helpers import connection_handler
 
+if TYPE_CHECKING:
+    from varken.metrics import Metrics
+    from varken.structures import UniFiServer
 
-class UniFiAPI(object):
-    def __init__(self, server, output):
+
+class UniFiAPI:
+    """A UniFi controller through its API, signed in with a user name and password."""
+
+    def __init__(self, server: UniFiServer, output: Metrics) -> None:
+        """Sign in to the controller and find the site; `output` takes the points."""
         self.output = output
         self.server = server
         self.site = self.server.site
@@ -20,14 +31,16 @@ class UniFiAPI(object):
         self.get_cookie()
         self.get_site()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Name the server as the log does."""
         return f'<unifi-{self.server.id}>'
 
-    def get_cookie(self):
+    def get_cookie(self) -> None:
+        """Sign in, and keep the session cookie the controller answers with."""
         endpoint = '/api/login'
         pre_cookies = {'username': self.server.username, 'password': self.server.password, 'remember': True}
         req = self.session.prepare_request(Request('POST', self.server.url + endpoint, json=pre_cookies))
-        post = connection_handler(self.session, req, self.server.verify_ssl, as_is_reply=True)
+        post = connection_handler(self.session, req, verify=self.server.verify_ssl, as_is_reply=True)
 
         if not post or not post.cookies.get('unifises'):
             self.logger.error('Could not retrieve session cookie from UniFi Controller')
@@ -36,10 +49,11 @@ class UniFiAPI(object):
         cookies = {'unifises': post.cookies.get('unifises')}
         self.session.cookies.update(cookies)
 
-    def get_site(self):
+    def get_site(self) -> None:
+        """Find the configured site, by its name or its description, among the controller's sites."""
         endpoint = '/api/self/sites'
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint))
-        get = connection_handler(self.session, req, self.server.verify_ssl)
+        get = connection_handler(self.session, req, verify=self.server.verify_ssl)
 
         if not get:
             self.logger.error('Could not get list of sites from UniFi Controller')
@@ -52,13 +66,14 @@ class UniFiAPI(object):
         if site:
             self.site = site[0]
         else:
-            self.logger.error(f'Could not map site {self.server.site} to a site id/alias')
+            self.logger.error('Could not map site %s to a site id/alias', self.server.site)
 
-    def get_usg_stats(self):
-        now = datetime.now(timezone.utc).astimezone().isoformat()
+    def get_usg_stats(self) -> None:
+        """Write a point with the gateway's traffic and load; a failed request signs in again and retries once."""
+        now = datetime.now(UTC).astimezone().isoformat()
         endpoint = f'/api/s/{self.site}/stat/device'
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint))
-        get = connection_handler(self.session, req, self.server.verify_ssl)
+        get = connection_handler(self.session, req, verify=self.server.verify_ssl)
 
         if not get:
             if self.get_retry:

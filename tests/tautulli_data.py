@@ -3,7 +3,7 @@
 """Tautulli API replies and fakes shared by the Tautulli and Prometheus tests."""
 
 from types import SimpleNamespace
-
+from typing import Any
 
 from varken.helpers import AddressNotFoundError
 from varken.structures import TautulliServer
@@ -72,7 +72,7 @@ LIBRARIES = {
 }
 
 
-def place(city='Springfield'):
+def place(city: str = 'Springfield') -> SimpleNamespace:
     return SimpleNamespace(
         location=SimpleNamespace(latitude=39.8, longitude=-89.6),
         city=SimpleNamespace(name=city),
@@ -81,20 +81,21 @@ def place(city='Springfield'):
 
 
 class FakeOutput:
-    def __init__(self):
+    def __init__(self) -> None:
         self.points = []
 
-    def write_points(self, points):
+    def write_points(self, points: list[dict[str, Any]]) -> None:
         self.points.extend(points)
 
 
 class FakeGeoIP:
-    def __init__(self, known):
+    def __init__(self, known: dict[str, SimpleNamespace]) -> None:
         self.known = known
         self.lookups = []
 
-    def lookup(self, ip):
+    def lookup(self, ip: str) -> SimpleNamespace:
         self.lookups.append(ip)
         if ip not in self.known:
-            raise AddressNotFoundError(f'{ip} not in the database')
+            msg = f'{ip} not in the database'
+            raise AddressNotFoundError(msg)
         return self.known[ip]

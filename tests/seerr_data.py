@@ -3,6 +3,8 @@
 """Replies from Seerr 3.5's API, shared by the tests and the CI sample scrape. The counts are the fields a live
 Seerr 3.5.0 returns; the requests follow its MediaRequest and Media entities (server/entity/*.ts)."""
 
+from typing import Any
+
 from varken.structures import SeerrServer
 
 SEERR = SeerrServer(
@@ -28,7 +30,7 @@ REQUEST_COUNTS = {
 ISSUE_COUNTS = {'total': 5, 'video': 2, 'audio': 1, 'subtitles': 1, 'others': 1, 'open': 3, 'closed': 2}
 
 
-def user(name):
+def user(name: str) -> dict[str, Any]:
     # The user object also carries the requester's email (and more); Varken must only ever read the display name.
     return {
         'id': 7,
@@ -93,7 +95,7 @@ DETAILS = {
 }
 
 
-def replies(extra=None):
+def replies(extra: dict[str, Any] | None = None) -> dict[str, Any]:
     """Seerr's reply for each endpoint path."""
     return {
         '/api/v1/request/count': REQUEST_COUNTS,

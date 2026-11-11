@@ -7,6 +7,18 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+- For contributors: ruff now checks the code with every rule family (`select = ["ALL"]`; the few exceptions are
+  listed with their reasons in `pyproject.toml`), where it had five. Every function has type hints and, outside
+  the tests, a docstring. What Varken does, exports and logs is unchanged.
+
+### Added
+- Tests for the Ombi, SickChill and UniFi modules, which had none: test coverage goes from 84 % to 94 %.
+
+### Removed
+- The start-up check for a Python older than 3.6.2. It could never fire: the code doesn't parse on a Python that
+  old.
+
 ## [3.4.0] - 2026-11-11
 
 ### Changed

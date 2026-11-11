@@ -4,8 +4,12 @@
 modules write. Shared by the tests and the CI sample scrape."""
 
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 from varken.structures import RadarrServer, SonarrServer
+
+if TYPE_CHECKING:
+    from varken.metrics import Metrics
 
 SONARR = SonarrServer(
     api_key='sonarr-key', id=1, url='http://sonarr.example.com:8989', missing_days=7, future_days=1, queue=True
@@ -161,10 +165,10 @@ class SickChillAPI:
 
     server = SimpleNamespace(id=1)
 
-    def __init__(self, output):
+    def __init__(self, output: Metrics) -> None:
         self.output = output
 
-    def get_missing(self):
+    def get_missing(self) -> None:
         self.output.write_points(
             [
                 {
@@ -200,10 +204,10 @@ class OmbiAPI:
 
     server = SimpleNamespace(id=1)
 
-    def __init__(self, output):
+    def __init__(self, output: Metrics) -> None:
         self.output = output
 
-    def get_request_counts(self):
+    def get_request_counts(self) -> None:
         self.output.write_points(
             [
                 {
@@ -214,7 +218,7 @@ class OmbiAPI:
             ]
         )
 
-    def get_issue_counts(self):
+    def get_issue_counts(self) -> None:
         self.output.write_points(
             [
                 {
@@ -225,7 +229,7 @@ class OmbiAPI:
             ]
         )
 
-    def get_all_requests(self):
+    def get_all_requests(self) -> None:
         self.output.write_points(
             [
                 {

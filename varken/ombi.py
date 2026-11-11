@@ -1,16 +1,26 @@
 # SPDX-FileCopyrightText: 2018 Boerderij
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
+"""Ombi: how many requests and issues it has, and each request."""
+
+from datetime import UTC, datetime
 from logging import getLogger
-from requests import Session, Request
-from datetime import datetime, timezone
+from typing import TYPE_CHECKING
+
+from requests import Request, Session
 
 from varken.helpers import connection_handler, hashit
-from varken.structures import OmbiRequestCounts, OmbiIssuesCounts, OmbiMovieRequest, OmbiTVRequest
+from varken.structures import OmbiIssuesCounts, OmbiMovieRequest, OmbiRequestCounts, OmbiServer, OmbiTVRequest
+
+if TYPE_CHECKING:
+    from varken.metrics import Metrics
 
 
-class OmbiAPI(object):
-    def __init__(self, server, output):
+class OmbiAPI:
+    """Ombi through its v1 API."""
+
+    def __init__(self, server: OmbiServer, output: Metrics) -> None:
+        """Set up a session for the server; `output` takes the points."""
         self.output = output
         self.server = server
         # Create session to reduce server web thread load, and globally define pageSize for all requests
@@ -18,32 +28,28 @@ class OmbiAPI(object):
         self.session.headers = {'Apikey': self.server.api_key}
         self.logger = getLogger()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Name the server as the log does."""
         return f'<ombi-{self.server.id}>'
 
-    def get_all_requests(self):
-        now = datetime.now(timezone.utc).astimezone().isoformat()
+    def get_all_requests(self) -> None:  # noqa: C901, PLR0912 - a status branch for each kind of request
+        """Write the number of movie and TV requests, and a point for each request."""
+        now = datetime.now(UTC).astimezone().isoformat()
         tv_endpoint = '/api/v1/Request/tv'
         movie_endpoint = '/api/v1/Request/movie'
 
         tv_req = self.session.prepare_request(Request('GET', self.server.url + tv_endpoint))
         movie_req = self.session.prepare_request(Request('GET', self.server.url + movie_endpoint))
-        get_tv = connection_handler(self.session, tv_req, self.server.verify_ssl) or []
-        get_movie = connection_handler(self.session, movie_req, self.server.verify_ssl) or []
+        get_tv = connection_handler(self.session, tv_req, verify=self.server.verify_ssl) or []
+        get_movie = connection_handler(self.session, movie_req, verify=self.server.verify_ssl) or []
 
         if not any([get_tv, get_movie]):
             self.logger.error('No json replies. Discarding job')
             return
 
-        if get_movie:
-            movie_request_count = len(get_movie)
-        else:
-            movie_request_count = 0
-
-        if get_tv:
-            tv_request_count = len(get_tv)
-        else:
-            tv_request_count = 0
+        # Either is a list by now: an empty one when its request failed.
+        movie_request_count = len(get_movie)
+        tv_request_count = len(get_tv)
 
         tv_show_requests = []
         for show in get_tv:
@@ -153,12 +159,13 @@ class OmbiAPI(object):
         else:
             self.logger.debug('Empty dataset for ombi module. Discarding...')
 
-    def get_request_counts(self):
-        now = datetime.now(timezone.utc).astimezone().isoformat()
+    def get_request_counts(self) -> None:
+        """Write the number of pending, approved and available requests."""
+        now = datetime.now(UTC).astimezone().isoformat()
         endpoint = '/api/v1/Request/count'
 
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint))
-        get = connection_handler(self.session, req, self.server.verify_ssl)
+        get = connection_handler(self.session, req, verify=self.server.verify_ssl)
 
         if not get:
             return
@@ -175,12 +182,13 @@ class OmbiAPI(object):
 
         self.output.write_points(points)
 
-    def get_issue_counts(self):
-        now = datetime.now(timezone.utc).astimezone().isoformat()
+    def get_issue_counts(self) -> None:
+        """Write the number of pending, in-progress and resolved issues."""
+        now = datetime.now(UTC).astimezone().isoformat()
         endpoint = '/api/v1/Issues/count'
 
         req = self.session.prepare_request(Request('GET', self.server.url + endpoint))
-        get = connection_handler(self.session, req, self.server.verify_ssl)
+        get = connection_handler(self.session, req, verify=self.server.verify_ssl)
 
         if not get:
             return

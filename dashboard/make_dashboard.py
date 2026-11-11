@@ -15,6 +15,15 @@ import copy
 import json
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+# A dashboard, a panel or a variable as Grafana's JSON has it, and a panel's place on the grid.
+type Dashboard = dict[str, Any]
+type Panel = dict[str, Any]
+type Grid = dict[str, int]
 
 HERE = Path(__file__).resolve().parent
 DS = {'type': 'prometheus', 'uid': '${datasource}'}
@@ -33,18 +42,20 @@ LIBRARIES = {
 }
 
 
-def library_items(variable, item):
+def library_items(variable: str, item: str) -> str:
+    """Query one count (total, seasons, episodes) of the libraries a variable selects."""
     kind = LIBRARIES[variable][1]
     return f'varken_tautulli_library_items{{type="{kind}", library=~"${variable}", item="{item}"}}'
 
 
-def added(variable, item):
+def added(variable: str, item: str) -> str:
     """Growth of the selected libraries over the dashboard's time range."""
     series = library_items(variable, item)
     return f'sum({series}) - sum(min_over_time({series}[$__range]))'
 
 
-def target(expr, *, instant=True, table=False, legend=None):
+def target(expr: str, *, instant: bool = True, table: bool = False, legend: str | None = None) -> dict[str, Any]:
+    """Build a panel's query: an instant one, unless told otherwise."""
     t = {'datasource': DS, 'expr': expr, 'refId': 'A', 'instant': instant, 'range': not instant}
     if table:
         t['format'] = 'table'
@@ -53,7 +64,10 @@ def target(expr, *, instant=True, table=False, legend=None):
     return t
 
 
-def stat(title, description, expr, grid, unit='none', no_value='Not reporting'):
+def stat(  # noqa: PLR0913 - a tile's parts
+    title: str, description: str, expr: str, grid: Grid, unit: str = 'none', *, no_value: str = 'Not reporting'
+) -> Panel:
+    """Build a tile that shows one number."""
     return {
         'type': 'stat',
         'title': title,
@@ -81,9 +95,21 @@ def stat(title, description, expr, grid, unit='none', no_value='Not reporting'):
     }
 
 
-def table(title, description, expr, grid, columns, sort=None, times=()):
-    """One row per series; `columns` maps the labels to show, in order, to their headings. `times` are labels
-    holding a date, shown as a time in the viewer's time zone."""
+def table(  # noqa: PLR0913 - a table's parts
+    title: str,
+    description: str,
+    expr: str,
+    grid: Grid,
+    columns: dict[str, str],
+    *,
+    sort: str | None = None,
+    times: Sequence[str] = (),
+) -> Panel:
+    """Build a table with one row per series.
+
+    `columns` maps the labels to show, in order, to their headings. `times` are labels holding a date, shown as a
+    time in the viewer's time zone.
+    """
     conversions = [{'targetField': name, 'destinationType': 'time'} for name in times]
     return {
         'type': 'table',
@@ -119,7 +145,8 @@ def table(title, description, expr, grid, columns, sort=None, times=()):
     }
 
 
-def pie(title, description, expr, legend, grid):
+def pie(title: str, description: str, expr: str, legend: str, grid: Grid) -> Panel:
+    """Build a pie chart with a slice per series."""
     return {
         'type': 'piechart',
         'title': title,
@@ -141,7 +168,8 @@ def pie(title, description, expr, legend, grid):
     }
 
 
-def viewer_map(title, description, grid):
+def viewer_map(title: str, description: str, grid: Grid) -> Panel:
+    """Build the map of where the current viewers are."""
     return {
         'type': 'geomap',
         'title': title,
@@ -195,7 +223,8 @@ def viewer_map(title, description, grid):
     }
 
 
-def streams_over_time(title, description, grid):
+def streams_over_time(title: str, description: str, grid: Grid) -> Panel:
+    """Build the bar chart of the number of streams over time."""
     return {
         'type': 'timeseries',
         'title': title,
@@ -227,24 +256,28 @@ def streams_over_time(title, description, grid):
     }
 
 
-def g(x, y, w, h):
+def g(x: int, y: int, w: int, h: int) -> Grid:
+    """Place a panel on Grafana's grid, which is 24 columns wide."""
     return {'x': x, 'y': y, 'w': w, 'h': h}
 
 
-def bandwidth(network):
+def bandwidth(network: str) -> str:
+    """Query the bandwidth of the current streams on one network: total, lan or wan."""
     return f'sum(varken_tautulli_bandwidth_bytes_per_second{{network="{network}"}})'
 
 
-def streams(decision):
+def streams(decision: str) -> str:
+    """Query the number of current streams with one transcode decision."""
     return f'sum(varken_tautulli_streams_by_decision{{decision="{decision}"}})'
 
 
-def ombi(metric, status):
+def ombi(metric: str, status: str) -> str:
+    """Query the number of Ombi requests or issues with one status."""
     return f'sum(varken_ombi_{metric}{{status="{status}"}})'
 
 
-def panels():
-    """The original dashboard's 35 panels: its layout below the stats, which are regrouped into wider tiles."""
+def panels() -> list[Panel]:
+    """Build the original dashboard's 35 panels: its layout below the stats, which are regrouped into wider tiles."""
     stream_details = ' Needs `stream_details = true` in Varken.'
     return [
         # Plex: streams and bandwidth.
@@ -422,7 +455,8 @@ def panels():
     ]
 
 
-def library_variable(name):
+def library_variable(name: str) -> dict[str, Any]:
+    """Build the dashboard variable that selects among the libraries of one kind."""
     label, kind, regex = LIBRARIES[name]
     query = f'label_values(varken_tautulli_library_items{{type="{kind}"}}, library)'
     return {
@@ -443,8 +477,8 @@ def library_variable(name):
     }
 
 
-def dashboard():
-    """The importable dashboard, with a data source variable."""
+def dashboard() -> Dashboard:
+    """Build the importable dashboard, with a data source variable."""
     built = panels()
     for i, panel in enumerate(built, 1):
         panel['id'] = i
@@ -482,7 +516,7 @@ def dashboard():
     }
 
 
-def pin_datasource(node, uid):
+def pin_datasource[T](node: T, uid: str) -> T:
     """Replace the data source variable with a fixed uid, everywhere."""
     if isinstance(node, dict):
         return {
@@ -498,11 +532,12 @@ def pin_datasource(node, uid):
 ARGUS_WITHOUT = ('varken_ombi_', 'varken_sickchill_')
 
 
-def seerr(metric, status):
+def seerr(metric: str, status: str) -> str:
+    """Query the number of Seerr requests or issues with one status."""
     return f'sum(varken_seerr_{metric}{{status="{status}"}})'
 
 
-def seerr_panels():
+def seerr_panels() -> list[Panel]:
     """Seerr in the Ombi panels' places, for Argus (which runs Seerr, not Ombi)."""
     return [
         stat('Req. Pending', 'Seerr requests waiting for approval.', seerr('requests', 'pending'), g(0, 6, 3, 3)),
@@ -536,7 +571,7 @@ def seerr_panels():
     ]
 
 
-def lidarr_panels():
+def lidarr_panels() -> list[Panel]:
     """Lidarr's queue and its missing and upcoming albums, for Argus (the original dashboard had no Lidarr)."""
     return [
         table(
@@ -572,7 +607,7 @@ def lidarr_panels():
 ARGUS_INSTANCES = {'1': 'HD', '2': '4K'}
 
 
-def with_instance_column(panel):
+def with_instance_column(panel: Panel) -> None:
     """Add an Instance column, first, naming the server a Sonarr or Radarr table row comes from."""
     include = panel['transformations'][0]['options']['include']['names']
     include.insert(0, 'server')
@@ -601,13 +636,16 @@ def with_instance_column(panel):
     )
 
 
-def uses(panel, prefix):
+def uses(panel: Panel, prefix: str) -> bool:
+    """Whether any of the panel's queries reads a metric with this prefix."""
     return any(prefix in target['expr'] for target in panel['targets'])
 
 
-def argus_dashboard():
-    """Argus' copy: its provisioned data source, uid and tags, and the link to its other dashboards. The owner runs
-    neither Ombi nor SickChill, so their panels are left out; Seerr's take Ombi's places."""
+def argus_dashboard() -> Dashboard:
+    """Argus' copy: its provisioned data source, uid and tags, and the link to its other dashboards.
+
+    The owner runs neither Ombi nor SickChill, so their panels are left out; Seerr's take Ombi's places.
+    """
     dash = pin_datasource(copy.deepcopy(dashboard()), 'prometheus')
     dash['panels'] = [panel for panel in dash['panels'] if not any(uses(panel, prefix) for prefix in ARGUS_WITHOUT)]
     for panel in dash['panels']:
@@ -708,7 +746,7 @@ DEVICE_COLOURS = {
 }
 
 
-def colour_rows_by(panel, field, colours):
+def colour_rows_by(panel: Panel, field: str, colours: dict[str, str]) -> None:
     """Colour each row of a table by one column's value (value -> colour); other values keep the default."""
     heading = panel['transformations'][-1]['options']['renameByName'].get(field, field)
     panel['fieldConfig']['overrides'].append(
@@ -736,14 +774,15 @@ def colour_rows_by(panel, field, colours):
     )
 
 
-def colour_rows(panel, colour):
+def colour_rows(panel: Panel, colour: str) -> None:
     """Every row of a table in one colour."""
     defaults = panel['fieldConfig']['defaults']
     defaults['color'] = {'mode': 'fixed', 'fixedColor': colour}
     defaults['custom']['cellOptions'] = {'type': 'color-background', 'mode': 'basic'}
 
 
-def classic_tile(panel):
+def classic_tile(panel: Panel) -> None:
+    """Restyle a tile as the original's: a solid colour with the title inside, at its place on the upstream grid."""
     colour, x, y = CLASSIC_TILES[panel['title']]
     title = CLASSIC_TITLES.get(panel['title'], panel['title'])
     defaults = panel['fieldConfig']['defaults']
@@ -759,7 +798,7 @@ def classic_tile(panel):
     panel['description'] = f'{title}: {panel["description"]}'
 
 
-def classic_dashboard():
+def classic_dashboard() -> Dashboard:  # noqa: C901 - a restyling step for each kind of panel
     """Argus' copy in the original dashboard's look: same queries (plus the week-long pies), restyled."""
     dash = copy.deepcopy(argus_dashboard())
     dash.update(
@@ -835,12 +874,13 @@ def classic_dashboard():
     return dash
 
 
-def formatted(dash):
+def formatted(dash: Dashboard) -> str:
     """As Grafana exports a dashboard: 2-space indent, trailing newline."""
     return json.dumps(dash, indent=2) + '\n'
 
 
-def main(argv=None):
+def main(argv: Sequence[str] | None = None) -> int:
+    """Write the dashboards, or with --check name the ones that are out of date; return the exit status."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--argus', type=Path, help='an Argus checkout to write the Argus copy into')
     parser.add_argument('--check', action='store_true', help="fail if a file isn't up to date; write nothing")

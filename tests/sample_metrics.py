@@ -22,11 +22,12 @@ from tests.arrs_data import (
     OmbiAPI,
     SickChillAPI,
 )
-from tests.seerr_data import SEERR, replies as seerr_replies
+from tests.seerr_data import SEERR
+from tests.seerr_data import replies as seerr_replies
 from tests.tautulli_data import ACTIVITY, LIBRARIES, SERVER, FakeGeoIP, place
 from varken import lidarr, radarr, seerr, sonarr, tautulli
-from varken.metrics import Metrics
 from varken.lidarr import LidarrAPI
+from varken.metrics import Metrics
 from varken.radarr import RadarrAPI
 from varken.seerr import SeerrAPI
 from varken.sonarr import SonarrAPI
@@ -34,7 +35,7 @@ from varken.structures import PrometheusServer
 from varken.tautulli import TautulliAPI
 
 
-def sample():
+def sample() -> str:
     metrics = Metrics(PrometheusServer(stream_details=True))
     api = TautulliAPI(SERVER, metrics, FakeGeoIP({'203.0.113.5': place()}))
     sonarr_api, radarr_api = SonarrAPI(SONARR, metrics), RadarrAPI(RADARR, metrics)
@@ -75,4 +76,4 @@ def sample():
 
 
 if __name__ == '__main__':
-    print(sample(), end='')
+    print(sample(), end='')  # noqa: T201 - the scrape is this command's output

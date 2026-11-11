@@ -1,15 +1,19 @@
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
 import logging
+from typing import TYPE_CHECKING
 
 from varken.varkenlogger import BlacklistFilter, VarkenLogger
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
-def record(msg, *args):
+
+def record(msg: str, *args: object) -> logging.LogRecord:
     return logging.LogRecord('test', logging.INFO, __file__, 1, msg, args, None)
 
 
-def test_redacts_secrets_in_the_message_and_string_arguments():
+def test_redacts_secrets_in_the_message_and_string_arguments() -> None:
     log_filter = BlacklistFilter({'supersecretkey'})
     entry = record('key supersecretkey in %s', 'GET /api?apikey=supersecretkey')
 
@@ -17,7 +21,7 @@ def test_redacts_secrets_in_the_message_and_string_arguments():
     assert entry.getMessage() == 'key ******** in GET /api?apikey=********'  # nothing of the secret is kept
 
 
-def test_redacts_secrets_in_exception_arguments():
+def test_redacts_secrets_in_exception_arguments() -> None:
     # Regression: only str arguments were redacted, so an exception carrying a URL kept the key.
     log_filter = BlacklistFilter({'supersecretkey'})
     entry = record('Request failed: %s', ConnectionError('https://example.com/api?apikey=supersecretkey'))
@@ -27,7 +31,7 @@ def test_redacts_secrets_in_exception_arguments():
     assert 'supersecretkey' not in entry.getMessage()
 
 
-def test_leaves_numbers_alone():
+def test_leaves_numbers_alone() -> None:
     log_filter = BlacklistFilter({'8'})
     entry = record('%d streams', 8)
 
@@ -37,7 +41,7 @@ def test_leaves_numbers_alone():
     assert entry.getMessage() == '8 streams'
 
 
-def test_logs_to_a_file_in_the_data_folder(tmp_path):
+def test_logs_to_a_file_in_the_data_folder(tmp_path: Path) -> None:
     varken_logger = VarkenLogger(debug=False, data_folder=str(tmp_path))
     varken_logger.logger.info('hello from the test')
 
@@ -46,7 +50,7 @@ def test_logs_to_a_file_in_the_data_folder(tmp_path):
     assert 'hello from the test' in (tmp_path / 'logs' / 'varken.log').read_text()
 
 
-def test_logs_to_stdout_only_without_a_file(tmp_path):
+def test_logs_to_stdout_only_without_a_file(tmp_path: Path) -> None:
     VarkenLogger(debug=False, data_folder=str(tmp_path), log_to_file=False)
 
     assert not (tmp_path / 'logs').exists()

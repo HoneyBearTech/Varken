@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Sonarr and Radarr (API v3), Lidarr (v1), and the item metrics for Sonarr, Radarr, SickChill and Ombi."""
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from tests.arrs_data import (
@@ -25,21 +27,30 @@ from varken.radarr import RadarrAPI
 from varken.sonarr import SonarrAPI
 from varken.structures import PrometheusServer
 
+if TYPE_CHECKING:
+    from types import ModuleType
+
+    from requests import PreparedRequest, Session
+
 
 @pytest.fixture
-def metrics():
+def metrics() -> Metrics:
     return Metrics(PrometheusServer())
 
 
-def reply_with(monkeypatch, module, reply, requests):
-    def fake(session, request, verify):
+def reply_with(
+    monkeypatch: pytest.MonkeyPatch, module: ModuleType, reply: object, requests: list[PreparedRequest]
+) -> None:
+    def fake(session: Session, request: PreparedRequest, *, verify: bool) -> object:
         requests.append(request)
         return reply
 
     monkeypatch.setattr(module, 'connection_handler', fake)
 
 
-def test_sonarr_missing_uses_api_v3_and_keeps_monitored_episodes_without_a_file(metrics, monkeypatch):
+def test_sonarr_missing_uses_api_v3_and_keeps_monitored_episodes_without_a_file(
+    metrics: Metrics, monkeypatch: pytest.MonkeyPatch
+) -> None:
     requests = []
     reply_with(monkeypatch, sonarr, CALENDAR, requests)
 
@@ -62,7 +73,9 @@ def test_sonarr_missing_uses_api_v3_and_keeps_monitored_episodes_without_a_file(
     ]
 
 
-def test_sonarr_future_lists_every_episode_with_whether_it_is_downloaded(metrics, monkeypatch):
+def test_sonarr_future_lists_every_episode_with_whether_it_is_downloaded(
+    metrics: Metrics, monkeypatch: pytest.MonkeyPatch
+) -> None:
     reply_with(monkeypatch, sonarr, CALENDAR, [])
 
     metrics.run(SonarrAPI(SONARR, metrics).get_calendar, query='Future')
@@ -84,7 +97,7 @@ def test_sonarr_future_lists_every_episode_with_whether_it_is_downloaded(metrics
     )
 
 
-def test_sonarr_queue_uses_api_v3_records(metrics, monkeypatch):
+def test_sonarr_queue_uses_api_v3_records(metrics: Metrics, monkeypatch: pytest.MonkeyPatch) -> None:
     requests = []
     reply_with(monkeypatch, sonarr, SONARR_QUEUE, requests)
 
@@ -109,7 +122,7 @@ def test_sonarr_queue_uses_api_v3_records(metrics, monkeypatch):
     assert value(metrics, 'varken_job_points', service='sonarr', server='1', job='queue') == 1
 
 
-def test_an_empty_sonarr_queue_is_up_with_no_items(metrics, monkeypatch):
+def test_an_empty_sonarr_queue_is_up_with_no_items(metrics: Metrics, monkeypatch: pytest.MonkeyPatch) -> None:
     reply_with(monkeypatch, sonarr, {'records': []}, [])
 
     metrics.run(SonarrAPI(SONARR, metrics).get_queue)
@@ -125,7 +138,9 @@ def test_an_empty_sonarr_queue_is_up_with_no_items(metrics, monkeypatch):
         ('get_calendar', {'query': 'Missing'}, {'records': []}),
     ],
 )
-def test_an_old_sonarr_reply_marks_the_job_down(metrics, monkeypatch, job, kwargs, reply):
+def test_an_old_sonarr_reply_marks_the_job_down(
+    metrics: Metrics, monkeypatch: pytest.MonkeyPatch, job: str, kwargs: dict[str, str], reply: object
+) -> None:
     reply_with(monkeypatch, sonarr, reply, [])
 
     metrics.run(getattr(SonarrAPI(SONARR, metrics), job), **kwargs)
@@ -133,7 +148,9 @@ def test_an_old_sonarr_reply_marks_the_job_down(metrics, monkeypatch, job, kwarg
     assert value(metrics, 'varken_job_up', service='sonarr', server='1', job=kwargs.get('query', 'queue').lower()) == 0
 
 
-def test_radarr_missing_uses_api_v3_and_marks_released_movies_available(metrics, monkeypatch):
+def test_radarr_missing_uses_api_v3_and_marks_released_movies_available(
+    metrics: Metrics, monkeypatch: pytest.MonkeyPatch
+) -> None:
     requests = []
     reply_with(monkeypatch, radarr, MOVIES, requests)
 
@@ -148,7 +165,7 @@ def test_radarr_missing_uses_api_v3_and_marks_released_movies_available(metrics,
     assert missing == [('Future Film (2027)', 'false'), ('Released Film (2025)', 'true')]
 
 
-def test_radarr_queue_uses_api_v3_records(metrics, monkeypatch):
+def test_radarr_queue_uses_api_v3_records(metrics: Metrics, monkeypatch: pytest.MonkeyPatch) -> None:
     requests = []
     reply_with(monkeypatch, radarr, RADARR_QUEUE, requests)
 
@@ -169,7 +186,7 @@ def test_radarr_queue_uses_api_v3_records(metrics, monkeypatch):
     )
 
 
-def test_an_old_radarr_reply_marks_the_job_down(metrics, monkeypatch):
+def test_an_old_radarr_reply_marks_the_job_down(metrics: Metrics, monkeypatch: pytest.MonkeyPatch) -> None:
     reply_with(monkeypatch, radarr, [{'old': 'v2 list'}], [])
 
     metrics.run(RadarrAPI(RADARR, metrics).get_queue)
@@ -177,7 +194,9 @@ def test_an_old_radarr_reply_marks_the_job_down(metrics, monkeypatch):
     assert value(metrics, 'varken_job_up', service='radarr', server='1', job='queue') == 0
 
 
-def test_lidarr_missing_keeps_monitored_albums_without_every_track(metrics, monkeypatch):
+def test_lidarr_missing_keeps_monitored_albums_without_every_track(
+    metrics: Metrics, monkeypatch: pytest.MonkeyPatch
+) -> None:
     requests = []
     reply_with(monkeypatch, lidarr, ALBUMS, requests)
 
@@ -207,7 +226,7 @@ def test_lidarr_missing_keeps_monitored_albums_without_every_track(metrics, monk
     )
 
 
-def test_lidarr_future_lists_every_album(metrics, monkeypatch):
+def test_lidarr_future_lists_every_album(metrics: Metrics, monkeypatch: pytest.MonkeyPatch) -> None:
     reply_with(monkeypatch, lidarr, ALBUMS, [])
 
     metrics.run(LidarrAPI(LIDARR, metrics).get_calendar, query='Future')
@@ -228,14 +247,15 @@ def test_lidarr_future_lists_every_album(metrics, monkeypatch):
     )
 
 
-def test_lidarr_queue_uses_api_v1_records(metrics, monkeypatch):
+def test_lidarr_queue_uses_api_v1_records(metrics: Metrics, monkeypatch: pytest.MonkeyPatch) -> None:
     requests = []
     reply_with(monkeypatch, lidarr, LIDARR_QUEUE, requests)
 
     metrics.run(LidarrAPI(LIDARR, metrics).get_queue)
 
     assert '/api/v1/queue?' in requests[0].url
-    assert 'includeArtist=true' in requests[0].url and 'includeAlbum=true' in requests[0].url
+    assert 'includeArtist=true' in requests[0].url
+    assert 'includeAlbum=true' in requests[0].url
     assert value(metrics, 'varken_job_up', service='lidarr', server='1', job='queue') == 1
     assert value(metrics, 'varken_job_points', service='lidarr', server='1', job='queue') == 2
     assert (
@@ -273,7 +293,9 @@ def test_lidarr_queue_uses_api_v1_records(metrics, monkeypatch):
         ('get_calendar', {'query': 'Missing'}, {'records': []}),
     ],
 )
-def test_an_unexpected_lidarr_reply_marks_the_job_down(metrics, monkeypatch, job, kwargs, reply):
+def test_an_unexpected_lidarr_reply_marks_the_job_down(
+    metrics: Metrics, monkeypatch: pytest.MonkeyPatch, job: str, kwargs: dict[str, str], reply: object
+) -> None:
     reply_with(monkeypatch, lidarr, reply, [])
 
     metrics.run(getattr(LidarrAPI(LIDARR, metrics), job), **kwargs)
@@ -281,7 +303,7 @@ def test_an_unexpected_lidarr_reply_marks_the_job_down(metrics, monkeypatch, job
     assert value(metrics, 'varken_job_up', service='lidarr', server='1', job=kwargs.get('query', 'queue').lower()) == 0
 
 
-def test_sickchill_episodes(metrics):
+def test_sickchill_episodes(metrics: Metrics) -> None:
     metrics.run(SickChillAPI(metrics).get_missing)
 
     assert (
@@ -312,7 +334,7 @@ def test_sickchill_episodes(metrics):
     )
 
 
-def test_ombi_counts(metrics):
+def test_ombi_counts(metrics: Metrics) -> None:
     api = OmbiAPI(metrics)
     metrics.run(api.get_request_counts)
     metrics.run(api.get_issue_counts)
@@ -323,7 +345,7 @@ def test_ombi_counts(metrics):
     assert value(metrics, 'varken_ombi_issues', server='1', status='resolved') == 9
 
 
-def test_ombi_requests_keep_the_requester_out_by_default(metrics):
+def test_ombi_requests_keep_the_requester_out_by_default(metrics: Metrics) -> None:
     metrics.run(OmbiAPI(metrics).get_all_requests)
 
     assert (
@@ -354,7 +376,7 @@ def test_ombi_requests_keep_the_requester_out_by_default(metrics):
     )
 
 
-def test_ombi_requests_name_the_requester_with_stream_details():
+def test_ombi_requests_name_the_requester_with_stream_details() -> None:
     metrics = Metrics(PrometheusServer(stream_details=True))
 
     metrics.run(OmbiAPI(metrics).get_all_requests)

@@ -82,10 +82,13 @@ actionlint, hadolint, gitleaks and pip-audit run in CI; the exact commands are i
 ## Coding standards
 
 - **Python** (`Varken.py`, `varken/`, `tests/`): [PEP 8](https://peps.python.org/pep-0008/),
-  enforced by [ruff](https://docs.astral.sh/ruff/) with a line length of 120 and the rule families in
-  [`pyproject.toml`](pyproject.toml): pycodestyle, Pyflakes, bugbear and the bandit security rules. Code is
-  formatted with `ruff format` (single quotes, line length 120); CI fails on unformatted files, so run
-  `.venv/bin/ruff format .` before you commit. New code gets type hints and docstrings.
+  enforced by [ruff](https://docs.astral.sh/ruff/) with a line length of 120 and every rule family, minus the
+  few that [`pyproject.toml`](pyproject.toml) lists with their reasons. So every function has type hints and,
+  outside the tests, a docstring. Where a rule is broken on purpose, say why on that line
+  (`# noqa: C901 - one branch for each service`). An import that only annotations use goes in an
+  `if TYPE_CHECKING:` block, not behind `lazy` (ruff's suggested fix): the fuzzer still runs on Python 3.14,
+  where `lazy` is a syntax error. Code is formatted with `ruff format` (single quotes, line length 120); CI
+  fails on unformatted files, so run `.venv/bin/ruff format .` before you commit.
 - **Network calls** go through `connection_handler()` in [`varken/helpers.py`](varken/helpers.py), so error
   handling stays in one place. Varken only reads from the services it collects from: no request may change
   data there.

@@ -1,16 +1,26 @@
 # SPDX-FileCopyrightText: 2018 Boerderij
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
+"""SickChill: the episodes on its coming-episodes list."""
+
+from datetime import UTC, datetime
 from logging import getLogger
-from requests import Session, Request
-from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
-from varken.structures import SickChillTVShow
-from varken.helpers import hashit, connection_handler
+from requests import Request, Session
+
+from varken.helpers import connection_handler, hashit
+from varken.structures import SickChillServer, SickChillTVShow
+
+if TYPE_CHECKING:
+    from varken.metrics import Metrics
 
 
-class SickChillAPI(object):
-    def __init__(self, server, output):
+class SickChillAPI:
+    """SickChill through its API, which takes the API key in the URL's path."""
+
+    def __init__(self, server: SickChillServer, output: Metrics) -> None:
+        """Set up a session for the server; `output` takes the points."""
         self.output = output
         self.server = server
         # Create session to reduce server web thread load, and globally define pageSize for all requests
@@ -19,16 +29,18 @@ class SickChillAPI(object):
         self.endpoint = f'/api/{self.server.api_key}'
         self.logger = getLogger()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Name the server as the log does."""
         return f'<sickchill-{self.server.id}>'
 
-    def get_missing(self):
-        now = datetime.now(timezone.utc).astimezone().isoformat()
+    def get_missing(self) -> None:
+        """Write a point for each episode on the coming-episodes list: missed, today, soon or later."""
+        now = datetime.now(UTC).astimezone().isoformat()
         points = []
         params = {'cmd': 'future', 'paused': 1, 'type': 'missed|today|soon|later|snatched'}
 
         req = self.session.prepare_request(Request('GET', self.server.url + self.endpoint, params=params))
-        get = connection_handler(self.session, req, self.server.verify_ssl)
+        get = connection_handler(self.session, req, verify=self.server.verify_ssl)
 
         if not get:
             return
@@ -50,7 +62,8 @@ class SickChillAPI(object):
                         {
                             'measurement': 'SickChill',
                             'tags': {
-                                'type': [item[0] for item in missing_types if key in item][0],
+                                # A section that is none of these raises the IndexError reported below.
+                                'type': [item[0] for item in missing_types if key in item][0],  # noqa: RUF015
                                 'indexerid': show.indexerid,
                                 'server': self.server.id,
                                 'name': show.show_name,

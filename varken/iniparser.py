@@ -1,40 +1,59 @@
 # SPDX-FileCopyrightText: 2018 Boerderij
 # SPDX-FileCopyrightText: 2026 HoneyBearTech
 # SPDX-License-Identifier: MIT
-from ipaddress import ip_address
-from shutil import copyfile
-from os import environ as env
-from logging import getLogger
-from os.path import join, exists
-from re import match, compile, IGNORECASE
-from configparser import ConfigParser, NoOptionError, NoSectionError
+"""Varken's configuration: varken.ini, the VRKN_* environment variables over it and varken.example.ini under it."""
 
+import re
+import sys
+from configparser import ConfigParser, NoOptionError, NoSectionError
+from ipaddress import ip_address
+from logging import getLogger
+from os import environ as env
+from pathlib import Path
+from shutil import copyfile
+from typing import Any, Literal, NoReturn
+
+from varken.helpers import boolcheck, clean_sid_check, rfc1918_ip_check
+from varken.structures import (
+    OmbiServer,
+    PrometheusServer,
+    RadarrServer,
+    SeerrServer,
+    SickChillServer,
+    SonarrServer,
+    TautulliServer,
+    UniFiServer,
+)
 from varken.varkenlogger import BlacklistFilter
-from varken.structures import SickChillServer, UniFiServer, PrometheusServer, SeerrServer
-from varken.helpers import clean_sid_check, rfc1918_ip_check, boolcheck
-from varken.structures import SonarrServer, RadarrServer, OmbiServer, TautulliServer
+
+MAX_PORT = 65535
 
 
 class ConfigFile(ConfigParser):
-    """varken.ini as Varken reads it. A key the file doesn't have (one a newer Varken added, usually) takes its
-    value from varken.example.ini, in memory: the file itself is never written to."""
+    """varken.ini as Varken reads it.
 
-    def __init__(self, example_path):
+    A key the file doesn't have (one a newer Varken added, usually) takes its value from varken.example.ini, in
+    memory: the file itself is never written to.
+    """
+
+    def __init__(self, example_path: str | Path) -> None:
+        """Start empty; `example_path` is where varken.example.ini is, and it is read only when it is needed."""
         super().__init__(interpolation=None)
-        self.example_path = example_path
-        self.example = None  # varken.example.ini, once read
-        self.defaulted = {}  # section -> the keys whose values came from the example
+        self.example_path = Path(example_path)
+        self.example: ConfigParser | None = None  # varken.example.ini, once read
+        self.defaulted: dict[str, list[str]] = {}  # section -> the keys whose values came from the example
 
-    def read_example(self):
+    def read_example(self) -> ConfigParser:
         """varken.example.ini, or nothing where there is none: a complete varken.ini doesn't need it."""
         if self.example is None:
             self.example = ConfigParser(interpolation=None)
-            if exists(self.example_path):
-                with open(self.example_path) as example_ini:
+            if self.example_path.exists():
+                with self.example_path.open() as example_ini:
                     self.example.read_file(example_ini)
         return self.example
 
-    def get(self, section, option, **kwargs):
+    def get(self, section: str, option: str, **kwargs: Any) -> str:  # noqa: ANN401 - ConfigParser.get's keywords
+        """Get the value from varken.ini, or from varken.example.ini when varken.ini doesn't have the key."""
         try:
             return super().get(section, option, **kwargs)
         except (NoSectionError, NoOptionError) as missing:
@@ -52,11 +71,17 @@ class ConfigFile(ConfigParser):
             return value
 
 
-class INIParser(object):
-    def __init__(self, data_folder):
-        self.config = None
+class INIParser:
+    """The settings Varken runs with: the servers of every enabled service, and where /metrics is served.
+
+    A setting that can't be used is logged and ends the start with exit status 1.
+    """
+
+    def __init__(self, data_folder: str) -> None:
+        """Read the configuration in the data folder."""
+        self.config: ConfigFile | None = None
         self.data_folder = data_folder
-        self.filtered_strings = None
+        self.filtered_strings: list[str] | None = None
         self.services = ['sonarr', 'radarr', 'lidarr', 'ombi', 'seerr', 'tautulli', 'sickchill', 'unifi']
 
         self.logger = getLogger()
@@ -69,7 +94,7 @@ class INIParser(object):
             self.missing_setting(e)
         self.report_defaults()
 
-    def read_secret_files(self):
+    def read_secret_files(self) -> None:
         """VRKN_<SECTION>_<KEY>_FILE names a file that holds the value (Docker and compose secrets)."""
         for name, path in list(env.items()):
             if not (name.startswith('VRKN_') and name.endswith('_FILE')):
@@ -77,15 +102,17 @@ class INIParser(object):
             target = name.removesuffix('_FILE')
             if target in env:
                 self.logger.error('Both %s and %s are set; use one. Exiting.', target, name)
-                exit(1)
+                sys.exit(1)
             try:
-                with open(path) as secret:
+                # The path as it was given: Path('') would be the current folder.
+                with open(path) as secret:  # noqa: PTH123
                     env[target] = secret.read().strip()
             except OSError as e:
                 self.logger.error('Could not read %s (%s): %s. Exiting.', name, path, e)
-                exit(1)
+                sys.exit(1)
 
-    def config_blacklist(self):
+    def config_blacklist(self) -> None:
+        """Give every log handler a filter for the secrets in the configuration: in the file, the example or VRKN_*."""
         filtered_strings = [
             section.get(k)
             for key, section in self.config.items()
@@ -115,40 +142,47 @@ class INIParser(object):
         for handler in self.logger.handlers:
             handler.addFilter(BlacklistFilter(set(self.filtered_strings)))
 
-    def enable_check(self, server_type=None):
+    def enable_check(self, server_type: str | None = None) -> list[int] | Literal[False] | None:
+        """Read a service's server ids from [global]: None when it is switched off, False when no id is a number."""
         t = server_type
         global_server_ids = env.get(f'VRKN_GLOBAL_{t.upper()}', self.config.get('global', t))
         if global_server_ids.lower() in ['false', 'no']:
             self.logger.info('%s disabled.', t.upper())
-        else:
-            sids = clean_sid_check(global_server_ids, t)
-            return sids
+            return None
+        return clean_sid_check(global_server_ids, t)
 
-    def read_file(self):
-        """Read varken.ini. The only time Varken writes it is a first start, when it is copied from
-        varken.example.ini; after that the file is the user's, comments and all."""
-        example_path = join(self.data_folder, 'varken.example.ini')
-        file_path = join(self.data_folder, 'varken.ini')
+    def read_file(self) -> ConfigFile:
+        """Read varken.ini.
+
+        The only time Varken writes it is a first start, when it is copied from varken.example.ini; after that the
+        file is the user's, comments and all.
+        """
+        example_path = Path(self.data_folder, 'varken.example.ini')
+        file_path = Path(self.data_folder, 'varken.ini')
         config = ConfigFile(example_path)
 
-        if not exists(file_path):
+        if not file_path.exists():
             # Normal on a first start.
             self.logger.info('No varken.ini in %s yet: creating it from varken.example.ini', self.data_folder)
             try:
                 copyfile(example_path, file_path)
-            except IOError as e:
+            except OSError as e:
                 self.logger.error(
                     'Varken does not have permission to write to %s. Error: %s - Exiting.', self.data_folder, e
                 )
-                exit(1)
+                sys.exit(1)
 
         self.logger.debug('Reading from varken.ini')
-        with open(file_path) as config_ini:
+        with file_path.open() as config_ini:
             config.read_file(config_ini)
 
         return config
 
-    def url_check(self, url=None, include_port=True, section=None):
+    def url_check(self, url: str | None = None, *, include_port: bool = True, section: str | None = None) -> str:
+        """Return the url as given when it is a host name or IP address, with or without a path; else stop.
+
+        A port is allowed too, unless include_port is off.
+        """
         url_check = url
         module = section
         inc_port = include_port
@@ -161,13 +195,12 @@ class INIParser(object):
         )
         # Include search for port if it is needed.
         if inc_port:
-            search = search + r'(?::\d+)?' + r'(?:/?|[/?]\S+)\Z'
-        else:
-            search = search + r'(?:/?|[/?]\S+)\Z'
+            search += r'(?::\d+)?'
+        search += r'(?:/?|[/?]\S+)\Z'
 
-        regex = compile('{}'.format(search), IGNORECASE)
+        regex = re.compile(search, re.IGNORECASE)
 
-        valid = match(regex, url_check) is not None
+        valid = re.match(regex, url_check) is not None
         if not valid:
             if inc_port:
                 self.logger.error(
@@ -175,17 +208,17 @@ class INIParser(object):
                     url_check,
                     module,
                 )
-                exit(1)
+                sys.exit(1)
             else:
                 self.logger.error('%s is invalid in module [%s]! URL must host/IP. ie. localhost', url_check, module)
-                exit(1)
+                sys.exit(1)
         else:
             self.logger.debug('%s is a valid URL in module [%s].', url_check, module)
             return url_check
 
-    def missing_setting(self, error):
-        """A setting that is in neither varken.ini nor varken.example.ini: say what to add and stop."""
-        if not exists(self.config.example_path):
+    def missing_setting(self, error: NoSectionError | NoOptionError) -> NoReturn:
+        """Say which setting is in neither varken.ini nor varken.example.ini, and what to add, then stop."""
+        if not self.config.example_path.exists():
             self.logger.error(
                 'varken.ini has no [%s] %s, and there is no varken.example.ini in %s to take it from. Exiting.',
                 error.section,
@@ -208,11 +241,13 @@ class INIParser(object):
                 'or remove the id. Exiting.',
                 error.section,
             )
-        exit(1)
+        sys.exit(1)
 
-    def report_defaults(self):
-        """Name the settings varken.ini doesn't have, whose values came from varken.example.ini. Names only: a
-        value could be a secret."""
+    def report_defaults(self) -> None:
+        """Name the settings varken.ini doesn't have, whose values came from varken.example.ini.
+
+        Names only: a value could be a secret.
+        """
         if not self.config.defaulted:
             return
         self.logger.info(
@@ -221,7 +256,8 @@ class INIParser(object):
             '; '.join(f'[{section}] {", ".join(keys)}' for section, keys in self.config.defaulted.items()),
         )
 
-    def parse_opts(self):
+    def parse_opts(self) -> None:  # noqa: C901, PLR0912, PLR0915 - one block of settings for each service
+        """Read every setting: [prometheus], then a server for each id of each enabled service."""
         for service in self.services:
             setattr(self, f'{service}_servers', [])
 
@@ -236,15 +272,15 @@ class INIParser(object):
             )
         except ValueError as e:
             self.logger.error('Invalid configuration value in prometheus. Error: %s', e)
-            exit(1)
+            sys.exit(1)
         try:
             ip_address(bind)
         except ValueError:
             self.logger.error('[prometheus] bind must be an IP address such as 0.0.0.0 or 127.0.0.1, not %s', bind)
-            exit(1)
-        if not 0 < prometheus_port < 65536:
+            sys.exit(1)
+        if not 0 < prometheus_port <= MAX_PORT:
             self.logger.error('[prometheus] port must be between 1 and 65535, not %s', prometheus_port)
-            exit(1)
+            sys.exit(1)
 
         self.prometheus_server = PrometheusServer(bind=bind, port=prometheus_port, stream_details=stream_details)
 
@@ -382,7 +418,7 @@ class INIParser(object):
                                 self.logger.error(
                                     'Invalid fallback_ip [%s] set for %s-%s!', fallback_ip, service, server_id
                                 )
-                                exit(1)
+                                sys.exit(1)
 
                             maxmind_license_key = env.get(
                                 'VRKN_GLOBAL_MAXMIND_LICENSE_KEY', self.config.get('global', 'maxmind_license_key')

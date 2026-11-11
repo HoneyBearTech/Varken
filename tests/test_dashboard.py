@@ -5,6 +5,7 @@
 import importlib.util
 import re
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -19,7 +20,7 @@ SERIES = re.compile(r'^(\w+)\{(.*)\} ', re.MULTILINE)
 
 
 @pytest.fixture(scope='module')
-def served():
+def served() -> dict[str, set[str]]:
     """Every metric name in the sample scrape, with the labels it carries."""
     labels = {}
     for name, label_text in SERIES.findall(sample()):
@@ -27,18 +28,18 @@ def served():
     return labels
 
 
-def test_the_committed_dashboard_is_up_to_date():
+def test_the_committed_dashboard_is_up_to_date() -> None:
     assert make_dashboard.main(['--check']) == 0
 
 
-def test_it_has_the_original_dashboards_35_panels():
+def test_it_has_the_original_dashboards_35_panels() -> None:
     panels = make_dashboard.dashboard()['panels']
     assert len(panels) == 35
     assert len({panel['id'] for panel in panels}) == 35
 
 
 @pytest.mark.parametrize('build', ['dashboard', 'argus_dashboard', 'classic_dashboard'])
-def test_every_query_uses_metrics_and_labels_varken_serves(served, build):
+def test_every_query_uses_metrics_and_labels_varken_serves(served: dict[str, set[str]], build: str) -> None:
     for panel in getattr(make_dashboard, build)()['panels']:
         for target in panel['targets']:
             names = set(re.findall(r'\bvarken_\w+', target['expr']))
@@ -56,7 +57,7 @@ def test_every_query_uses_metrics_and_labels_varken_serves(served, build):
 
 
 @pytest.mark.parametrize('build', ['dashboard', 'argus_dashboard', 'classic_dashboard'])
-def test_every_table_column_is_a_label_of_its_metric(served, build):
+def test_every_table_column_is_a_label_of_its_metric(served: dict[str, set[str]], build: str) -> None:
     for panel in getattr(make_dashboard, build)()['panels']:
         if panel['type'] != 'table':
             continue
@@ -65,15 +66,16 @@ def test_every_table_column_is_a_label_of_its_metric(served, build):
         assert set(columns) <= served[name], (panel['title'], set(columns) - served[name])
 
 
-def test_the_argus_copy_pins_argus_data_source():
+def test_the_argus_copy_pins_argus_data_source() -> None:
     dash = make_dashboard.argus_dashboard()
     text = make_dashboard.formatted(dash)
     assert '${datasource}' not in text
-    assert dash['uid'] == 'argus-varken' and 'argus' in dash['tags']
+    assert dash['uid'] == 'argus-varken'
+    assert 'argus' in dash['tags']
     assert [v['name'] for v in dash['templating']['list']] == list(make_dashboard.LIBRARIES)
 
 
-def test_the_argus_copy_leaves_ombi_and_sickchill_out():
+def test_the_argus_copy_leaves_ombi_and_sickchill_out() -> None:
     full, argus = make_dashboard.dashboard()['panels'], make_dashboard.argus_dashboard()['panels']
     assert not [p['title'] for p in argus if make_dashboard.uses(p, 'varken_ombi_')]
     assert not [p['title'] for p in argus if make_dashboard.uses(p, 'varken_sickchill_')]
@@ -85,8 +87,8 @@ def test_the_argus_copy_leaves_ombi_and_sickchill_out():
     assert sorted(p['id'] for p in argus if p['id'] not in original) == list(range(len(full) + 1, len(full) + 11))
 
 
-def test_the_argus_copy_names_the_instance_of_each_sonarr_and_radarr_row(served):
-    def arr_table(p):
+def test_the_argus_copy_names_the_instance_of_each_sonarr_and_radarr_row(served: dict[str, set[str]]) -> None:
+    def arr_table(p: dict[str, Any]) -> bool:
         return p['type'] == 'table' and any(make_dashboard.uses(p, m) for m in ('varken_sonarr_', 'varken_radarr_'))
 
     tables = [p for p in make_dashboard.argus_dashboard()['panels'] if arr_table(p)]
@@ -106,15 +108,18 @@ def test_the_argus_copy_names_the_instance_of_each_sonarr_and_radarr_row(served)
             assert 'server' not in panel['transformations'][0]['options']['include']['names']
 
 
-def test_the_classic_copy_has_the_original_look():
+def test_the_classic_copy_has_the_original_look() -> None:
     classic = make_dashboard.classic_dashboard()
-    assert classic['uid'] == 'argus-varken-classic' and 'argus' in classic['tags']
+    assert classic['uid'] == 'argus-varken-classic'
+    assert 'argus' in classic['tags']
     tiles = [p for p in classic['panels'] if p['type'] == 'stat']
     assert len(tiles) == len(make_dashboard.CLASSIC_TILES)
     for tile in tiles:
         # The original's singlestats: the title inside a solidly coloured tile, on its 2x2 grid.
-        assert tile['options']['colorMode'] == 'background_solid' and tile['title'] == ''
-        assert tile['gridPos']['w'] == 2 and tile['gridPos']['h'] == 2
+        assert tile['options']['colorMode'] == 'background_solid'
+        assert tile['title'] == ''
+        assert tile['gridPos']['w'] == 2
+        assert tile['gridPos']['h'] == 2
     bandwidth = [t for t in tiles if t['fieldConfig']['defaults']['displayName'].endswith('BW')]
     assert all(
         t['targets'][0]['expr'].endswith(' * 8') and t['fieldConfig']['defaults']['unit'] == 'bps' for t in bandwidth
@@ -131,7 +136,7 @@ def test_the_classic_copy_has_the_original_look():
         cells |= area
 
 
-def test_the_pies_cover_the_time_range_not_just_this_moment():
+def test_the_pies_cover_the_time_range_not_just_this_moment() -> None:
     # Regression: pies of the current sessions were empty whenever nobody was watching.
     for build in (make_dashboard.dashboard, make_dashboard.argus_dashboard, make_dashboard.classic_dashboard):
         pies = [p for p in build()['panels'] if p['type'] == 'piechart']
@@ -139,7 +144,7 @@ def test_the_pies_cover_the_time_range_not_just_this_moment():
         assert all('avg_over_time(varken_tautulli_sessions[$__range])' in p['targets'][0]['expr'] for p in pies)
 
 
-def test_the_heat_strip_asks_for_few_enough_points():
+def test_the_heat_strip_asks_for_few_enough_points() -> None:
     # Regression: one point a minute was 721 over 12 hours, and status history refused to draw them.
     strip = next(p for p in make_dashboard.classic_dashboard()['panels'] if p['type'] == 'status-history')
     assert strip['maxDataPoints'] <= 200

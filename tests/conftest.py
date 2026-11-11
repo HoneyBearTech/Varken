@@ -4,9 +4,13 @@ import logging
 import os
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import settings
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -18,7 +22,7 @@ settings.load_profile('default')
 
 
 @pytest.fixture(autouse=True)
-def clean_environment():
+def clean_environment() -> Iterator[None]:
     """No VRKN_* variables from the machine running the tests, and none left behind by a test (the parser sets
     VRKN_* itself from *_FILE variables); no handlers or filters left on the root logger."""
     saved = dict(os.environ)
@@ -39,7 +43,7 @@ def clean_environment():
 
 
 @pytest.fixture
-def data_folder(tmp_path):
+def data_folder(tmp_path: Path) -> Path:
     """A data folder holding only the example config, as on a first start."""
     shutil.copy(REPO / 'data' / 'varken.example.ini', tmp_path / 'varken.example.ini')
     return tmp_path
