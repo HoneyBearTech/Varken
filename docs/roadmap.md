@@ -53,6 +53,10 @@ bugs that could break a scrape or crash a job (a lone surrogate in a title, two 
 `null` in a service's reply). It adds property-based tests, coverage-guided fuzzing in CI and a dated
 [security review](security-review.md), and formats the code with `ruff format`.
 
+**3.4.0** (2026-11-11) stops rewriting `varken.ini`: a setting the file lacks takes the example's value in
+memory, so comments are kept and the file can be read-only. That closes the last known weakness inherited
+from upstream.
+
 ## Over the following year
 
 **Phase 3: Argus integration** (built, in the [Argus](https://github.com/HoneyBearTech/Argus) repository since
