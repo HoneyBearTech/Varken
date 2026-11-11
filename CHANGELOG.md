@@ -7,6 +7,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-11-11
+
 ### Changed
 - Varken no longer rewrites `varken.ini`. A setting the file lacks (one a newer version added, usually) takes its
   value from `varken.example.ini`, in memory, and one INFO line names those settings. Before, Varken wrote them
