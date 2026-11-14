@@ -71,7 +71,7 @@ secrets:
   Remove the plain variable from `.env` when you move it to a file.
 - If the file can't be read, Varken stops and logs the variable and the path. It must be readable by the
   user Varken runs as (uid 1000 in the image).
-- The rules above still apply: the key must exist in `varken.ini`, and values read this way are masked in
+- The rules above still apply: the key must exist in `varken.ini` or `varken.example.ini`, and values read this way are masked in
   the logs like any other ([Logging](#logging)).
 - The file is read once, at start-up; restart Varken after changing it. Varken copies the value into its
   own process environment, so it isn't in the container's configuration (`docker inspect`) or in `.env`.
@@ -218,7 +218,7 @@ UniFi has no `apikey`; it logs in with a username and password instead.
 | Key | Environment variable | Example | Meaning |
 | --- | --- | --- | --- |
 | `username` | `VRKN_UNIFI_<ID>_USERNAME` | `ubnt` | Controller user. Use a dedicated read-only account. |
-| `password` | `VRKN_UNIFI_<ID>_PASSWORD` | `ubnt` | That user's password. **Secret.** |
+| `password` | `VRKN_UNIFI_<ID>_PASSWORD` | `<your UniFi password>` | That user's password. **Secret.** |
 | `site` | `VRKN_UNIFI_<ID>_SITE` | `default` | Site name or description (case-insensitive). |
 | `usg_name` | `VRKN_UNIFI_<ID>_USG_NAME` | `MyRouter` | Device name of the gateway to record, as shown in the controller. |
 | `get_usg_stats_run_seconds` | `VRKN_UNIFI_<ID>_GET_USG_STATS_RUN_SECONDS` | `300` | How often. |
@@ -255,7 +255,7 @@ radarr_server_ids = false
 lidarr_server_ids = false
 tautulli_server_ids = 1
 ombi_server_ids = false
-seerr_server_ids = 1
+seerr_server_ids = false
 sickchill_server_ids = false
 unifi_server_ids = false
 maxmind_license_key = <your MaxMind license key, or empty for no GeoIP>

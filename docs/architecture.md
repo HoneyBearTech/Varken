@@ -30,7 +30,7 @@ UniFi ────┘                  │            ▲     └─▶ logs (st
 | UniFi controller | Answers a login and device-statistics requests for one gateway. |
 | Viewers | Don't interact with Varken, but their streams (username, title, device and, with GeoIP on, approximate location) are what Tautulli reports and Varken records. |
 | MaxMind | Serves the GeoLite2-City database to the operator's license key. Not contacted when no key is set (GeoIP off). |
-| Prometheus | Scrapes Varken's `/metrics` endpoint and stores the metrics for its own retention time. It sends no credentials and gets none. [Argus](https://github.com/HoneyBearTech/Argus) is one such stack (that integration is planned, in the Argus repository). |
+| Prometheus | Scrapes Varken's `/metrics` endpoint and stores the metrics for its own retention time. It sends no credentials and gets none. See the related [Argus project documentation](https://github.com/HoneyBearTech/Argus) for its setup and integration guidance. |
 | Grafana (and its users) | Reads the metrics from Prometheus; Varken never talks to it. |
 
 ## Components

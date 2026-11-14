@@ -1,8 +1,8 @@
 # Quick start
 
 Run Varken on one Docker host, collecting from one Tautulli server, scrape it with a Prometheus you already
-run, and chart it in Grafana. Varken includes neither Prometheus nor Grafana; in the maintainer's setup,
-[Argus](https://github.com/HoneyBearTech/Argus) provides both. You need Docker with Compose v2 and Tautulli's
+run, and chart it in Grafana. Varken includes neither Prometheus nor Grafana.
+You need Docker with Compose v2 and Tautulli's
 address and API key (Tautulli: Settings, Web Interface, API).
 Optionally, a MaxMind license key, free with a [GeoLite2 account](https://www.maxmind.com/en/geolite2/signup),
 places viewers on a map; without one, streams have no location.
@@ -21,18 +21,22 @@ database and the logs. It must belong to uid 1000, the user the image runs as (o
 in `.env` and give it to them instead). Keep it a host directory rather than a named Docker volume:
 `docker volume prune` deletes named volumes whose container is stopped.
 
-Edit `.env`:
+Edit `.env`. Required Compose input and essential collector settings:
 
+- `CONFIG_ROOT`: required host data root; Compose has no fallback. The example sets `/srv/config`.
 - `VARKEN_VERSION`: the release to run, for example `3.5.0`.
-- `VRKN_GLOBAL_MAXMIND_LICENSE_KEY` and `VRKN_GLOBAL_MAXMIND_ACCOUNT_ID`: your MaxMind license key and
-  account ID, or leave the key empty to run without GeoIP (Varken then never contacts MaxMind).
 - `VRKN_TAUTULLI_1_URL`: Tautulli's host and port without `http://`, for example
   `tautulli.example.com:8181`, and `VRKN_TAUTULLI_1_APIKEY`. If you reach Tautulli over HTTPS, set
   `VRKN_TAUTULLI_1_SSL=true` and `VRKN_TAUTULLI_1_VERIFY_SSL=true`.
-- `VRKN_TAUTULLI_1_FALLBACK_IP`: your own public IPv4 address. Viewers on your LAN are placed there,
-  since their private addresses can't be located.
 - `VARKEN_METRICS_BIND`: where the compose file publishes `/metrics` on the host, `127.0.0.1:9180` by default
   (see [step 3](#3-scrape-it-with-prometheus)).
+
+Optional GeoIP and diagnostic settings:
+
+- `VRKN_GLOBAL_MAXMIND_LICENSE_KEY` and `VRKN_GLOBAL_MAXMIND_ACCOUNT_ID`: your MaxMind license key and
+  account ID, or leave the key empty to run without GeoIP (Varken then never contacts MaxMind).
+- `VRKN_TAUTULLI_1_FALLBACK_IP`: your own public IPv4 address for locating viewers on your LAN when GeoIP
+  is enabled, since their private addresses can't be located.
 - Varken logs at INFO. Add `DEBUG=true` only while troubleshooting: the debug log records every request
   Varken makes.
 
@@ -46,7 +50,8 @@ docker compose up -d
 docker compose logs -f varken
 ```
 
-On the first start Varken creates `config/varken.ini` from the example (the values in `.env` override it),
+On the first start Varken creates `CONFIG_ROOT/varken/config/varken.ini` on the host
+(`/config/varken.ini` inside the container) from the example (the values in `.env` override it),
 downloads the GeoLite2 database (with a MaxMind key), starts serving `/metrics` and runs every job once. You
 should see lines like these (timestamps left out):
 
@@ -72,7 +77,7 @@ last run failed, and the log says why. After that Varken stays quiet unless some
 - `Your api key is incorrect for ...` or `Cannot resolve the url/ip/port`: check the Tautulli URL, key
   and `SSL` setting.
 - `Invalid fallback_ip`: the fallback address must be a public IPv4 address.
-- A `PermissionError` naming `/config`: `config/` doesn't belong to uid 1000 (step 1).
+- A `PermissionError` naming `/config`: `CONFIG_ROOT/varken/config` doesn't belong to uid 1000 (step 1).
 - `port is already allocated` from Docker: something on the host already uses 9180. Set
   `VARKEN_METRICS_BIND` to another port, for example `127.0.0.1:9181`, and scrape that.
 
@@ -93,7 +98,7 @@ scrape_configs:
 
 The target depends on where Prometheus runs:
 
-- **In Docker, on a shared network** (the usual case, and how Argus runs it): connect the Prometheus
+- **In Docker, on a shared network**: connect the Prometheus
   container to Varken's network, `varken_default` (`docker network connect varken_default <prometheus>`, or
   list it as an external network in Prometheus' compose file), and scrape `varken:9180`. Nothing needs to be
   published on the host then; you can delete the `ports` entry from `docker-compose.yml`.
@@ -107,8 +112,8 @@ The endpoint has no authentication or TLS: never publish it on an address others
 
 ## 4. Chart it in Grafana
 
-Add your Prometheus as a data source in Grafana, if it isn't one already, and build panels on Varken's
-metrics. A few to start with:
+Add your Prometheus as a data source in Grafana, if it isn't one already, and import the shipped
+[Grafana dashboard](../dashboard/README.md), or build panels on Varken's metrics. A few to start with:
 
 | Panel | Query |
 | --- | --- |

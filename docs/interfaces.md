@@ -14,7 +14,7 @@ its variable, example value and meaning is in [configuration.md](configuration.m
 ### Command line
 
 ```
-python3 Varken.py [-d DATA_FOLDER] [-ND]
+python3 Varken.py [-d DATA_FOLDER] [-D] [-ND]
 ```
 
 | Option | What it does |

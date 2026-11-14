@@ -34,7 +34,7 @@ The compose file reads these from `.env`, besides the `VRKN_*` settings:
 | Variable | Default | What |
 | --- | --- | --- |
 | `VARKEN_VERSION` | `latest` | Image tag to run. Set a release such as `3.5.0`, so upgrades happen when you choose. |
-| `CONFIG_ROOT` | `/srv/config` (required) | Where app data lives; Varken's is `CONFIG_ROOT/varken/config`, mounted at `/config`. Not inside `/var/lib/docker/volumes`. |
+| `CONFIG_ROOT` | None (required; `.env.example` uses `/srv/config`) | Where app data lives; Varken's is `CONFIG_ROOT/varken/config`, mounted at `/config`. Not inside `/var/lib/docker/volumes`. |
 | `VARKEN_UID` / `VARKEN_GID` | `1000` | The user and group the container runs as; they must own `CONFIG_ROOT/varken/config`. |
 | `VARKEN_METRICS_BIND` | `127.0.0.1:9180` | Host address and port `/metrics` is published on. Keep it on a loopback or private address. |
 | `TZ` | `UTC` | Time zone for log timestamps. |
@@ -58,7 +58,8 @@ Portainer's "remove unused volumes") deletes a named volume whose container is s
 it needs no `chown`: the image creates `/config` owned by 1000:1000. For a Prometheus outside Docker, replace `--network ...` with
 `-p 127.0.0.1:9180:9180` (or a private address instead of `127.0.0.1`).
 
-Instead of an `.env` file you can write `config/varken.ini` yourself from
+Instead of an `.env` file you can write `/srv/config/varken/config/varken.ini` on the host
+(`/config/varken.ini` inside this container) yourself from
 [`data/varken.example.ini`](../data/varken.example.ini) (`chmod 600`, owned by uid 1000). Images are
 published for linux/amd64 and linux/arm64 as `ghcr.io/honeybeartech/varken`, tagged with the version
 (`3.5.0`), major.minor (`3.5`) and `latest`. [Verify the image](verifying-releases.md) before the first
@@ -139,8 +140,9 @@ Varken always serves its metrics; these settings say where. They are in
 | `[prometheus]` `port` | `VRKN_PROMETHEUS_PORT` | `9180` | Port to listen on (ScyllaDB also uses 9180; change it if it clashes). |
 | `[prometheus]` `stream_details` | `VRKN_PROMETHEUS_STREAM_DETAILS` | `false` | Add per-viewer metrics (who watches what, and from which city). |
 
-A `varken.ini` from upstream Varken gets the `[prometheus]` section, with these defaults, on its first start
-([upgrading.md](upgrading.md)). Then add a scrape job to Prometheus:
+When an upstream `varken.ini` lacks `[prometheus]`, current versions use these defaults from
+`varken.example.ini` in memory, without rewriting the user file ([upgrading.md](upgrading.md)).
+Then add a scrape job to Prometheus:
 
 ```yaml
 scrape_configs:
@@ -166,7 +168,8 @@ dashboards query InfluxDB and don't work with them.
   Docker or compose secrets, point `VRKN_<SECTION>_<KEY>_FILE` at the secret file instead of putting the value
   in `.env` ([configuration.md](configuration.md#values-from-files-_file)).
 - Use `ssl = true` and `verify_ssl = true` for every service you reach over a network you don't fully
-  trust; both are off in the example.
+  trust; the template has `ssl = false` and `verify_ssl = true`. Certificate verification takes effect
+  only when TLS is enabled.
 - Give Varken its own API keys and a read-only UniFi account.
 - Leave debug logging off (the default since 2.3.0; `DEBUG=true` turns it on): it records every request
   Varken makes. In a container, `LOG_TO_FILE=false` logs to stdout only, with no `logs/` folder in `/config`.
@@ -177,12 +180,22 @@ dashboards query InfluxDB and don't work with them.
 
 The reasons, and the known weaknesses, are in [security.md](security.md).
 
-## Uninstalling
+## Stopping, restarting and uninstalling
+
+```sh
+docker compose stop varken
+docker compose restart varken
+```
+
+Stopping or restarting preserves `CONFIG_ROOT/varken/config`, including `varken.ini`, GeoIP data and
+logs. To remove the Compose service:
 
 ```sh
 docker compose down
-rm -rf config .env
 ```
+
+The host data directory and `.env` remain. Back up the settings and secrets first, then decide explicitly
+whether to retain or remove them; stopping the service does not require deleting data.
 
 For a bare install: `sudo systemctl disable --now varken`, remove `/etc/systemd/system/varken.service`,
 `/opt/Varken` and the `varken` user. Remove the `varken` scrape job from Prometheus; what it already scraped
