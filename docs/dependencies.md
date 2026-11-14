@@ -54,6 +54,9 @@ it from MaxMind with its own license key, under MaxMind's GeoLite2 license.
   major updates use separate pull requests. The maintainer reviews and merges them by hand; automerge is
   disabled and nothing merges without "Checks + tests" passing. Renovate also checks OSV vulnerability alerts
   and labels security update requests for review.
+- The fuzz runtime stays on Python 3.14 through a file-specific Renovate rule. Remove that restriction only
+  after the hash-pinned fuzz dependencies install and all nine targets run on the proposed Python version.
+  The application and regular tests use Python 3.15 independently.
 - **Dependency review** ([`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml))
   blocks a pull request that adds or changes a dependency with a known vulnerability of moderate severity or
   higher, or with a license outside the allowlist.
