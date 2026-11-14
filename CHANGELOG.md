@@ -8,6 +8,8 @@ All notable changes to this project are documented in this file. The format is b
 ## [Unreleased]
 
 ### Changed
+- Update coverage to 7.17.3 and ruff to 0.17.5, and refresh the GitLab pipeline's Docker CLI and
+  Prometheus image pins. Keep the fuzz runtime on Python 3.14 until its pinned dependencies support 3.15.
 - Pin shipped Varken image defaults to `3.5.0`, preserving explicit operator overrides.
 - Replace scheduled dependency updates with Renovate, including GitLab images and shipped image defaults;
   keep updates subject to manual review and merging.
