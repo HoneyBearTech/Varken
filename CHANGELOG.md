@@ -8,6 +8,9 @@ All notable changes to this project are documented in this file. The format is b
 ## [Unreleased]
 
 ### Changed
+- Pin shipped Varken image defaults to `3.5.0`, preserving explicit operator overrides.
+- Replace scheduled dependency updates with Renovate, including GitLab images and shipped image defaults;
+  keep updates subject to manual review and merging.
 - For contributors: pull requests from `honeybeartech-ops` are the maintainer's. It is the maintainer's machine
   account, with write access and no admin rights; the maintainer reviews and approves each of its pull requests
   under their own account before it merges. [GOVERNANCE.md](GOVERNANCE.md) lists what the account can do and how

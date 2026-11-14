@@ -1,4 +1,4 @@
-# Base image pinned by version and multi-arch digest; Dependabot proposes updates to both.
+# Base image pinned by version and multi-arch digest; Renovate proposes updates to both.
 FROM python:3.15.2-slim@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928
 
 # Set by the release workflow from the tag; a local build reports 0.0.0.

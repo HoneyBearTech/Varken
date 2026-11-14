@@ -77,7 +77,7 @@ last run failed, and the log says why. After that Varken stays quiet unless some
   `VARKEN_METRICS_BIND` to another port, for example `127.0.0.1:9181`, and scrape that.
 
 To try unreleased changes, skip the `git checkout`, build the image from `main` yourself with
-`docker build -t ghcr.io/honeybeartech/varken:latest .`, and leave `VARKEN_VERSION=latest`.
+`docker build -t ghcr.io/honeybeartech/varken:latest .`, and explicitly set `VARKEN_VERSION=latest` for this local build.
 
 ## 3. Scrape it with Prometheus
 
