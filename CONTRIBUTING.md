@@ -129,7 +129,7 @@ uv pip compile --generate-hashes --python-version 3.15 requirements.in -o requir
 uv pip compile --generate-hashes --python-version 3.15 requirements-dev.in -o requirements-dev.txt
 ```
 
-Commit the `.in` and `.txt` files together. Dependabot proposes routine updates; see
+Commit the `.in` and `.txt` files together. Renovate proposes routine updates; see
 [docs/dependencies.md](docs/dependencies.md).
 
 ## Developer Certificate of Origin

@@ -33,7 +33,7 @@ The compose file reads these from `.env`, besides the `VRKN_*` settings:
 
 | Variable | Default | What |
 | --- | --- | --- |
-| `VARKEN_VERSION` | `latest` | Image tag to run. Set a release such as `3.5.0`, so upgrades happen when you choose. |
+| `VARKEN_VERSION` | `3.5.0` | Image tag to run. Explicit release pins make upgrades intentional. |
 | `CONFIG_ROOT` | None (required; `.env.example` uses `/srv/config`) | Where app data lives; Varken's is `CONFIG_ROOT/varken/config`, mounted at `/config`. Not inside `/var/lib/docker/volumes`. |
 | `VARKEN_UID` / `VARKEN_GID` | `1000` | The user and group the container runs as; they must own `CONFIG_ROOT/varken/config`. |
 | `VARKEN_METRICS_BIND` | `127.0.0.1:9180` | Host address and port `/metrics` is published on. Keep it on a loopback or private address. |

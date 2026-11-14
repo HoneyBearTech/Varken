@@ -10,8 +10,7 @@
 #   the unit tests with the coverage floor, promtool's check of a sample scrape, gitleaks, actionlint, hadolint and
 #   the compose file. The image build and its non-root, read-only start need a daemon (Docker-in-Docker, so a
 #   privileged runner), and pip-audit is installed unhashed (pipx); both run on GitHub only.
-# Images are pinned by tag and digest. Dependabot doesn't read this file: they're bumped by hand
-# (docs/dependencies.md).
+# Images are pinned by tag and digest. Renovate tracks their updates (docs/dependencies.md).
 
 workflow:
   rules:

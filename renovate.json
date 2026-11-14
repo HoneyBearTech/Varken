@@ -1,0 +1,87 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard"
+  ],
+  "enabledManagers": [
+    "docker-compose",
+    "dockerfile",
+    "gitlabci",
+    "github-actions",
+    "pip_requirements",
+    "custom.regex"
+  ],
+  "pip_requirements": {
+    "managerFilePatterns": [
+      "/(^|/)requirements(?:-[^/]+)?\\.(?:in|txt)$/"
+    ]
+  },
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "timezone": "America/Chicago",
+  "labels": [
+    "dependencies"
+  ],
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "labels": [
+      "security"
+    ]
+  },
+  "automerge": false,
+  "packageRules": [
+    {
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "minor and patch dependencies"
+    },
+    {
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": null,
+      "addLabels": [
+        "major"
+      ]
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.env\\.example$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)VARKEN_VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)(?:\\r?\\n|$)"
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "ghcr.io/honeybeartech/varken"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^docker\\-compose\\.yml$/"
+      ],
+      "matchStrings": [
+        "image: ghcr\\.io/honeybeartech/varken:\\$\\{VARKEN_VERSION:-(?<currentValue>\\d+\\.\\d+\\.\\d+)\\}"
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "ghcr.io/honeybeartech/varken"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^varken\\.xml$/"
+      ],
+      "matchStrings": [
+        "<Repository>ghcr\\.io/honeybeartech/varken:(?<currentValue>\\d+\\.\\d+\\.\\d+)</Repository>"
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "ghcr.io/honeybeartech/varken"
+    }
+  ]
+}

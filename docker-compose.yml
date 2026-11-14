@@ -8,7 +8,7 @@ name: varken
 
 services:
   varken:
-    image: ghcr.io/honeybeartech/varken:${VARKEN_VERSION:-latest}
+    image: ghcr.io/honeybeartech/varken:${VARKEN_VERSION:-3.5.0}
     # The image runs as 1000:1000; the config folder must belong to the same uid/gid.
     user: "${VARKEN_UID:-1000}:${VARKEN_GID:-1000}"
     # Every VRKN_* setting in .env overrides the same key in varken.ini.
