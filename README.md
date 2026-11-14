@@ -52,7 +52,7 @@ affiliated with the original authors: please don't take questions about this ver
 | [Ombi](https://ombi.io/) | Request and issue counts by status, and each request |
 | [Seerr](https://github.com/seerr-team/seerr) | Request and issue counts by status and type, and each request still waiting (Overseerr and Jellyseerr became Seerr) |
 | [SickChill](https://sickchill.github.io/) | Missed and upcoming episodes |
-| [UniFi](https://ui.com/) | Gateway (USG) statistics |
+| [UniFi](https://ui.com/) | Collection job health and point counts; detailed gateway metrics are not exported |
 
 Every module supports several servers. Tautulli locations come from MaxMind's
 [GeoLite2](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) database, which needs a free MaxMind
@@ -69,13 +69,15 @@ neither; in the maintainer's setup, [Argus](https://github.com/HoneyBearTech/Arg
 git clone https://github.com/HoneyBearTech/Varken.git
 cd Varken
 cp .env.example .env                       # fill in your services; never commit .env
+chmod 600 .env
 sudo mkdir -p /srv/config/varken/config && sudo chown -R 1000:1000 /srv/config/varken   # CONFIG_ROOT
 docker compose up -d
 docker compose logs -f varken
 ```
 
 Then add a scrape job to your Prometheus: `varken:9180` when Prometheus shares Varken's Docker network, or
-`<host>:9180` through the published port ([quick start](docs/quick-start.md#3-scrape-it-with-prometheus)). In
+`<host>:9180` through an explicitly published reachable address ([quick start](docs/quick-start.md#3-scrape-it-with-prometheus)).
+The supplied loopback binding cannot be scraped from another host. In
 Grafana, use that Prometheus as the data source and import the [Varken dashboard](dashboard/README.md), or
 build your own on the [metrics Varken serves](docs/interfaces.md#output-prometheus-metrics). The [quick start](docs/quick-start.md)
 walks through the first run, and [installing](docs/installing.md) covers running the image on its own
@@ -83,6 +85,42 @@ walks through the first run, and [installing](docs/installing.md) covers running
 
 Upgrading from `boerderij/varken`? Varken no longer writes to InfluxDB, the image name changed and the
 container no longer runs as root: read [upgrading](docs/upgrading.md) first.
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `Varken.py` | Entry point and collection scheduler |
+| `varken/` | Collectors, configuration parsing, metrics and logging |
+| `data/` | Example configuration and default bare-install data folder |
+| `docs/` | Setup, configuration, operations and design documentation |
+| `dashboard/` | Grafana dashboard and import instructions |
+| `tests/` | Automated tests and sample metrics |
+| `fuzz/` | Fuzzing harnesses |
+| `Dockerfile`, `docker-compose.yml` | Container image and standalone Compose service |
+| `varken.systemd` | Example service unit for a bare install |
+
+## Routine operations
+
+Run these from the checkout containing your Compose file and `.env`:
+
+```sh
+docker compose logs -f varken
+docker compose restart varken
+docker compose stop varken
+```
+
+The persistent host directory `CONFIG_ROOT/varken/config` holds configuration, GeoIP data and logs;
+stopping or restarting the container preserves it. For an upgrade, back up the configuration, set the
+chosen `VARKEN_VERSION` in `.env`, then run:
+
+```sh
+docker compose pull varken
+docker compose up -d
+```
+
+See [installing](docs/installing.md) for service management and uninstalling, and
+[upgrading](docs/upgrading.md) for backups, version-specific steps and rollback.
 
 ## Configuration
 
@@ -122,8 +160,8 @@ Any `VRKN_*` value can also be read from a file, for Docker and compose secrets:
 
 ## Related projects
 
-[Argus](https://github.com/HoneyBearTech/Argus), the maintainer's Prometheus and Grafana homelab monitoring stack,
-will scrape Varken's metrics for its Tautulli dashboards (planned, in the Argus repository).
+[Argus](https://github.com/HoneyBearTech/Argus) is a related monitoring project; see its own documentation
+for setup and integration guidance.
 
 ## License
 

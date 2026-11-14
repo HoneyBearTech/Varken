@@ -18,11 +18,17 @@ The metrics Varken serves are stored by your Prometheus, which keeps them across
 itself holds only the last run of each job, in memory.
 
 ```sh
-cp config/varken.ini config/varken.ini.backup     # or data/varken.ini for a bare install
-cp .env .env.backup                               # compose only
+# Compose: replace <config-root> with CONFIG_ROOT from your .env.
+cp <config-root>/varken/config/varken.ini <config-root>/varken/config/varken.ini.backup
+cp .env .env.backup
+# Bare install, with the default data folder:
+cp data/varken.ini data/varken.ini.backup
 ```
 
 ## From upstream Varken 1.7.x (boerderij/varken) to 2.0.0
+
+The instructions in this section describe the historical 2.0.0 release, including its Python 3.14 runtime.
+For a current release, follow the current runtime guidance below.
 
 2.0.0 is the first release of this fork. Your `varken.ini` and your `VRKN_*` variables carry over, except
 the InfluxDB ones, which are no longer used. On the first start Varken adds the `[prometheus]` section to
@@ -93,7 +99,7 @@ What changes:
    unmasked ([security.md](security.md#fixed-in-200)). Regenerate the Tautulli API key if in doubt, and any
    secret that is in logs you kept or shared.
 
-## Between 2.x releases
+## Between releases in the current series
 
 With compose: set the new `VARKEN_VERSION` in `.env`, optionally [verify the image](verifying-releases.md),
 `git pull` (the compose file and `.env.example` can change between releases; compare your `.env` with the
@@ -104,8 +110,14 @@ docker compose pull varken && docker compose up -d
 docker compose logs -f varken
 ```
 
-For a bare install: `git fetch --tags && git checkout vX.Y.Z`, reinstall `requirements.txt` with
-`--require-hashes --no-deps` (it may have changed), and restart the service.
+For a bare install: use Python 3.15 for the current version. Run `git fetch --tags && git checkout vX.Y.Z`,
+reinstall `requirements.txt` with `--require-hashes --no-deps` (it may have changed), refresh
+`varken.example.ini` beside your `varken.ini` from the checkout's `data/varken.example.ini` if your data
+folder is elsewhere, and restart the service. With the default `data/` folder, updating the checkout
+already refreshes the example.
+
+Current versions take missing settings from that example in memory without rewriting `varken.ini`.
+The image refreshes the example on every start. Historical notes below describe older file-writing behavior.
 
 ### 3.3.x to 3.4.0
 
