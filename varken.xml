@@ -2,7 +2,7 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>Varken</Name>
-  <Repository>ghcr.io/honeybeartech/varken</Repository>
+  <Repository>ghcr.io/honeybeartech/varken:3.5.0</Repository>
   <Registry>https://github.com/HoneyBearTech/Varken/pkgs/container/varken</Registry>
   <Network>bridge</Network>
   <MyIP/>

@@ -47,16 +47,19 @@ it from MaxMind with its own license key, under MaxMind's GeoLite2 license.
 
 ## Tracking dependencies
 
-- **Dependabot** ([`.github/dependabot.yml`](../.github/dependabot.yml)) checks weekly for new versions of
-  the base image, the Python packages and the GitHub Actions, and opens a pull request for each. The example
-  compose file only runs Varken's own image, so it has no entry. The maintainer reviews and merges them by
-  hand; nothing merges without "Checks + tests" passing.
+- **Renovate** ([`renovate.json`](../renovate.json)) checks Docker Compose, Dockerfiles, GitLab CI images,
+  GitHub Actions and all root Python requirements inputs and hash-pinned outputs, including fuzz dependencies.
+  Custom regex managers track Varken's image tags in `.env.example`, the interpolated Compose fallback and
+  `varken.xml`. Updates run on Mondays before 6am in America/Chicago. Minor and patch updates are grouped;
+  major updates use separate pull requests. The maintainer reviews and merges them by hand; automerge is
+  disabled and nothing merges without "Checks + tests" passing. Renovate also checks OSV vulnerability alerts
+  and labels security update requests for review.
 - **Dependency review** ([`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml))
   blocks a pull request that adds or changes a dependency with a known vulnerability of moderate severity or
   higher, or with a license outside the allowlist.
-- The images in `.gitlab-ci.yml` aren't seen by Dependabot; they're bumped by hand at least every quarter.
-  Its `checks` job uses the full Python image, not the slim one, because the tests need git; that git is
-  Debian's package, so it's brought up to date by the same bump.
+- Renovate tracks the tag and digest pins in `.gitlab-ci.yml`. Its `checks` job uses the full Python image,
+  not the slim one, because the tests need git; that git is Debian's package, so it's brought up to date
+  by the same bump.
 - A merged update reaches users only in the next release.
 
 ## Policy for vulnerabilities in dependencies
@@ -73,7 +76,7 @@ Known vulnerabilities are found by:
 
 Each finding is triaged within 14 days:
 
-1. **If a fixed release exists**, bump to it (a Dependabot pull request usually already does) and merge. A
+1. **If a fixed release exists**, bump to it (a Renovate pull request usually already does) and merge. A
    fix for an exploitable critical or high-severity vulnerability goes out in a patch release within 30
    days; others go out with the next release, and within 90 days.
 2. **If upstream hasn't released a fix**, assess whether the vulnerable code is reachable in Varken (it
