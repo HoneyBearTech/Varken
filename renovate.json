@@ -1,5 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate proposes every dependency update and merges it once every required check on the pull request has passed (docs/dependencies.md). platformAutomerge is off, so Renovate merges by itself on its next run instead of asking GitHub to; a new version waits three days after its release (minimumReleaseAge), and fixes for vulnerability alerts skip the wait by Renovate's default. timestamp-optional lets an update from a registry that reports no release date through. See https://docs.renovatebot.com/configuration-options/#minimumreleaseage",
   "extends": [
     "config:recommended",
     ":dependencyDashboard"
@@ -30,7 +31,12 @@
       "security"
     ]
   },
-  "automerge": false,
+  "automerge": true,
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "platformAutomerge": false,
+  "minimumReleaseAge": "3 days",
+  "minimumReleaseAgeBehaviour": "timestamp-optional",
   "packageRules": [
     {
       "matchUpdateTypes": [
@@ -47,6 +53,16 @@
       "addLabels": [
         "major"
       ]
+    },
+    {
+      "description": "An image rebuild (a new digest under the same tag) doesn't wait: Docker Hub dates a rebuild by the tag's last push, so a tag rebuilt about weekly would restart the clock each time and never clear the wait.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "minimumReleaseAge": null
     },
     {
       "description": "Keep the fuzz runtime on Python 3.14 until its pinned dependencies support 3.15.",

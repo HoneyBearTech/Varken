@@ -54,8 +54,9 @@ The maintainer also acts through a machine account,
 rights, not another person and not a role of its own. What it can do is listed under
 [Access to sensitive resources](#access-to-sensitive-resources).
 
-Automated tools also take part: Dependabot proposes updates to the base image, the Python packages and the
-GitHub Actions, which the maintainer reviews and merges by hand, and CI, CodeQL, dependency review and
+Automated tools also take part: Renovate proposes updates to the base image, the Python packages and the
+GitHub Actions, and merges them once every required check has passed and a new version is three days old
+(the fuzz runtime stays on Python 3.14 by a rule of its own), and CI, CodeQL, dependency review and
 OpenSSF Scorecard check every change.
 
 ## Access to sensitive resources
@@ -72,7 +73,7 @@ Who can change the code, releases and project settings, as of the date of this f
 | Mirroring the repository into the maintainer's self-hosted GitLab | the scheduled mirror job in [`.gitlab-ci.yml`](.gitlab-ci.yml) | a GitLab project access token (Maintainer role, `write_repository` only, with an expiry) in a masked, protected CI/CD variable on that GitLab; the maintainer creates and rotates it |
 | The OpenSSF Best Practices badge entry ([project 15525](https://www.bestpractices.dev/projects/15525)) | the maintainer | GitHub sign-in |
 | Security advisories and private vulnerability reports | the maintainer | GitHub |
-| Automated changes | Dependabot (pull requests only) | GitHub, short-lived `GITHUB_TOKEN` |
+| Automated changes | Renovate (pull requests, and merging them once the required checks pass) | the Renovate GitHub App |
 
 ### Two-factor authentication
 

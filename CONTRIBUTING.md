@@ -129,7 +129,7 @@ uv pip compile --generate-hashes --python-version 3.15 requirements.in -o requir
 uv pip compile --generate-hashes --python-version 3.15 requirements-dev.in -o requirements-dev.txt
 ```
 
-Commit the `.in` and `.txt` files together. Renovate proposes routine updates; see
+Commit the `.in` and `.txt` files together. Renovate proposes and merges routine updates; see
 [docs/dependencies.md](docs/dependencies.md).
 
 ## Developer Certificate of Origin
@@ -150,7 +150,8 @@ it with `git rebase --signoff main` and force-push your branch.
 
 - Changes land on `main` only through a pull request that passes the required checks ("Checks + tests",
   DCO, dependency review, CodeQL), is up to date with `main` and is approved by a code owner (the maintainer;
-  see [GOVERNANCE.md](GOVERNANCE.md)). Pull requests are squash-merged.
+  see [GOVERNANCE.md](GOVERNANCE.md)). Pull requests are squash-merged. Renovate's dependency updates merge
+  by themselves once every required check has passed, three days after a new version's release.
 - Keep each pull request focused on one change, and describe what it does and why.
 - Add a line to `CHANGELOG.md` under `## [Unreleased]` for anything a user would notice, and update
   `data/varken.example.ini`, `.env.example`, [docs/configuration.md](docs/configuration.md) and the other docs when you

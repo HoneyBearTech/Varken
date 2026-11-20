@@ -51,11 +51,15 @@ it from MaxMind with its own license key, under MaxMind's GeoLite2 license.
   GitHub Actions and all root Python requirements inputs and hash-pinned outputs, including fuzz dependencies.
   Custom regex managers track Varken's image tags in `.env.example`, the interpolated Compose fallback and
   `varken.xml`. Updates run on Mondays before 6am in America/Chicago. Minor and patch updates are grouped;
-  major updates use separate pull requests. The maintainer reviews and merges them by hand; automerge is
-  disabled and nothing merges without "Checks + tests" passing. Renovate also checks OSV vulnerability alerts
-  and labels security update requests for review.
+  major updates use separate pull requests. **Renovate merges them itself** (squash, majors included) once
+  every required check has passed, "Checks + tests" among them; it does not use GitHub's auto-merge, so it
+  merges on its next run. A new version waits three days after its release (`minimumReleaseAge`) before it is
+  proposed; a registry that reports no release date doesn't hold an update back, and an image rebuild (a new
+  digest under the same tag) skips the wait. Renovate also checks OSV vulnerability alerts and labels security
+  update requests; those skip the wait and merge like any other update.
 - The fuzz runtime stays on Python 3.14 through a file-specific Renovate rule. Remove that restriction only
   after the hash-pinned fuzz dependencies install and all nine targets run on the proposed Python version.
+  This is the one update that stays manual.
   The application and regular tests use Python 3.15 independently.
 - **Dependency review** ([`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml))
   blocks a pull request that adds or changes a dependency with a known vulnerability of moderate severity or
@@ -79,9 +83,9 @@ Known vulnerabilities are found by:
 
 Each finding is triaged within 14 days:
 
-1. **If a fixed release exists**, bump to it (a Renovate pull request usually already does) and merge. A
-   fix for an exploitable critical or high-severity vulnerability goes out in a patch release within 30
-   days; others go out with the next release, and within 90 days.
+1. **If a fixed release exists**, bump to it (a Renovate pull request usually already does, and merges
+   itself) and merge. A fix for an exploitable critical or high-severity vulnerability goes out in a patch
+   release within 30 days; others go out with the next release, and within 90 days.
 2. **If upstream hasn't released a fix**, assess whether the vulnerable code is reachable in Varken (it
    opens one port, for `/metrics`; its inputs are its own config, API responses from the operator's
    services, the GeoLite2 archive and HTTP requests to `/metrics`). If it is exploitable, mitigate it where possible and say so in
