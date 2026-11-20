@@ -11,8 +11,9 @@ All notable changes to this project are documented in this file. The format is b
 - Update coverage to 7.17.3 and ruff to 0.17.5, and refresh the GitLab pipeline's Docker CLI and
   Prometheus image pins. Keep the fuzz runtime on Python 3.14 until its pinned dependencies support 3.15.
 - Pin shipped Varken image defaults to `3.5.0`, preserving explicit operator overrides.
-- Replace scheduled dependency updates with Renovate, including GitLab images and shipped image defaults;
-  keep updates subject to manual review and merging.
+- Replace scheduled dependency updates with Renovate, including GitLab images and shipped image defaults.
+- Renovate now merges its pull requests by itself (squash, majors included) once every required check has passed
+  and a new version is three days old; the fuzz runtime stays on Python 3.14.
 - For contributors: pull requests from `honeybeartech-ops` are the maintainer's. It is the maintainer's machine
   account, with write access and no admin rights; the maintainer reviews and approves each of its pull requests
   under their own account before it merges. [GOVERNANCE.md](GOVERNANCE.md) lists what the account can do and how
