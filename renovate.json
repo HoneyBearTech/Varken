@@ -72,7 +72,7 @@
       "matchFileNames": [
         ".github/workflows/fuzz.yml"
       ],
-      "matchPackageNames": [
+      "matchDepNames": [
         "python"
       ],
       "allowedVersions": "3.14"
