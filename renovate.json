@@ -28,7 +28,8 @@
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
     "labels": [
-      "security"
+      "security",
+      "openssf"
     ]
   },
   "automerge": true,
