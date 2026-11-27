@@ -61,7 +61,7 @@ checks:
   extends: .checks
   stage: checks
   needs: []
-  image: python:3.15.2-trixie@sha256:2a01fe7b84cc646c76d6fe8c8c216aef39de2617ad2723ed488e7c4f495a9539
+  image: python:3.15.2-trixie@sha256:b856c51ddffa0dfb3a25c7351abd0218857495922cf37352959b17ee03c0c938
   variables:
     PIP_DISABLE_PIP_VERSION_CHECK: "1"
   script:
